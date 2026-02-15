@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=MF IPTV Player
+Comment=My Favourite IPTV Player
+Exec=/home/david/claude-projects/iptv-app/run.sh
+Icon=/home/david/claude-projects/iptv-app/icon.svg
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Player;
+Keywords=IPTV;TV;Stream;Video;

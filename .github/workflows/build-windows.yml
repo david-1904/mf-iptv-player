@@ -1,0 +1,59 @@
+name: Windows Build
+
+on:
+  workflow_dispatch:  # Manuell ausloesbar ueber GitHub UI
+  push:
+    tags:
+      - "v*"  # Automatisch bei Version-Tags (v1.0, v1.1, ...)
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhaengigkeiten installieren
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: libmpv herunterladen
+        shell: pwsh
+        run: |
+          $mpvUrl = "https://sourceforge.net/projects/mpv-player-windows/files/libmpv/mpv-dev-x86_64-20240121-git-a39f9b6.7z/download"
+          Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z -UserAgent "wget"
+          7z x mpv-dev.7z -ompv-dev
+          Copy-Item mpv-dev\libmpv-2.dll .
+
+      - name: EXE bauen
+        run: python build_windows.py
+
+      - name: ffmpeg hinzufuegen
+        shell: pwsh
+        run: |
+          $ffUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+          Invoke-WebRequest -Uri $ffUrl -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          $ffExe = Get-ChildItem -Path ffmpeg-tmp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          Copy-Item $ffExe.FullName "dist\MF IPTV Player\"
+
+      - name: ZIP erstellen
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist\MF IPTV Player" -DestinationPath "MF-IPTV-Player-Windows.zip"
+
+      - name: ZIP als Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: MF-IPTV-Player-Windows
+          path: MF-IPTV-Player-Windows.zip
+
+      - name: Release erstellen (bei Tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MF-IPTV-Player-Windows.zip
