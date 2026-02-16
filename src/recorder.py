@@ -15,6 +15,17 @@ from platform_utils import get_recordings_dir
 _IS_WIN = sys.platform == "win32"
 
 
+def _find_ffmpeg() -> str:
+    """Sucht ffmpeg: neben der EXE (PyInstaller), dann im PATH."""
+    # Bei PyInstaller liegt ffmpeg.exe neben der EXE
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        local = os.path.join(exe_dir, "ffmpeg.exe" if _IS_WIN else "ffmpeg")
+        if os.path.isfile(local):
+            return local
+    return "ffmpeg"
+
+
 class StreamRecorder:
     """Nimmt Streams verlustfrei mit ffmpeg auf"""
 
@@ -81,7 +92,7 @@ class StreamRecorder:
 
         self._process = subprocess.Popen(
             [
-                "ffmpeg",
+                _find_ffmpeg(),
                 "-nostdin",
                 "-extension_picky", "0",
                 "-reconnect", "1",

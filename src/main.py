@@ -14,10 +14,17 @@ import asyncio
 from main_window import MainWindow
 
 
+def _base_path() -> str:
+    """Gibt den Basispfad zurueck (PyInstaller-kompatibel)."""
+    if getattr(sys, 'frozen', False):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def setup_dark_theme(app: QApplication):
     """Konfiguriert ein dunkles Theme"""
     app.setStyle("Fusion")
-    _assets = os.path.join(os.path.dirname(__file__), "assets")
+    _assets = os.path.join(_base_path(), "assets")
     _arrow_down = os.path.join(_assets, "arrow-down.svg").replace("\\", "/")
 
     palette = QPalette()
@@ -151,7 +158,10 @@ def main():
     app.setOrganizationName("IPTVApp")
     app.setDesktopFileName("iptv-player")
 
-    icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.svg")
+    if getattr(sys, 'frozen', False):
+        icon_path = os.path.join(_base_path(), "icon.svg")
+    else:
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.svg")
     app.setWindowIcon(QIcon(icon_path))
 
     setup_dark_theme(app)

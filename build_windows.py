@@ -40,21 +40,49 @@ if not mpv_dll:
 
 print(f"libmpv gefunden: {mpv_dll}")
 
+# --- Icon: SVG -> ICO konvertieren (falls noetig) ---
+icon_svg = os.path.join(here, "icon.svg")
+icon_ico = os.path.join(here, "icon.ico")
+icon_arg = None
+
+if os.path.exists(icon_ico):
+    icon_arg = icon_ico
+    print(f"Icon gefunden: {icon_ico}")
+else:
+    # Versuche SVG -> ICO mit Pillow+cairosvg
+    try:
+        from PIL import Image
+        import cairosvg
+        import io
+        png_data = cairosvg.svg2png(url=icon_svg, output_width=256, output_height=256)
+        img = Image.open(io.BytesIO(png_data))
+        img.save(icon_ico, format="ICO", sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
+        icon_arg = icon_ico
+        print(f"Icon konvertiert: {icon_ico}")
+    except Exception:
+        # Kein Pillow/cairosvg vorhanden, ohne Icon bauen
+        print("WARNUNG: icon.ico nicht vorhanden und SVG-Konvertierung fehlgeschlagen.")
+        print("         EXE wird ohne Icon gebaut. Fuer ein Icon: pip install Pillow cairosvg")
+
 # --- PyInstaller ausfuehren ---
 add_binary = mpv_dll + os.pathsep + "."
 
-PyInstaller.__main__.run([
+args = [
     os.path.join(here, "src", "main.py"),
     "--name", "MF IPTV Player",
     "--onedir",
     "--windowed",
-    "--icon", os.path.join(here, "icon.svg"),
     "--add-data", os.path.join(here, "src", "assets") + os.pathsep + "assets",
-    "--add-data", os.path.join(here, "icon.svg") + os.pathsep + ".",
+    "--add-data", icon_svg + os.pathsep + ".",
     "--add-binary", add_binary,
     "--paths", os.path.join(here, "src"),
     "--noconfirm",
-])
+]
+
+if icon_arg:
+    args += ["--icon", icon_arg]
+
+PyInstaller.__main__.run(args)
 
 print()
 print(f"Fertig! Verteilbares Paket liegt in: {dist_dir}")
