@@ -42,8 +42,6 @@ Ein moderner IPTV-Player mit Unterstuetzung fuer Xtream Codes und M3U-Playlists.
 ### Installation
 
 ```bash
-git clone https://github.com/DEIN-USER/iptv-app.git
-cd iptv-app
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
