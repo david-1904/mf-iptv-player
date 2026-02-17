@@ -83,19 +83,20 @@ class PlaybackMixin:
         self._timeshift_active = False
         self._timeshift_paused_at = 0
 
-        is_grid_mode = self.current_mode in ("vod", "series")
+        is_vod_playback = stream_type == "vod"
 
         if not self.player_area.isVisible():
-            if is_grid_mode:
-                # Im Grid-Modus: PiP statt side-by-side
+            if is_vod_playback:
+                # Film/Serie: Player ueber volle Breite, Kanalliste ausblenden
+                self.channel_area.hide()
                 self.player_area.show()
-                self._enter_pip_mode()
             else:
-                # Normaler Modus: side-by-side
+                # Live-TV: side-by-side mit Kanalliste
                 self.channel_area.setFixedWidth(320)
                 self.player_area.show()
-        elif self._pip_mode and not is_grid_mode:
-            # War PiP, jetzt nicht mehr Grid → zurueck zu normal
+        elif is_vod_playback and self.channel_area.isVisible():
+            self.channel_area.hide()
+        elif self._pip_mode and not is_vod_playback:
             self._exit_pip_mode()
 
         self._update_seek_controls_visibility()
@@ -149,7 +150,8 @@ class PlaybackMixin:
             self.player_controls.show()
             self.main_page.layout().addWidget(self.player_area)
         self.player_area.hide()
-        # Kanalliste wieder voll breit
+        # Kanalliste wieder anzeigen und voll breit
+        self.channel_area.show()
         self.channel_area.setMinimumWidth(0)
         self.channel_area.setMaximumWidth(16777215)
 

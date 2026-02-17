@@ -2,7 +2,13 @@
 Hauptfenster der IPTV-App — Coordinator
 Erbt von allen Mixin-Klassen, die jeweils einen Funktionsbereich abdecken.
 """
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QStackedWidget
+import asyncio
+import platform
+
+from PySide6.QtWidgets import (
+    QMainWindow, QWidget, QHBoxLayout, QStackedWidget,
+    QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QTextEdit,
+)
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QPixmap
 
@@ -26,6 +32,7 @@ from stream_controls_mixin import StreamControlsMixin
 from account_mixin import AccountMixin
 from pip_mixin import PipMixin
 from channel_context_mixin import ChannelContextMixin
+from updater import UpdateChecker
 
 
 class MainWindow(
@@ -93,10 +100,15 @@ class MainWindow(
         self._image_cache: dict[str, QPixmap | None] = {}
         self._poster_load_generation = 0
 
+        self._update_checker = UpdateChecker()
+        self._update_release_info = None
+
         self._setup_ui()
         self._setup_toolbar()
         self._setup_statusbar()
         self._load_initial_account()
+
+        asyncio.ensure_future(self._check_for_updates())
 
     def _setup_ui(self):
         central = QWidget()
@@ -159,3 +171,92 @@ class MainWindow(
         self.controls_timer.stop()
         self.player.cleanup()
         super().closeEvent(event)
+
+    # ── Auto-Update ──────────────────────────────────────────
+
+    async def _check_for_updates(self):
+        try:
+            info = await self._update_checker.check_for_update()
+        except Exception:
+            return
+        if not info:
+            return
+        self._update_release_info = info
+        btn = QPushButton(f"  Update v{info.version} verfuegbar  ")
+        btn.setStyleSheet(
+            "QPushButton { background-color: #e8a317; color: #000; border-radius: 4px;"
+            " padding: 2px 8px; font-weight: bold; font-size: 12px; }"
+            "QPushButton:hover { background-color: #f0b530; }"
+        )
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.clicked.connect(self._show_update_dialog)
+        self.status_bar.addPermanentWidget(btn)
+
+    def _show_update_dialog(self):
+        info = self._update_release_info
+        if not info:
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Update v{info.version}")
+        dlg.setMinimumSize(500, 400)
+        layout = QVBoxLayout(dlg)
+
+        title = QLabel(f"Version {info.version} ist verfuegbar!")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 8px;")
+        layout.addWidget(title)
+
+        if info.release_notes:
+            notes_label = QLabel("Release-Notes:")
+            notes_label.setStyleSheet("font-weight: bold;")
+            layout.addWidget(notes_label)
+            notes = QTextEdit()
+            notes.setReadOnly(True)
+            notes.setMarkdown(info.release_notes)
+            layout.addWidget(notes)
+
+        progress = QProgressBar()
+        progress.setRange(0, 0)
+        progress.hide()
+        layout.addWidget(progress)
+
+        status_label = QLabel("")
+        status_label.setStyleSheet("color: #999;")
+        layout.addWidget(status_label)
+
+        update_btn = QPushButton("Jetzt aktualisieren")
+        update_btn.setStyleSheet(
+            "QPushButton { background-color: #0078d4; padding: 10px; font-size: 14px; }"
+        )
+        layout.addWidget(update_btn)
+
+        def on_update():
+            update_btn.setEnabled(False)
+            progress.show()
+            asyncio.ensure_future(self._run_update(info, progress, status_label, update_btn))
+
+        update_btn.clicked.connect(on_update)
+        dlg.exec()
+
+    async def _run_update(self, info, progress, status_label, update_btn):
+        def on_progress(msg):
+            status_label.setText(msg)
+
+        if platform.system() == "Windows":
+            success, msg = await self._update_checker.update_windows(
+                info.download_url, progress_callback=on_progress
+            )
+        else:
+            success, msg = await self._update_checker.update_linux(
+                progress_callback=on_progress
+            )
+
+        progress.hide()
+        if success:
+            status_label.setText("Update erfolgreich! Bitte App neu starten.")
+            status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
+            update_btn.setText("Bitte App neu starten")
+        else:
+            status_label.setText(f"Fehler: {msg}")
+            status_label.setStyleSheet("color: #f44336;")
+            update_btn.setEnabled(True)

@@ -36,18 +36,32 @@ class CategoriesMixin:
             self.category_list.hide()
 
         # Sortierung nur bei VOD/Serien anzeigen
-        self.sort_combo.setVisible(mode in ("vod", "series"))
+        self.sort_widget.setVisible(mode in ("vod", "series"))
 
         # Detail-Ansichten zuruecksetzen
         self.channel_stack.setCurrentIndex(0)
 
-        # PiP-Modus umschalten wenn Player laeuft
-        is_grid_mode = mode in ("vod", "series")
+        # Player-Layout anpassen wenn Player laeuft
         if self.player_area.isVisible() and not self._player_maximized:
-            if is_grid_mode and not self._pip_mode:
-                self._enter_pip_mode()
-            elif not is_grid_mode and self._pip_mode:
-                self._exit_pip_mode()
+            is_grid_mode = mode in ("vod", "series")
+            if is_grid_mode:
+                # Grid-Modus: Kanalliste voll breit, Player als PiP
+                self.channel_area.show()
+                self.channel_area.setMinimumWidth(0)
+                self.channel_area.setMaximumWidth(16777215)
+                if not self._pip_mode:
+                    self._enter_pip_mode()
+            elif self._current_stream_type == "vod":
+                # Film laeuft + Wechsel zu Live/etc: Kanalliste anzeigen, side-by-side
+                self.channel_area.show()
+                self.channel_area.setFixedWidth(320)
+                if self._pip_mode:
+                    self._exit_pip_mode()
+            else:
+                # Live laeuft: normal side-by-side
+                self.channel_area.show()
+                if self._pip_mode:
+                    self._exit_pip_mode()
 
         if mode == "favorites":
             self._load_favorites()
@@ -292,11 +306,11 @@ class CategoriesMixin:
         QScroller.ungrabGesture(self.channel_list.viewport())
         if is_grid:
             self.channel_list.setViewMode(QListWidget.IconMode)
-            self.channel_list.setIconSize(QSize(150, 220))
-            self.channel_list.setGridSize(QSize(170, 280))
+            self.channel_list.setIconSize(QSize(200, 300))
+            self.channel_list.setGridSize(QSize(220, 360))
             self.channel_list.setResizeMode(QListWidget.Adjust)
             self.channel_list.setWordWrap(True)
-            self.channel_list.setSpacing(10)
+            self.channel_list.setSpacing(0)
             self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
             self.channel_list.verticalScrollBar().setSingleStep(60)
             # Drag-to-Scroll im Grid-Modus

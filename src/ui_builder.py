@@ -297,10 +297,11 @@ class UiBuilderMixin:
                     background-color: #1a1a2a;
                     border: none;
                     color: #ddd;
-                    font-size: 11px;
+                    font-size: 13px;
+                    padding-left: 12px;
                 }
                 QListWidget::item {
-                    padding: 6px;
+                    padding: 8px;
                     border-radius: 6px;
                     background-color: #1e1e2e;
                 }
@@ -446,6 +447,16 @@ class UiBuilderMixin:
         cl_layout.addWidget(self.manage_hidden_btn)
 
         # Sortierung (nur bei VOD/Serien sichtbar)
+        self.sort_widget = QWidget()
+        self.sort_widget.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        sort_layout = QHBoxLayout(self.sort_widget)
+        sort_layout.setContentsMargins(12, 4, 10, 4)
+        sort_layout.setSpacing(8)
+
+        sort_label = QLabel("Sortierung:")
+        sort_label.setStyleSheet("color: #666; font-size: 12px; border: none;")
+        sort_layout.addWidget(sort_label)
+
         self.sort_combo = QComboBox()
         self.sort_combo.addItems([
             "Standard",
@@ -456,12 +467,10 @@ class UiBuilderMixin:
         ])
         self.sort_combo.setStyleSheet("""
             QComboBox {
-                padding: 5px 10px;
-                margin: 0;
-                background: #161622;
+                padding: 4px 8px;
+                background: transparent;
                 border: none;
-                border-bottom: 1px solid #1a1a2a;
-                color: #999;
+                color: #ccc;
                 font-size: 12px;
             }
             QComboBox:hover { color: white; }
@@ -474,8 +483,11 @@ class UiBuilderMixin:
             }
         """)
         self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
-        self.sort_combo.hide()
-        cl_layout.addWidget(self.sort_combo)
+        sort_layout.addWidget(self.sort_combo)
+        sort_layout.addStretch()
+
+        self.sort_widget.hide()
+        cl_layout.addWidget(self.sort_widget)
 
         # Loading-Overlay (statt leerer Liste)
         self.channel_loading = QWidget()
