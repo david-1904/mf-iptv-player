@@ -50,6 +50,24 @@ jobs:
       - name: EXE bauen
         run: python build_windows.py
 
+      - name: Build-Verzeichnis pruefen
+        shell: pwsh
+        run: |
+          Write-Host "=== Top-Level DLLs ==="
+          Get-ChildItem "dist\MF IPTV Player\*.dll" | Format-Table Name, Length
+          Write-Host "=== PySide6-Verzeichnis ==="
+          if (Test-Path "dist\MF IPTV Player\PySide6") {
+            Get-ChildItem "dist\MF IPTV Player\PySide6" -Recurse -Include *.dll,*.pyd | Format-Table FullName, Length
+          } else {
+            Write-Host "Kein PySide6-Unterordner gefunden"
+          }
+          Write-Host "=== Qt/shiboken PYD-Dateien ==="
+          Get-ChildItem "dist\MF IPTV Player" -Recurse -Include "Qt*.pyd","shiboken*.pyd","shiboken*.dll" | Format-Table FullName, Length
+          Write-Host "=== Qt6 Core DLLs ==="
+          Get-ChildItem "dist\MF IPTV Player" -Recurse -Include "Qt6Core.dll","Qt6Widgets.dll","Qt6Gui.dll" | Format-Table FullName, Length
+          Write-Host "=== Platform Plugins ==="
+          Get-ChildItem "dist\MF IPTV Player" -Recurse -Include "qwindows.dll" | Format-Table FullName, Length
+
       - name: ffmpeg in Build-Ordner kopieren
         shell: pwsh
         run: |
