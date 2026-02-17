@@ -6,6 +6,9 @@ on:
     tags:
       - "v*"  # Automatisch bei Version-Tags (v1.0, v1.1, ...)
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
