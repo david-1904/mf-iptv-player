@@ -1,6 +1,6 @@
 # MF IPTV Player
 
-Ein moderner IPTV-Player mit Unterstuetzung fuer Xtream Codes und M3U-Playlists.
+Ein moderner IPTV-Player mit Unterstützung für Xtream Codes und M3U-Playlists.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![PySide6](https://img.shields.io/badge/UI-PySide6-green)
@@ -9,14 +9,15 @@ Ein moderner IPTV-Player mit Unterstuetzung fuer Xtream Codes und M3U-Playlists.
 ## Features
 
 - Live TV, Filme (VOD) und Serien
-- Elektronischer Programmfuehrer (EPG) mit Catchup/Timeshift
+- Elektronischer Programmführer (EPG) mit Catchup/Timeshift
 - Favoriten und Wiedergabeverlauf
 - Stream-Aufnahme (ffmpeg)
 - Kategorien ausblenden/verwalten
-- Suche ueber alle Inhalte
+- Suche über alle Inhalte
 - Picture-in-Picture Modus
 - Audio-/Untertitel-Auswahl
 - Mehrere Accounts (Xtream Codes + M3U)
+- Auto-Update über GitHub Releases
 
 ---
 
@@ -27,7 +28,7 @@ Ein moderner IPTV-Player mit Unterstuetzung fuer Xtream Codes und M3U-Playlists.
 3. ZIP entpacken
 4. `MF IPTV Player.exe` starten
 
-> ffmpeg ist fuer Aufnahmen bereits enthalten. Keine Installation noetig.
+> ffmpeg ist für Aufnahmen bereits enthalten. Keine Installation nötig.
 
 ---
 
@@ -37,7 +38,7 @@ Ein moderner IPTV-Player mit Unterstuetzung fuer Xtream Codes und M3U-Playlists.
 
 - Python 3.11+
 - mpv (`pacman -S mpv` / `apt install mpv`)
-- ffmpeg (fuer Aufnahmen)
+- ffmpeg (für Aufnahmen)
 
 ### Installation
 
