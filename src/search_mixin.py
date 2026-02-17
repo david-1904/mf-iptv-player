@@ -45,6 +45,8 @@ class SearchMixin:
 
             # Live-Streams filtern
             for item in self._search_cache_live:
+                if not item.name:
+                    continue
                 if query_lower in item.name.lower():
                     name = f"[Live] {item.name}"
                     if item.tv_archive:
@@ -55,6 +57,8 @@ class SearchMixin:
 
             # VOD filtern
             for item in self._search_cache_vod:
+                if not item.name:
+                    continue
                 if query_lower in item.name.lower():
                     list_item = QListWidgetItem(f"[Film] {item.name}")
                     list_item.setData(Qt.UserRole, item)
@@ -62,6 +66,8 @@ class SearchMixin:
 
             # Serien filtern
             for item in self._search_cache_series:
+                if not item.name:
+                    continue
                 if query_lower in item.name.lower():
                     list_item = QListWidgetItem(f"[Serie] {item.name}")
                     list_item.setData(Qt.UserRole, item)
