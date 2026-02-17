@@ -77,7 +77,24 @@ args = [
     "--add-binary", add_binary,
     "--paths", os.path.join(here, "src"),
     "--noconfirm",
+    # Alle externen Abhaengigkeiten vollstaendig einbinden
     "--collect-all", "PySide6",
+    "--collect-all", "qasync",
+    "--collect-all", "aiohttp",
+    "--collect-all", "mpv",
+    # PySide6 OpenGL-Submodule explizit
+    "--hidden-import", "PySide6.QtOpenGLWidgets",
+    "--hidden-import", "PySide6.QtOpenGL",
+    # aiohttp braucht diese oft
+    "--hidden-import", "aiohttp",
+    "--hidden-import", "multidict",
+    "--hidden-import", "yarl",
+    "--hidden-import", "aiosignal",
+    "--hidden-import", "frozenlist",
+    "--hidden-import", "async_timeout",
+    "--hidden-import", "charset_normalizer",
+    "--hidden-import", "certifi",
+    "--hidden-import", "ssl",
 ]
 
 if icon_arg:
