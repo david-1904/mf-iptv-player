@@ -77,16 +77,14 @@ args = [
     "--add-binary", add_binary,
     "--paths", os.path.join(here, "src"),
     "--noconfirm",
-    # PySide6 + shiboken6 (C++ Binding Layer) vollstaendig einbinden
-    "--collect-all", "PySide6",
+    # PySide6: PyInstaller erkennt die meisten Imports automatisch.
+    # Nur hidden-imports fuer Module die nicht per "from PySide6.X" importiert werden.
     "--collect-all", "shiboken6",
-    "--collect-all", "PySide6_Essentials",
-    "--collect-all", "PySide6_Addons",
+    "--hidden-import", "PySide6.QtOpenGLWidgets",
+    "--hidden-import", "PySide6.QtOpenGL",
     # Weitere Abhaengigkeiten
     "--collect-all", "qasync",
     "--collect-all", "aiohttp",
-    "--hidden-import", "PySide6.QtOpenGLWidgets",
-    "--hidden-import", "PySide6.QtOpenGL",
     "--hidden-import", "multidict",
     "--hidden-import", "yarl",
     "--hidden-import", "aiosignal",
