@@ -77,6 +77,7 @@ args = [
     "--add-binary", add_binary,
     "--paths", os.path.join(here, "src"),
     "--noconfirm",
+    "--collect-all", "PySide6",
 ]
 
 if icon_arg:
