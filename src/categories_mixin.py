@@ -176,8 +176,7 @@ class CategoriesMixin:
             self._close_category_list()
         else:
             self.category_list.show()
-            self.channel_list.hide()
-            self.epg_panel.hide()
+            self._epg_splitter.hide()
             # Zur aktuellen Kategorie scrollen
             if 0 <= self._current_category_index < self.category_list.count():
                 self.category_list.setCurrentRow(self._current_category_index)
@@ -188,9 +187,9 @@ class CategoriesMixin:
     def _close_category_list(self):
         """Schliesst die Kategorie-Liste und zeigt Kanalliste wieder"""
         self.category_list.hide()
+        self._epg_splitter.show()
         self.channel_list.show()
-        if self.current_mode == "live":
-            self.epg_panel.show()
+        self.epg_panel.setVisible(self.current_mode == "live")
         name = self._category_items[self._current_category_index][0] if self._current_category_index >= 0 else "Kategorie"
         self.category_btn.setText(f"{name}  \u25BE")
 
