@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QStackedWidget, QListWidget, QListWidgetItem, QComboBox,
     QPushButton, QLineEdit, QLabel, QSlider,
-    QFrame, QToolBar, QStatusBar, QGroupBox, QScrollArea,
+    QFrame, QToolBar, QStatusBar, QGroupBox, QScrollArea, QSplitter,
     QProgressBar, QAbstractItemView, QScroller, QMenu
 )
 from PySide6.QtCore import Qt, QSize, Slot, QTimer
@@ -539,13 +539,27 @@ class UiBuilderMixin:
         self.channel_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.channel_list.customContextMenuRequested.connect(self._show_channel_context_menu)
         self.channel_list.viewport().installEventFilter(self)
-        cl_layout.addWidget(self.channel_list, stretch=1)
 
         # EPG Panel
         self.epg_panel = self._create_epg_panel()
-        self.epg_panel.setMinimumHeight(120)
-        self.epg_panel.setMaximumHeight(220)
-        cl_layout.addWidget(self.epg_panel)
+        self.epg_panel.setMinimumHeight(80)
+
+        # Splitter zwischen Kanalliste und EPG
+        self._epg_splitter = QSplitter(Qt.Vertical)
+        self._epg_splitter.setChildrenCollapsible(False)
+        self._epg_splitter.setStyleSheet("""
+            QSplitter::handle:vertical {
+                background: #1a1a2a;
+                height: 4px;
+            }
+            QSplitter::handle:vertical:hover {
+                background: #0078d4;
+            }
+        """)
+        self._epg_splitter.addWidget(self.channel_list)
+        self._epg_splitter.addWidget(self.epg_panel)
+        self._epg_splitter.setSizes([600, 260])
+        cl_layout.addWidget(self._epg_splitter, stretch=1)
 
         self.channel_stack.addWidget(channel_list_page)
 
@@ -570,9 +584,38 @@ class UiBuilderMixin:
             }
         """)
 
-        layout = QVBoxLayout(panel)
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.setSpacing(0)
+
+        # ScrollArea damit langer EPG-Inhalt nicht abgeschnitten wird
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical {
+                background: #0d0d14;
+                width: 4px;
+                border-radius: 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: #333;
+                border-radius: 2px;
+                min-height: 20px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        """)
+        panel_layout.addWidget(scroll)
+
+        # Inhalt-Widget innerhalb der ScrollArea
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(6)
+        scroll.setWidget(content)
 
         # Kopfzeile: Sendername + Button
         header = QHBoxLayout()

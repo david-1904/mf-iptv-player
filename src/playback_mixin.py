@@ -71,6 +71,7 @@ class PlaybackMixin:
     def _play_stream(self, url: str, title: str, stream_type: str = "live", stream_id: int = None, icon: str = "", container_extension: str = ""):
         """Spielt einen Stream im integrierten Player ab"""
         # Reconnect-Zustand zuruecksetzen
+        self._stream_starting = True  # end-file waehrend Verbindungsaufbau ignorieren
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
         self._buffering_watchdog.stop()
@@ -125,6 +126,7 @@ class PlaybackMixin:
 
     def _stop_playback(self):
         """Stoppt die Wiedergabe und versteckt den Player"""
+        self._stream_starting = False
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
         self._buffering_watchdog.stop()
@@ -183,6 +185,7 @@ class PlaybackMixin:
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
             self._reconnect_attempt = 0
+            self._stream_starting = False  # Stream laeuft → Schutzphase beenden
 
     def _animate_buffering(self):
         """Animiert den Buffering-Text"""
@@ -540,8 +543,10 @@ class PlaybackMixin:
         """Wird aufgerufen wenn mpv den Stream beendet (Thread-safe via Signal)"""
         if not self._current_stream_url or not self._current_stream_type:
             return
-        # Absichtlich gestoppt → kein Reconnect
+        # Absichtlich gestoppt oder noch im Verbindungsaufbau → kein Reconnect
         if reason in ('stop', 'quit'):
+            return
+        if self._stream_starting:
             return
         if self._current_stream_type == "live" and reason in ('error', 'eof', 'unknown'):
             self._schedule_reconnect()
@@ -567,6 +572,7 @@ class PlaybackMixin:
         """Fuehrt einen Reconnect-Versuch durch"""
         if not self._current_stream_url or not self._current_stream_type:
             return
+        self._stream_starting = True
         self.player.play(self._current_stream_url)
 
     def _on_buffering_timeout(self):
