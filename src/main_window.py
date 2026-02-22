@@ -138,19 +138,31 @@ class MainWindow(
         if event.type() == QEvent.Resize:
             if self.buffering_overlay.parentWidget() is obj:
                 self.buffering_overlay.setGeometry(0, 0, obj.width(), obj.height())
+                if self.fullscreen_controls.isVisible():
+                    self._position_fullscreen_controls()
             if self.info_overlay.parentWidget() is obj and self.info_overlay.isVisible():
                 w, h = obj.width(), obj.height()
                 overlay_h = min(180, h // 2)
                 self.info_overlay.setGeometry(0, h - overlay_h, w, overlay_h)
             if obj is self.main_page and self._pip_mode:
                 self._update_pip_position()
+            if obj is self.channel_list.viewport() and self.current_mode in ("vod", "series"):
+                self._update_grid_size()
         elif event.type() == QEvent.MouseMove:
             if self.info_overlay.parentWidget() is obj or obj is self.player:
                 if self.player.is_playing:
-                    self._show_info_overlay()
+                    if self._player_maximized:
+                        self._show_fullscreen_controls()
+                    else:
+                        self._show_info_overlay()
+        elif event.type() == QEvent.Enter:
+            if obj is self.fullscreen_controls:
+                self._fs_controls_timer.stop()
         elif event.type() == QEvent.Leave:
             if self.info_overlay.parentWidget() is obj:
                 self._info_overlay_timer.start(800)
+            elif obj is self.fullscreen_controls:
+                self._fs_controls_timer.start(3000)
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):

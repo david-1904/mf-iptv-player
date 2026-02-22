@@ -266,8 +266,16 @@ class PlaybackMixin:
             self.player.seek(seconds)
 
     def _on_volume_changed(self, value: int):
-        """Lautstaerke aendern"""
+        """Lautstaerke aendern und beide Slider synchronisieren"""
         self.player.set_volume(value)
+        self.volume_slider.blockSignals(True)
+        self.volume_slider.setValue(value)
+        self.volume_slider.blockSignals(False)
+        fs_vol = getattr(self, 'fs_volume_slider', None)
+        if fs_vol is not None:
+            fs_vol.blockSignals(True)
+            fs_vol.setValue(value)
+            fs_vol.blockSignals(False)
 
     def _on_seek_pressed(self):
         self._seeking = True
@@ -329,6 +337,8 @@ class PlaybackMixin:
             if dur > 0 and not self._seeking:
                 self.seek_slider.setValue(int(pos / dur * 1000))
 
+        self._update_fullscreen_controls()
+
     @staticmethod
     def _format_time(seconds: float) -> str:
         """Formatiert Sekunden als HH:MM:SS oder MM:SS"""
@@ -349,6 +359,9 @@ class PlaybackMixin:
 
         if self._player_maximized:
             # Fullscreen verlassen
+            self._fs_controls_timer.stop()
+            self._hide_fullscreen_controls()
+            self.unsetCursor()
             self.sidebar.show()
             self.channel_area.show()
             self.player_header.show()
@@ -451,6 +464,63 @@ class PlaybackMixin:
 
     def _hide_info_overlay(self):
         self.info_overlay.hide()
+
+    def _position_fullscreen_controls(self):
+        """Positioniert die Fullscreen-Kontrollleiste am unteren Rand"""
+        parent = self.fullscreen_controls.parentWidget()
+        if parent:
+            ctrl_h = 120
+            self.fullscreen_controls.setGeometry(0, parent.height() - ctrl_h, parent.width(), ctrl_h)
+
+    def _show_fullscreen_controls(self):
+        """Zeigt die Fullscreen-Kontrollleiste und startet den Auto-Hide-Timer"""
+        if not self._player_maximized:
+            return
+        self._position_fullscreen_controls()
+        self.fullscreen_controls.raise_()
+        self.fullscreen_controls.show()
+        self.unsetCursor()
+        self._fs_controls_timer.start(3000)
+
+    def _hide_fullscreen_controls(self):
+        """Versteckt die Fullscreen-Kontrollleiste und blendet Cursor aus"""
+        self.fullscreen_controls.hide()
+        if self._player_maximized:
+            self.setCursor(Qt.BlankCursor)
+
+    def _on_fs_seek_released(self):
+        """Seek-Slider im Fullscreen-Overlay losgelassen"""
+        self._fs_seeking = False
+        dur = self.player.duration or 0
+        if dur > 0:
+            target = self.fs_seek_slider.value() / 1000.0 * dur
+            self.player.seek(target, relative=False)
+        self.seek_slider.blockSignals(True)
+        self.seek_slider.setValue(self.fs_seek_slider.value())
+        self.seek_slider.blockSignals(False)
+
+    def _update_fullscreen_controls(self):
+        """Aktualisiert den Inhalt der Fullscreen-Kontrollleiste"""
+        if not self._player_maximized or not self.fullscreen_controls.isVisible():
+            return
+        # Play/Pause-Button synchronisieren
+        is_playing = self.player.is_playing
+        self.fs_btn_play_pause.setText("\u2759\u2759" if is_playing else "\u25B6\uFE0E")
+        # Seek-Zeile nur bei VOD oder Timeshift anzeigen
+        show_seek = self._current_stream_type == "vod" or self._timeshift_active
+        self.fs_seek_row.setVisible(show_seek)
+        if show_seek:
+            pos = self.player.position or 0
+            dur = self.player.duration or 0
+            self.fs_pos_label.setText(self._format_time(pos))
+            self.fs_dur_label.setText(self._format_time(dur))
+            if dur > 0 and not self._fs_seeking:
+                self.fs_seek_slider.setValue(int(pos / dur * 1000))
+        # EPG-Info fuer Live-Streams
+        if self._current_stream_type == "live":
+            self.fs_info_label.setText(self.player_info_label.text())
+        else:
+            self.fs_info_label.setText("")
 
     async def _load_overlay_logo(self, url: str):
         """Laedt das Senderlogo fuer das Overlay"""

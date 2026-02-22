@@ -306,13 +306,11 @@ class CategoriesMixin:
         QScroller.ungrabGesture(self.channel_list.viewport())
         if is_grid:
             self.channel_list.setViewMode(QListWidget.IconMode)
-            self.channel_list.setIconSize(QSize(200, 300))
-            self.channel_list.setGridSize(QSize(220, 360))
             self.channel_list.setResizeMode(QListWidget.Adjust)
             self.channel_list.setWordWrap(True)
-            self.channel_list.setSpacing(0)
             self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
             self.channel_list.verticalScrollBar().setSingleStep(60)
+            self._update_grid_size()
             # Drag-to-Scroll im Grid-Modus
             QScroller.grabGesture(self.channel_list.viewport(), QScroller.LeftMouseButtonGesture)
         else:
@@ -340,9 +338,12 @@ class CategoriesMixin:
             elif self.current_mode == "vod":
                 items = await self.api.get_vod_streams(category_id)
                 items = self._sort_items(items)
+                cell_size = self.channel_list.gridSize()
                 for item in items:
                     list_item = QListWidgetItem(item.name)
                     list_item.setData(Qt.UserRole, item)
+                    if cell_size.isValid():
+                        list_item.setSizeHint(cell_size)
                     if item.rating and item.rating not in ("0", ""):
                         list_item.setToolTip(f"Bewertung: {item.rating}")
                     self.channel_list.addItem(list_item)
@@ -350,9 +351,12 @@ class CategoriesMixin:
             else:  # series
                 items = await self.api.get_series(category_id)
                 items = self._sort_items(items)
+                cell_size = self.channel_list.gridSize()
                 for item in items:
                     list_item = QListWidgetItem(item.name)
                     list_item.setData(Qt.UserRole, item)
+                    if cell_size.isValid():
+                        list_item.setSizeHint(cell_size)
                     if item.rating and item.rating not in ("0", ""):
                         list_item.setToolTip(f"Bewertung: {item.rating}")
                     self.channel_list.addItem(list_item)
@@ -404,6 +408,40 @@ class CategoriesMixin:
                 *[load_one(i, url) for i, url in items_to_load],
                 return_exceptions=True
             )
+
+    def _update_grid_size(self):
+        """Berechnet Grid-Größe dynamisch basierend auf verfügbarer Breite."""
+        if self.current_mode not in ("vod", "series"):
+            return
+        available = self.channel_list.viewport().width()
+        # Fallback wenn channel_list versteckt (Lade-Zustand): channel_area nutzen
+        if available < 100:
+            available = self.channel_area.width()
+        if available < 100:
+            return  # Noch nicht bereit
+        # Spalten: mindestens 180px pro Zelle, maximal 8 Spalten
+        min_cell_w = 180
+        max_cols = 8
+        cols = max(1, min(max_cols, available // min_cell_w))
+        cell_w = available // cols
+        # Poster füllt die Zelle mit je 8px Rand links/rechts
+        poster_w = cell_w - 16
+        poster_h = int(poster_w * 1.5)
+        cell_h = poster_h + 48
+        old_icon_w = self.channel_list.iconSize().width()
+        self.channel_list.setIconSize(QSize(poster_w, poster_h))
+        self.channel_list.setGridSize(QSize(cell_w, cell_h))
+        self.channel_list.setSpacing(0)
+        self.channel_list.setUniformItemSizes(True)
+        # SizeHint aller vorhandenen Items aktualisieren
+        hint = QSize(cell_w, cell_h)
+        for i in range(self.channel_list.count()):
+            item = self.channel_list.item(i)
+            if item:
+                item.setSizeHint(hint)
+        # Poster neu laden wenn sich Größe wesentlich geändert hat
+        if abs(old_icon_w - poster_w) > 20 and self.channel_list.count() > 0:
+            asyncio.ensure_future(self._load_item_posters())
 
     async def _fetch_poster(self, session: aiohttp.ClientSession, url: str, w: int, h: int) -> QPixmap | None:
         """Laedt ein Bild, skaliert und cached es"""

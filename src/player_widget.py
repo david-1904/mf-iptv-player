@@ -6,6 +6,20 @@ from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt, Signal
 import mpv
 
+import sys
+
+try:
+    import dbus
+    _DBUS_AVAILABLE = True
+except ImportError:
+    _DBUS_AVAILABLE = False
+
+if sys.platform == 'win32':
+    import ctypes
+    _ES_CONTINUOUS       = 0x80000000
+    _ES_SYSTEM_REQUIRED  = 0x00000001
+    _ES_DISPLAY_REQUIRED = 0x00000002
+
 _GL_GET_PROC_ADDR_FN = CFUNCTYPE(c_void_p, c_void_p, c_char_p)
 
 
@@ -29,6 +43,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._pending_url = None
         self._player_initialized = False
         self._is_buffering = False
+        self._screensaver_cookie = None
 
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
@@ -110,9 +125,40 @@ class MpvPlayerWidget(QOpenGLWidget):
             self._is_buffering = buffering
             self.buffering_changed.emit(buffering)
 
+    def _inhibit_screensaver(self):
+        """Verhindert Bildschirmschoner (Windows: SetThreadExecutionState, Linux: D-Bus)"""
+        if sys.platform == 'win32':
+            ctypes.windll.kernel32.SetThreadExecutionState(
+                _ES_CONTINUOUS | _ES_DISPLAY_REQUIRED | _ES_SYSTEM_REQUIRED
+            )
+        elif _DBUS_AVAILABLE and self._screensaver_cookie is None:
+            try:
+                bus = dbus.SessionBus()
+                proxy = bus.get_object('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver')
+                iface = dbus.Interface(proxy, 'org.freedesktop.ScreenSaver')
+                self._screensaver_cookie = iface.Inhibit('iptv-app', 'Video playback')
+            except Exception:
+                pass
+
+    def _uninhibit_screensaver(self):
+        """Gibt Bildschirmschoner wieder frei"""
+        if sys.platform == 'win32':
+            ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
+        elif _DBUS_AVAILABLE and self._screensaver_cookie is not None:
+            try:
+                bus = dbus.SessionBus()
+                proxy = bus.get_object('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver')
+                iface = dbus.Interface(proxy, 'org.freedesktop.ScreenSaver')
+                iface.UnInhibit(self._screensaver_cookie)
+            except Exception:
+                pass
+            finally:
+                self._screensaver_cookie = None
+
     def play(self, url: str):
         """Spielt eine URL ab"""
         self._buffering_signal.emit(True)
+        self._inhibit_screensaver()
         if not self._player_initialized:
             self._pending_url = url
         else:
@@ -120,6 +166,7 @@ class MpvPlayerWidget(QOpenGLWidget):
 
     def stop(self):
         """Stoppt die Wiedergabe"""
+        self._uninhibit_screensaver()
         if self.player:
             self.player.stop()
 
@@ -270,6 +317,7 @@ class MpvPlayerWidget(QOpenGLWidget):
 
     def cleanup(self):
         """Raeumt auf bevor das Widget zerstoert wird"""
+        self._uninhibit_screensaver()
         self.makeCurrent()
         if self.ctx:
             self.ctx.free()
