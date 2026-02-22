@@ -89,6 +89,8 @@ class AccountMixin:
                 self.vod_categories = []
                 self.series_categories = []
                 self._search_cache_loaded = False
+                self._epg_cache = {}
+                self._initial_epg_loaded = False
 
                 if account.type == "m3u":
                     self.api = M3uProvider(account.name, account.url)
@@ -194,6 +196,11 @@ class AccountMixin:
         if self.current_mode == "recordings":
             self._load_recordings()
             return
+
+        # EPG-Cache leeren → beim naechsten Kanalklick frisch laden
+        self._epg_cache = {}
+        self._clear_epg_panel()
+        self._initial_epg_loaded = False
 
         # Cache fuer aktuellen Modus leeren
         if self.current_mode == "live":

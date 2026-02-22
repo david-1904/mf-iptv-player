@@ -363,6 +363,20 @@ class CategoriesMixin:
 
             self._hide_loading(f"{self.channel_list.count()} Eintraege geladen")
 
+            # Beim ersten Live-Laden EPG des ersten Kanals vorladen
+            if (self.current_mode == "live"
+                    and not self._initial_epg_loaded
+                    and self.channel_list.count() > 0):
+                self._initial_epg_loaded = True
+                first_item = self.channel_list.item(0)
+                if first_item:
+                    data = first_item.data(Qt.UserRole)
+                    if hasattr(data, 'stream_id'):
+                        self._current_epg_stream_id = data.stream_id
+                        self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
+                        self.epg_channel_name.setText(data.name)
+                        asyncio.ensure_future(self._load_epg(data.stream_id))
+
             # Poster/Logos laden
             asyncio.ensure_future(self._load_item_posters())
 

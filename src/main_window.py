@@ -96,6 +96,13 @@ class MainWindow(
         self._timeshift_active = False
         self._timeshift_paused_at: float = 0
 
+        # Reconnect-Zustand
+        self._reconnect_attempt = 0
+        self._max_reconnect_attempts = 5
+
+        # EPG-Zustand
+        self._initial_epg_loaded = False
+
         # Poster-Cache
         self._image_cache: dict[str, QPixmap | None] = {}
         self._poster_load_generation = 0
