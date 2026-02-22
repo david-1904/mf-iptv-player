@@ -423,7 +423,7 @@ class UiBuilderMixin:
         self.category_list.customContextMenuRequested.connect(self._on_category_context_menu)
         self.category_list.itemClicked.connect(self._on_category_list_clicked)
         self.category_list.hide()
-        cl_layout.addWidget(self.category_list)
+        cl_layout.addWidget(self.category_list, stretch=1)
 
         # Button: Ausgeblendete Kategorien verwalten
         self.manage_hidden_btn = QPushButton("Ausgeblendete Kategorien verwalten")
