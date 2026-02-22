@@ -72,6 +72,7 @@ class PlaybackMixin:
         """Spielt einen Stream im integrierten Player ab"""
         # Reconnect-Zustand zuruecksetzen
         self._stream_starting = True  # end-file waehrend Verbindungsaufbau ignorieren
+        self._stream_start_timer.start(5000)  # Sicherheitsnetz: nach 5s aufheben
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
         self._buffering_watchdog.stop()
@@ -127,6 +128,7 @@ class PlaybackMixin:
     def _stop_playback(self):
         """Stoppt die Wiedergabe und versteckt den Player"""
         self._stream_starting = False
+        self._stream_start_timer.stop()
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
         self._buffering_watchdog.stop()
@@ -176,14 +178,15 @@ class PlaybackMixin:
             self.buffering_overlay.show()
             self._buffering_dots = 0
             self._buffering_timer.start(400)
-            # Watchdog: bei Live-Streams nach 20s Reconnect anstoßen
+            # Watchdog: bei Live-Streams nach 10s Reconnect anstoßen
             if self._current_stream_type == "live":
-                self._buffering_watchdog.start(20000)
+                self._buffering_watchdog.start(10000)
         else:
             self._buffering_timer.stop()
             self.buffering_overlay.hide()
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
+            self._stream_start_timer.stop()
             if self._reconnect_attempt > 0:
                 self.status_bar.showMessage(f"Verbunden: {self._current_stream_title}", 4000)
             self._reconnect_attempt = 0
@@ -570,11 +573,16 @@ class PlaybackMixin:
         )
         self._reconnect_timer.start(delay)
 
+    def _clear_stream_starting(self):
+        """Hebt die Schutzphase auf (Sicherheitsnetz nach 5s)"""
+        self._stream_starting = False
+
     def _do_reconnect(self):
         """Fuehrt einen Reconnect-Versuch durch"""
         if not self._current_stream_url or not self._current_stream_type:
             return
         self._stream_starting = True
+        self._stream_start_timer.start(5000)
         self.player.play(self._current_stream_url)
 
     def _on_buffering_timeout(self):

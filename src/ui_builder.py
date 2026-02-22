@@ -1099,6 +1099,11 @@ class UiBuilderMixin:
         self._reconnect_timer.setSingleShot(True)
         self._reconnect_timer.timeout.connect(self._do_reconnect)
 
+        # Sicherheitsnetz: _stream_starting wird nach 5s automatisch aufgehoben
+        self._stream_start_timer = QTimer()
+        self._stream_start_timer.setSingleShot(True)
+        self._stream_start_timer.timeout.connect(self._clear_stream_starting)
+
         self.player.stream_ended.connect(self._on_stream_ended)
 
         player_container.setMouseTracking(True)
