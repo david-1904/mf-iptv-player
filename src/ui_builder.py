@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QFrame, QToolBar, QStatusBar, QGroupBox, QScrollArea,
     QProgressBar, QAbstractItemView, QScroller, QMenu
 )
-from PySide6.QtCore import Qt, QSize, Slot
+from PySide6.QtCore import Qt, QSize, Slot, QTimer
 from PySide6.QtGui import QAction, QPixmap
 
 from flow_layout import FlowLayout
@@ -298,10 +298,9 @@ class UiBuilderMixin:
                     border: none;
                     color: #ddd;
                     font-size: 13px;
-                    padding-left: 12px;
+                    padding: 0;
                 }
                 QListWidget::item {
-                    padding: 8px;
                     border-radius: 6px;
                     background-color: #1e1e2e;
                 }
@@ -539,6 +538,7 @@ class UiBuilderMixin:
         self.channel_list.itemClicked.connect(self._on_channel_clicked)
         self.channel_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.channel_list.customContextMenuRequested.connect(self._show_channel_context_menu)
+        self.channel_list.viewport().installEventFilter(self)
         cl_layout.addWidget(self.channel_list, stretch=1)
 
         # EPG Panel
@@ -972,7 +972,6 @@ class UiBuilderMixin:
     def _create_player_area(self) -> QWidget:
         """Erstellt den Playerbereich mit Header, Video und Controls"""
         from player_widget import MpvPlayerWidget
-        from PySide6.QtCore import QTimer
 
         area = QWidget()
         area.setObjectName("playerArea")
@@ -1042,6 +1041,12 @@ class UiBuilderMixin:
         self._info_overlay_timer = QTimer()
         self._info_overlay_timer.setSingleShot(True)
         self._info_overlay_timer.timeout.connect(self._hide_info_overlay)
+
+        self.player_container = player_container
+        self.fullscreen_controls = self._create_fullscreen_controls_overlay(player_container)
+        self._fs_controls_timer = QTimer()
+        self._fs_controls_timer.setSingleShot(True)
+        self._fs_controls_timer.timeout.connect(self._hide_fullscreen_controls)
 
         player_container.setMouseTracking(True)
         self.player.setMouseTracking(True)
@@ -1360,6 +1365,155 @@ class UiBuilderMixin:
         self.overlay_next = QLabel("")
         self.overlay_next.setStyleSheet("font-size: 13px; color: #999; background: transparent;")
         layout.addWidget(self.overlay_next)
+
+        return overlay
+
+    def _create_fullscreen_controls_overlay(self, parent: QWidget) -> QWidget:
+        """Vollbild-Kontrollleiste als Auto-Hide-Overlay"""
+        overlay = QFrame(parent)
+        overlay.setObjectName("fsControls")
+        overlay.setStyleSheet("""
+            #fsControls {
+                background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
+                    stop:0 rgba(0, 0, 0, 220),
+                    stop:0.6 rgba(0, 0, 0, 150),
+                    stop:1 rgba(0, 0, 0, 0));
+                border: none;
+            }
+            QPushButton {
+                background: transparent;
+                color: #ddd;
+                border: none;
+                font-size: 16px;
+                padding: 6px 10px;
+                border-radius: 6px;
+            }
+            QPushButton:hover { background-color: rgba(255, 255, 255, 25); color: white; }
+            QLabel {
+                color: #ddd;
+                font-size: 12px;
+                background: transparent;
+            }
+        """)
+
+        layout = QVBoxLayout(overlay)
+        layout.setContentsMargins(20, 0, 20, 16)
+        layout.setSpacing(8)
+        layout.addStretch()
+
+        # Zeile 1: Seek-Slider (nur bei VOD/Timeshift)
+        self.fs_seek_row = QWidget()
+        self.fs_seek_row.setStyleSheet("background: transparent;")
+        seek_layout = QHBoxLayout(self.fs_seek_row)
+        seek_layout.setContentsMargins(0, 0, 0, 0)
+        seek_layout.setSpacing(8)
+
+        self.fs_pos_label = QLabel("00:00")
+        self.fs_pos_label.setFixedWidth(55)
+        self.fs_pos_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        seek_layout.addWidget(self.fs_pos_label)
+
+        self.fs_seek_slider = QSlider(Qt.Horizontal)
+        self.fs_seek_slider.setRange(0, 1000)
+        self.fs_seek_slider.setValue(0)
+        self.fs_seek_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                background: rgba(255, 255, 255, 40);
+                height: 4px;
+                border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background: white;
+                width: 14px;
+                height: 14px;
+                margin: -5px 0;
+                border-radius: 7px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #0078d4;
+                border-radius: 2px;
+            }
+        """)
+        self.fs_seek_slider.sliderPressed.connect(lambda: setattr(self, '_fs_seeking', True))
+        self.fs_seek_slider.sliderReleased.connect(self._on_fs_seek_released)
+        seek_layout.addWidget(self.fs_seek_slider, stretch=1)
+
+        self.fs_dur_label = QLabel("00:00")
+        self.fs_dur_label.setFixedWidth(55)
+        seek_layout.addWidget(self.fs_dur_label)
+
+        layout.addWidget(self.fs_seek_row)
+
+        # Zeile 2: Steuer-Buttons
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(4)
+
+        self.fs_btn_play_pause = QPushButton("\u25B6\uFE0E")
+        self.fs_btn_play_pause.setFixedSize(44, 44)
+        self.fs_btn_play_pause.clicked.connect(self._toggle_play_pause)
+        btn_row.addWidget(self.fs_btn_play_pause)
+
+        self.fs_btn_skip_back = QPushButton("\u25C0\u25C0")
+        self.fs_btn_skip_back.setFixedSize(44, 44)
+        self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-10))
+        btn_row.addWidget(self.fs_btn_skip_back)
+
+        self.fs_btn_skip_forward = QPushButton("\u25B6\u25B6")
+        self.fs_btn_skip_forward.setFixedSize(44, 44)
+        self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(10))
+        btn_row.addWidget(self.fs_btn_skip_forward)
+
+        vol_icon = QLabel("\u266B")
+        vol_icon.setStyleSheet("font-size: 14px; color: #888; background: transparent;")
+        btn_row.addWidget(vol_icon)
+
+        self.fs_volume_slider = QSlider(Qt.Horizontal)
+        self.fs_volume_slider.setRange(0, 100)
+        self.fs_volume_slider.setFixedWidth(100)
+        self.fs_volume_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                background: rgba(255, 255, 255, 40);
+                height: 4px;
+                border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background: white;
+                width: 12px;
+                height: 12px;
+                margin: -4px 0;
+                border-radius: 6px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #0078d4;
+                border-radius: 2px;
+            }
+        """)
+        self.fs_volume_slider.blockSignals(True)
+        self.fs_volume_slider.setValue(100)
+        self.fs_volume_slider.blockSignals(False)
+        self.fs_volume_slider.valueChanged.connect(self._on_volume_changed)
+        btn_row.addWidget(self.fs_volume_slider)
+
+        btn_row.addStretch()
+
+        self.fs_info_label = QLabel("")
+        self.fs_info_label.setStyleSheet("color: #ddd; font-size: 13px; background: transparent;")
+        self.fs_info_label.setAlignment(Qt.AlignCenter)
+        btn_row.addWidget(self.fs_info_label)
+
+        btn_row.addStretch()
+
+        fs_exit_btn = QPushButton("\u26F6")
+        fs_exit_btn.setFixedSize(44, 44)
+        fs_exit_btn.setToolTip("Vollbild verlassen")
+        fs_exit_btn.clicked.connect(self._toggle_player_maximized)
+        btn_row.addWidget(fs_exit_btn)
+
+        layout.addLayout(btn_row)
+
+        self._fs_seeking = False
+        overlay.hide()
+        overlay.installEventFilter(self)
 
         return overlay
 
