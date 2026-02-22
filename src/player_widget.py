@@ -45,7 +45,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._pending_url = None
         self._player_initialized = False
         self._is_buffering = False
-        self._screensaver_cookie = None
+        self._screensaver_inhibitions = []  # [(service, path, iface_name, cookie), ...]
 
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
@@ -96,11 +96,19 @@ class MpvPlayerWidget(QOpenGLWidget):
 
         @self.player.event_callback('end-file')
         def _on_end_file(event):
+            # mpv liefert reason als ctypes.c_int (integer), nicht als String
+            _reason_map = {0: 'eof', 1: 'stop', 2: 'quit', 3: 'error', 4: 'redirect'}
             try:
-                reason = event['event']['reason']
-                if hasattr(reason, 'value'):
-                    reason = reason.value
-                reason = str(reason)
+                raw = event['event']['reason']
+                # ctypes c_int hat .value, Enums haben .name
+                if hasattr(raw, 'name'):
+                    reason = raw.name.lower()
+                elif hasattr(raw, 'value'):
+                    reason = _reason_map.get(int(raw.value), 'unknown')
+                elif isinstance(raw, int):
+                    reason = _reason_map.get(raw, 'unknown')
+                else:
+                    reason = str(raw).lower()
             except Exception:
                 reason = 'unknown'
             self._stream_ended_signal.emit(reason)
@@ -140,34 +148,59 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.buffering_changed.emit(buffering)
 
     def _inhibit_screensaver(self):
-        """Verhindert Bildschirmschoner (Windows: SetThreadExecutionState, Linux: D-Bus)"""
+        """Verhindert Bildschirmschoner/Sperrbildschirm (Windows: SetThreadExecutionState, Linux: D-Bus)"""
         if sys.platform == 'win32':
             ctypes.windll.kernel32.SetThreadExecutionState(
                 _ES_CONTINUOUS | _ES_DISPLAY_REQUIRED | _ES_SYSTEM_REQUIRED
             )
-        elif _DBUS_AVAILABLE and self._screensaver_cookie is None:
-            try:
-                bus = dbus.SessionBus()
-                proxy = bus.get_object('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver')
-                iface = dbus.Interface(proxy, 'org.freedesktop.ScreenSaver')
-                self._screensaver_cookie = iface.Inhibit('iptv-app', 'Video playback')
-            except Exception:
-                pass
+            return
+        if not _DBUS_AVAILABLE or self._screensaver_inhibitions:
+            return
+        # Verschiedene D-Bus-Interfaces probieren (KDE, GNOME, generisch)
+        candidates = [
+            ('org.freedesktop.ScreenSaver', '/ScreenSaver', 'org.freedesktop.ScreenSaver'),
+            ('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver', 'org.freedesktop.ScreenSaver'),
+            ('org.gnome.SessionManager', '/org/gnome/SessionManager', 'org.gnome.SessionManager'),
+        ]
+        try:
+            bus = dbus.SessionBus()
+            for service, path, iface_name in candidates:
+                try:
+                    proxy = bus.get_object(service, path)
+                    iface = dbus.Interface(proxy, iface_name)
+                    if iface_name == 'org.gnome.SessionManager':
+                        cookie = iface.Inhibit('iptv-app', dbus.UInt32(0), 'Video playback', dbus.UInt32(8))
+                    else:
+                        cookie = iface.Inhibit('iptv-app', 'Video playback')
+                    self._screensaver_inhibitions.append((service, path, iface_name, cookie))
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _uninhibit_screensaver(self):
-        """Gibt Bildschirmschoner wieder frei"""
+        """Gibt Bildschirmschoner/Sperrbildschirm wieder frei"""
         if sys.platform == 'win32':
             ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
-        elif _DBUS_AVAILABLE and self._screensaver_cookie is not None:
-            try:
-                bus = dbus.SessionBus()
-                proxy = bus.get_object('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver')
-                iface = dbus.Interface(proxy, 'org.freedesktop.ScreenSaver')
-                iface.UnInhibit(self._screensaver_cookie)
-            except Exception:
-                pass
-            finally:
-                self._screensaver_cookie = None
+            return
+        if not _DBUS_AVAILABLE or not self._screensaver_inhibitions:
+            return
+        try:
+            bus = dbus.SessionBus()
+            for service, path, iface_name, cookie in self._screensaver_inhibitions:
+                try:
+                    proxy = bus.get_object(service, path)
+                    iface = dbus.Interface(proxy, iface_name)
+                    if iface_name == 'org.gnome.SessionManager':
+                        iface.Uninhibit(cookie)
+                    else:
+                        iface.UnInhibit(cookie)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        finally:
+            self._screensaver_inhibitions = []
 
     def play(self, url: str):
         """Spielt eine URL ab"""
