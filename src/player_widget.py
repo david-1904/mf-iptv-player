@@ -30,8 +30,10 @@ class MpvPlayerWidget(QOpenGLWidget):
     double_clicked = Signal()
     escape_pressed = Signal()
     buffering_changed = Signal(bool)  # True = buffering, False = playing
+    stream_ended = Signal(str)        # reason: 'error', 'eof', 'stop', ...
     _mpv_update = Signal()
     _buffering_signal = Signal(bool)
+    _stream_ended_signal = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,6 +49,7 @@ class MpvPlayerWidget(QOpenGLWidget):
 
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
+        self._stream_ended_signal.connect(self.stream_ended)
 
     def initializeGL(self):
         """OpenGL-Kontext bereit - MPV initialisieren"""
@@ -90,6 +93,17 @@ class MpvPlayerWidget(QOpenGLWidget):
                 self._buffering_signal.emit(True)
             elif not value:
                 self._buffering_signal.emit(False)
+
+        @self.player.event_callback('end-file')
+        def _on_end_file(event):
+            try:
+                reason = event['event']['reason']
+                if hasattr(reason, 'value'):
+                    reason = reason.value
+                reason = str(reason)
+            except Exception:
+                reason = 'unknown'
+            self._stream_ended_signal.emit(reason)
 
         if self._pending_url:
             self.player.play(self._pending_url)

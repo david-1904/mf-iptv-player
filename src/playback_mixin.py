@@ -70,6 +70,10 @@ class PlaybackMixin:
 
     def _play_stream(self, url: str, title: str, stream_type: str = "live", stream_id: int = None, icon: str = "", container_extension: str = ""):
         """Spielt einen Stream im integrierten Player ab"""
+        # Reconnect-Zustand zuruecksetzen
+        self._reconnect_attempt = 0
+        self._reconnect_timer.stop()
+        self._buffering_watchdog.stop()
         # Vorherige Position speichern
         self._save_current_position()
 
@@ -121,6 +125,9 @@ class PlaybackMixin:
 
     def _stop_playback(self):
         """Stoppt die Wiedergabe und versteckt den Player"""
+        self._reconnect_attempt = 0
+        self._reconnect_timer.stop()
+        self._buffering_watchdog.stop()
         self._save_current_position()
         if self.recorder.is_recording:
             self.recorder.stop()
@@ -167,9 +174,15 @@ class PlaybackMixin:
             self.buffering_overlay.show()
             self._buffering_dots = 0
             self._buffering_timer.start(400)
+            # Watchdog: bei Live-Streams nach 20s Reconnect anstoßen
+            if self._current_stream_type == "live":
+                self._buffering_watchdog.start(20000)
         else:
             self._buffering_timer.stop()
             self.buffering_overlay.hide()
+            self._buffering_watchdog.stop()
+            self._reconnect_timer.stop()
+            self._reconnect_attempt = 0
 
     def _animate_buffering(self):
         """Animiert den Buffering-Text"""
@@ -521,6 +534,52 @@ class PlaybackMixin:
             self.fs_info_label.setText(self.player_info_label.text())
         else:
             self.fs_info_label.setText("")
+
+    @Slot(str)
+    def _on_stream_ended(self, reason: str):
+        """Wird aufgerufen wenn mpv den Stream beendet (Thread-safe via Signal)"""
+        if not self._current_stream_url or not self._current_stream_type:
+            return
+        # Absichtlich gestoppt → kein Reconnect
+        if reason in ('stop', 'quit'):
+            return
+        if self._current_stream_type == "live" and reason in ('error', 'eof', 'unknown'):
+            self._schedule_reconnect()
+        elif self._current_stream_type == "vod" and reason == 'error':
+            self.buffering_overlay.hide()
+            self.status_bar.showMessage("Fehler: Video konnte nicht geladen werden")
+
+    def _schedule_reconnect(self):
+        """Plant den naechsten Reconnect-Versuch"""
+        self._buffering_watchdog.stop()
+        self._reconnect_timer.stop()
+        if self._reconnect_attempt >= self._max_reconnect_attempts:
+            self._on_stream_error_final()
+            return
+        self._reconnect_attempt += 1
+        delay = min(3000 * self._reconnect_attempt, 10000)
+        self.status_bar.showMessage(
+            f"Stream unterbrochen – Verbindungsversuch {self._reconnect_attempt}/{self._max_reconnect_attempts} ..."
+        )
+        self._reconnect_timer.start(delay)
+
+    def _do_reconnect(self):
+        """Fuehrt einen Reconnect-Versuch durch"""
+        if not self._current_stream_url or not self._current_stream_type:
+            return
+        self.player.play(self._current_stream_url)
+
+    def _on_buffering_timeout(self):
+        """Watchdog: Stream buffert zu lange → Reconnect"""
+        if self._current_stream_type == "live":
+            self._schedule_reconnect()
+
+    def _on_stream_error_final(self):
+        """Alle Reconnect-Versuche gescheitert"""
+        self._reconnect_attempt = 0
+        self.buffering_overlay.hide()
+        self._buffering_timer.stop()
+        self.status_bar.showMessage("Stream nicht erreichbar – bitte anderen Sender wählen")
 
     async def _load_overlay_logo(self, url: str):
         """Laedt das Senderlogo fuer das Overlay"""
