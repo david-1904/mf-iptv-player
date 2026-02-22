@@ -184,6 +184,8 @@ class PlaybackMixin:
             self.buffering_overlay.hide()
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
+            if self._reconnect_attempt > 0:
+                self.status_bar.showMessage(f"Verbunden: {self._current_stream_title}", 4000)
             self._reconnect_attempt = 0
             self._stream_starting = False  # Stream laeuft → Schutzphase beenden
 
