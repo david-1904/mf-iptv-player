@@ -99,6 +99,7 @@ class MainWindow(
         # Reconnect-Zustand
         self._reconnect_attempt = 0
         self._max_reconnect_attempts = 5
+        self._stream_starting = False  # Schutzphase: end-file waehrend Start ignorieren
 
         # EPG-Zustand
         self._initial_epg_loaded = False
@@ -201,12 +202,22 @@ class MainWindow(
         if not info:
             return
         self._update_release_info = info
-        btn = QPushButton(f"  Update v{info.version} verfuegbar  ")
-        btn.setStyleSheet(
-            "QPushButton { background-color: #e8a317; color: #000; border-radius: 4px;"
-            " padding: 2px 8px; font-weight: bold; font-size: 12px; }"
-            "QPushButton:hover { background-color: #f0b530; }"
-        )
+        btn = QPushButton(f"\u2B07  Update v{info.version}")
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1a3a2a;
+                color: #6fcf97;
+                border: 1px solid #27ae60;
+                border-radius: 10px;
+                padding: 3px 14px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+                color: #fff;
+            }
+        """)
         btn.setCursor(Qt.PointingHandCursor)
         btn.clicked.connect(self._show_update_dialog)
         self.status_bar.addPermanentWidget(btn)
@@ -221,7 +232,7 @@ class MainWindow(
         dlg.setMinimumSize(500, 400)
         layout = QVBoxLayout(dlg)
 
-        title = QLabel(f"Version {info.version} ist verfuegbar!")
+        title = QLabel(f"Version {info.version} ist verfügbar!")
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 8px;")
         layout.addWidget(title)
 
@@ -243,10 +254,20 @@ class MainWindow(
         status_label.setStyleSheet("color: #999;")
         layout.addWidget(status_label)
 
-        update_btn = QPushButton("Jetzt aktualisieren")
-        update_btn.setStyleSheet(
-            "QPushButton { background-color: #0078d4; padding: 10px; font-size: 14px; }"
-        )
+        update_btn = QPushButton("\u2B07  Jetzt aktualisieren")
+        update_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: #fff;
+                border: none;
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2ecc71; }
+            QPushButton:disabled { background-color: #1a3a2a; color: #555; }
+        """)
         layout.addWidget(update_btn)
 
         def on_update():
@@ -274,7 +295,7 @@ class MainWindow(
         if success:
             status_label.setText("Update erfolgreich! Bitte App neu starten.")
             status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
-            update_btn.setText("Bitte App neu starten")
+            update_btn.setText("\u2714  Bitte App neu starten")
         else:
             status_label.setText(f"Fehler: {msg}")
             status_label.setStyleSheet("color: #f44336;")
