@@ -106,6 +106,8 @@ class PlaybackMixin:
             self._exit_pip_mode()
 
         self._update_seek_controls_visibility()
+        # Detailpanel schliessen wenn Stream startet
+        self._hide_channel_detail()
         self.player.play(url)
         self.btn_play_pause.setText("\u2759\u2759")
         self.player_info_label.setText("")
