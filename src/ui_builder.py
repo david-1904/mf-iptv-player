@@ -358,9 +358,16 @@ class UiBuilderMixin:
         """Erstellt den Kanalbereich mit Liste, EPG-Panel und Serien-Detailansicht"""
         self.channel_stack = QStackedWidget()
 
-        # Seite 0: Kanalliste + EPG
+        # Seite 0: Horizontales Layout [Kanal-Navigation | Kanal-Detailansicht]
         channel_list_page = QWidget()
-        cl_layout = QVBoxLayout(channel_list_page)
+        outer_layout = QHBoxLayout(channel_list_page)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        # Links: Kanal-Navigation (Kategorie-Button + Kanalliste + EPG-Panel)
+        self.channel_nav_widget = QWidget()
+        self._detail_stream_data = None  # Aktuell im Detail-Panel angezeigter Sender
+        cl_layout = QVBoxLayout(self.channel_nav_widget)
         cl_layout.setContentsMargins(0, 0, 0, 0)
         cl_layout.setSpacing(0)
 
@@ -561,6 +568,13 @@ class UiBuilderMixin:
         self._epg_splitter.setSizes([600, 260])
         cl_layout.addWidget(self._epg_splitter, stretch=1)
 
+        outer_layout.addWidget(self.channel_nav_widget)
+
+        # Rechts: modernes Kanal-Detailpanel (standardmaessig versteckt)
+        self.channel_detail_panel = self._create_channel_detail_panel()
+        self.channel_detail_panel.hide()
+        outer_layout.addWidget(self.channel_detail_panel, stretch=1)
+
         self.channel_stack.addWidget(channel_list_page)
 
         # Seite 1: Serien-Detailansicht
@@ -572,6 +586,173 @@ class UiBuilderMixin:
         self.channel_stack.addWidget(self.vod_detail_page)
 
         return self.channel_stack
+
+    def _create_channel_detail_panel(self) -> QWidget:
+        """Modernes Kanal-Detailpanel: Logo, Name, EPG mit Fortschrittsbalken."""
+        panel = QWidget()
+        panel.setObjectName("channelDetailPanel")
+        panel.setStyleSheet("""
+            #channelDetailPanel {
+                background-color: #0a0a12;
+                border-left: 1px solid #1a1a2a;
+            }
+        """)
+
+        outer = QVBoxLayout(panel)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical {
+                background: #0a0a12; width: 6px; border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #2a2a3a; border-radius: 3px; min-height: 20px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        """)
+
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        lay = QVBoxLayout(content)
+        lay.setContentsMargins(36, 36, 36, 36)
+        lay.setSpacing(20)
+        lay.setAlignment(Qt.AlignTop)
+
+        # ── Header: Logo + Kanalname ──────────────────────────────
+        header_row = QHBoxLayout()
+        header_row.setSpacing(20)
+
+        self.detail_logo = QLabel()
+        self.detail_logo.setFixedSize(88, 88)
+        self.detail_logo.setAlignment(Qt.AlignCenter)
+        self.detail_logo.setStyleSheet("""
+            background-color: #1a1a2a;
+            border-radius: 12px;
+            color: #444;
+            font-size: 28px;
+        """)
+        self.detail_logo.setText("📺")
+        header_row.addWidget(self.detail_logo, alignment=Qt.AlignTop)
+
+        name_block = QVBoxLayout()
+        name_block.setSpacing(8)
+        name_block.setAlignment(Qt.AlignVCenter)
+
+        self.detail_channel_name = QLabel("")
+        self.detail_channel_name.setStyleSheet(
+            "font-size: 26px; font-weight: bold; color: #ffffff;"
+        )
+        self.detail_channel_name.setWordWrap(True)
+        name_block.addWidget(self.detail_channel_name)
+
+        self.detail_play_btn = QPushButton("\u25B6\uFE0E  Abspielen")
+        self.detail_play_btn.setFixedHeight(40)
+        self.detail_play_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 0 28px;
+            }
+            QPushButton:hover { background-color: #1094e8; }
+        """)
+        self.detail_play_btn.clicked.connect(lambda: self._play_detail_stream())
+        name_block.addWidget(self.detail_play_btn, alignment=Qt.AlignLeft)
+        header_row.addLayout(name_block, stretch=1)
+        lay.addLayout(header_row)
+
+        # ── Trennlinie ────────────────────────────────────────────
+        sep = QFrame()
+        sep.setFixedHeight(1)
+        sep.setStyleSheet("background-color: #1a1a2a; margin: 0;")
+        lay.addWidget(sep)
+
+        # ── JETZT-Bereich ─────────────────────────────────────────
+        self.detail_now_section = QWidget()
+        self.detail_now_section.setStyleSheet("background: transparent;")
+        now_lay = QVBoxLayout(self.detail_now_section)
+        now_lay.setContentsMargins(0, 0, 0, 0)
+        now_lay.setSpacing(8)
+
+        jetzt_lbl = QLabel("JETZT")
+        jetzt_lbl.setStyleSheet(
+            "font-size: 10px; font-weight: bold; color: #0078d4; letter-spacing: 2px;"
+        )
+        now_lay.addWidget(jetzt_lbl)
+
+        self.detail_now_title = QLabel("–")
+        self.detail_now_title.setStyleSheet(
+            "font-size: 20px; font-weight: bold; color: #eeeeee;"
+        )
+        self.detail_now_title.setWordWrap(True)
+        now_lay.addWidget(self.detail_now_title)
+
+        self.detail_now_time = QLabel("")
+        self.detail_now_time.setStyleSheet("font-size: 12px; color: #666;")
+        now_lay.addWidget(self.detail_now_time)
+
+        self.detail_now_progress = QProgressBar()
+        self.detail_now_progress.setFixedHeight(4)
+        self.detail_now_progress.setTextVisible(False)
+        self.detail_now_progress.setStyleSheet("""
+            QProgressBar {
+                background: #1e1e2e; border: none; border-radius: 2px;
+            }
+            QProgressBar::chunk {
+                background: #0078d4; border-radius: 2px;
+            }
+        """)
+        self.detail_now_progress.hide()
+        now_lay.addWidget(self.detail_now_progress)
+
+        self.detail_now_desc = QLabel("")
+        self.detail_now_desc.setStyleSheet(
+            "font-size: 13px; color: #888; line-height: 1.6;"
+        )
+        self.detail_now_desc.setWordWrap(True)
+        self.detail_now_desc.hide()
+        now_lay.addWidget(self.detail_now_desc)
+
+        lay.addWidget(self.detail_now_section)
+
+        # ── DANACH-Bereich ────────────────────────────────────────
+        self.detail_next_widget = QWidget()
+        self.detail_next_widget.setStyleSheet("background: transparent;")
+        next_lay = QVBoxLayout(self.detail_next_widget)
+        next_lay.setContentsMargins(0, 0, 0, 0)
+        next_lay.setSpacing(6)
+
+        danach_lbl = QLabel("DANACH")
+        danach_lbl.setStyleSheet(
+            "font-size: 10px; font-weight: bold; color: #444; letter-spacing: 2px;"
+        )
+        next_lay.addWidget(danach_lbl)
+
+        self.detail_next_title = QLabel("")
+        self.detail_next_title.setStyleSheet("font-size: 16px; color: #aaa;")
+        self.detail_next_title.setWordWrap(True)
+        next_lay.addWidget(self.detail_next_title)
+
+        self.detail_next_time = QLabel("")
+        self.detail_next_time.setStyleSheet("font-size: 12px; color: #555;")
+        next_lay.addWidget(self.detail_next_time)
+
+        self.detail_next_widget.hide()
+        lay.addWidget(self.detail_next_widget)
+
+        lay.addStretch()
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+
+        return panel
 
     def _create_epg_panel(self) -> QWidget:
         """Creates the EPG info panel"""

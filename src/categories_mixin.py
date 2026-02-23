@@ -21,6 +21,8 @@ class CategoriesMixin:
         if mode == "search" and self.current_mode != "search":
             self._last_mode_before_search = self.current_mode
         self.current_mode = mode
+        # Detailpanel schliessen bei Moduswechsel
+        self._hide_channel_detail()
 
         # Buttons aktualisieren
         self.btn_live.setChecked(mode == "live")
@@ -362,18 +364,18 @@ class CategoriesMixin:
 
             self._hide_loading(f"{self.channel_list.count()} Eintraege geladen")
 
-            # Beim ersten Live-Laden EPG des ersten Kanals vorladen
-            if (self.current_mode == "live"
-                    and not self._initial_epg_loaded
-                    and self.channel_list.count() > 0):
+            # Ersten Live-Sender automatisch auswaehlen + Detailpanel zeigen
+            if self.current_mode == "live" and self.channel_list.count() > 0:
                 self._initial_epg_loaded = True
                 first_item = self.channel_list.item(0)
                 if first_item:
+                    self.channel_list.setCurrentRow(0)
                     data = first_item.data(Qt.UserRole)
                     if hasattr(data, 'stream_id'):
                         self._current_epg_stream_id = data.stream_id
                         self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
                         self.epg_channel_name.setText(data.name)
+                        self._show_channel_detail(data)
                         asyncio.ensure_future(self._load_epg(data.stream_id))
 
             # Poster/Logos laden

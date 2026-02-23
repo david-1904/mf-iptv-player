@@ -46,16 +46,29 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._player_initialized = False
         self._is_buffering = False
         self._screensaver_inhibitions = []  # [(service, path, iface_name, cookie), ...]
+        self._logind_fd = None               # systemd-logind idle-inhibit fd
 
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
         self._stream_ended_signal.connect(self.stream_ended)
 
     def initializeGL(self):
-        """OpenGL-Kontext bereit - MPV initialisieren"""
-        if self._player_initialized:
-            return
-        self._init_player()
+        """OpenGL-Kontext bereit (ggf. nach Neustart durch Bildschirmsperre)"""
+        if not self._player_initialized:
+            self._init_player()
+        else:
+            # GL-Kontext wurde neu erstellt (z.B. nach Wayland-Bildschirmsperre)
+            # → Render-Kontext neu initialisieren, sonst nur Standbilder
+            self._reinit_render_context()
+
+        # Kontext-Zerstörungssignal verbinden (für nächsten Suspend-Zyklus)
+        glctx = self.context()
+        if glctx:
+            try:
+                glctx.aboutToBeDestroyed.disconnect(self._on_gl_context_destroyed)
+            except RuntimeError:
+                pass
+            glctx.aboutToBeDestroyed.connect(self._on_gl_context_destroyed)
 
     def _init_player(self):
         if self._player_initialized:
@@ -117,6 +130,41 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.player.play(self._pending_url)
             self._pending_url = None
 
+    def _on_gl_context_destroyed(self):
+        """Render-Kontext freigeben bevor der GL-Kontext zerstört wird"""
+        self.makeCurrent()
+        if self.ctx:
+            self.ctx.free()
+            self.ctx = None
+        self.doneCurrent()
+
+    def _reinit_render_context(self):
+        """mpv Render-Kontext nach GL-Kontextverlust (Bildschirmsperre) neu erstellen"""
+        if self.ctx:
+            try:
+                self.ctx.free()
+            except Exception:
+                pass
+            self.ctx = None
+
+        def _get_proc_address(ctx, name):
+            glctx = self.context()
+            if not glctx:
+                return 0
+            addr = glctx.getProcAddress(name)
+            return addr if addr else 0
+
+        self._proc_addr_wrapper = _GL_GET_PROC_ADDR_FN(_get_proc_address)
+        try:
+            self.ctx = mpv.MpvRenderContext(
+                self.player, 'opengl',
+                opengl_init_params={'get_proc_address': self._proc_addr_wrapper}
+            )
+            self.ctx.update_cb = lambda: self._mpv_update.emit()
+            self._mpv_update.emit()
+        except Exception as e:
+            print(f"[MPV] Render-Kontext Neuinitialisierung fehlgeschlagen: {e}")
+
     def paintGL(self):
         if self.ctx:
             ratio = self.devicePixelRatioF()
@@ -154,9 +202,13 @@ class MpvPlayerWidget(QOpenGLWidget):
                 _ES_CONTINUOUS | _ES_DISPLAY_REQUIRED | _ES_SYSTEM_REQUIRED
             )
             return
-        if not _DBUS_AVAILABLE or self._screensaver_inhibitions:
+        if not _DBUS_AVAILABLE:
             return
-        # Verschiedene D-Bus-Interfaces probieren (KDE, GNOME, generisch)
+        # Bereits aktiv → nicht doppelt inhibiten
+        if self._screensaver_inhibitions or self._logind_fd is not None:
+            return
+
+        # 1. ScreenSaver-Inhibit über Session-Bus (KDE, GNOME, generisch)
         candidates = [
             ('org.freedesktop.ScreenSaver', '/ScreenSaver', 'org.freedesktop.ScreenSaver'),
             ('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver', 'org.freedesktop.ScreenSaver'),
@@ -178,29 +230,55 @@ class MpvPlayerWidget(QOpenGLWidget):
         except Exception:
             pass
 
+        # 2. systemd-logind idle-Inhibit über System-Bus (zuverlässiger auf Wayland/KDE)
+        #    Hält den Inhibitor als offenen File-Descriptor offen – wird beim Schließen freigegeben
+        try:
+            import os
+            sysbus = dbus.SystemBus()
+            logind = dbus.Interface(
+                sysbus.get_object('org.freedesktop.login1', '/org/freedesktop/login1'),
+                'org.freedesktop.login1.Manager'
+            )
+            fd_obj = logind.Inhibit('idle:sleep', 'IPTV App', 'Video playback', 'block')
+            self._logind_fd = fd_obj.take()  # rohen fd übernehmen, offen lassen = Inhibit aktiv
+        except Exception:
+            self._logind_fd = None
+
     def _uninhibit_screensaver(self):
         """Gibt Bildschirmschoner/Sperrbildschirm wieder frei"""
         if sys.platform == 'win32':
             ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
             return
-        if not _DBUS_AVAILABLE or not self._screensaver_inhibitions:
+        if not _DBUS_AVAILABLE:
             return
-        try:
-            bus = dbus.SessionBus()
-            for service, path, iface_name, cookie in self._screensaver_inhibitions:
-                try:
-                    proxy = bus.get_object(service, path)
-                    iface = dbus.Interface(proxy, iface_name)
-                    if iface_name == 'org.gnome.SessionManager':
-                        iface.Uninhibit(cookie)
-                    else:
-                        iface.UnInhibit(cookie)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        finally:
-            self._screensaver_inhibitions = []
+
+        # ScreenSaver-Cookies aufheben
+        if self._screensaver_inhibitions:
+            try:
+                bus = dbus.SessionBus()
+                for service, path, iface_name, cookie in self._screensaver_inhibitions:
+                    try:
+                        proxy = bus.get_object(service, path)
+                        iface = dbus.Interface(proxy, iface_name)
+                        if iface_name == 'org.gnome.SessionManager':
+                            iface.Uninhibit(cookie)
+                        else:
+                            iface.UnInhibit(cookie)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            finally:
+                self._screensaver_inhibitions = []
+
+        # logind-Inhibitor freigeben (fd schließen = Inhibit aufheben)
+        if self._logind_fd is not None:
+            try:
+                import os
+                os.close(self._logind_fd)
+            except Exception:
+                pass
+            self._logind_fd = None
 
     def play(self, url: str):
         """Spielt eine URL ab"""
