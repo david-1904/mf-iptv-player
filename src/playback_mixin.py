@@ -599,6 +599,35 @@ class PlaybackMixin:
         self._buffering_timer.stop()
         self.status_bar.showMessage("Stream nicht erreichbar – bitte anderen Sender wählen")
 
+    @Slot()
+    def _on_gl_context_recreated(self):
+        """GL-Kontext nach Bildschirmsperre neu erstellt → Stream neu starten.
+
+        Nach GL-Kontextverlust hängt mpv's Video-Pipeline und liefert nur noch
+        ein einzelnes Standbild. Einzige zuverlässige Lösung: Stream komplett neu
+        starten, damit mpv sauber in den neuen Render-Kontext rendert.
+        """
+        if not self._current_stream_url:
+            return
+
+        # Schutzphase setzen, damit der end-file während des Neustarts keinen
+        # weiteren Reconnect auslöst
+        self._stream_starting = True
+        self._stream_start_timer.start(8000)
+        self._reconnect_attempt = 0
+        self._reconnect_timer.stop()
+        self._buffering_watchdog.stop()
+
+        if self._current_stream_type == "vod":
+            # VOD: aktuelle Position merken und nach dem Neustart wiederherstellen
+            _pos = self.player.position or 0
+            self.player.play(self._current_stream_url)
+            if _pos > 5:
+                QTimer.singleShot(2500, lambda: self.player.seek(_pos, relative=False))
+        else:
+            # Live: URL direkt neu abspielen
+            self.player.play(self._current_stream_url)
+
     async def _load_overlay_logo(self, url: str):
         """Laedt das Senderlogo fuer das Overlay"""
         try:
