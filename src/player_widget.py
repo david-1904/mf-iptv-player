@@ -31,6 +31,7 @@ class MpvPlayerWidget(QOpenGLWidget):
     escape_pressed = Signal()
     buffering_changed = Signal(bool)  # True = buffering, False = playing
     stream_ended = Signal(str)        # reason: 'error', 'eof', 'stop', ...
+    gl_context_recreated = Signal()   # GL-Kontext nach Bildschirmsperre neu erstellt
     _mpv_update = Signal()
     _buffering_signal = Signal(bool)
     _stream_ended_signal = Signal(str)
@@ -162,6 +163,8 @@ class MpvPlayerWidget(QOpenGLWidget):
             )
             self.ctx.update_cb = lambda: self._mpv_update.emit()
             self._mpv_update.emit()
+            # Stream-Neustart anstoßen (video pipeline nach GL-Verlust steckt sonst fest)
+            self.gl_context_recreated.emit()
         except Exception as e:
             print(f"[MPV] Render-Kontext Neuinitialisierung fehlgeschlagen: {e}")
 

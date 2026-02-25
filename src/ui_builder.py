@@ -1286,6 +1286,7 @@ class UiBuilderMixin:
         self._stream_start_timer.timeout.connect(self._clear_stream_starting)
 
         self.player.stream_ended.connect(self._on_stream_ended)
+        self.player.gl_context_recreated.connect(self._on_gl_context_recreated)
 
         player_container.setMouseTracking(True)
         self.player.setMouseTracking(True)
