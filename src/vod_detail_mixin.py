@@ -15,6 +15,13 @@ class VodDetailMixin:
     def _show_vod_detail(self, vod: VodStream):
         """Zeigt die VOD-Detailansicht an"""
         self._current_vod = vod
+        if vod.category_id:
+            account = self.account_manager.get_selected()
+            if account:
+                self.session_manager.save_vod(
+                    account.name, vod.stream_id, vod.name,
+                    vod.stream_icon, vod.container_extension, vod.category_id
+                )
         self.vod_title_label.setText(vod.name)
         self.vod_hero_title.setText(vod.name)
         self.vod_subtitle_label.setText("")

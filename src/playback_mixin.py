@@ -34,6 +34,12 @@ class PlaybackMixin:
         if isinstance(data, LiveStream):
             url = self.api.creds.stream_url(data.stream_id)
             self._play_stream(url, data.name, "live", data.stream_id, icon=data.stream_icon)
+            if data.category_id:
+                account = self.account_manager.get_selected()
+                if account:
+                    self.session_manager.save_live(
+                        account.name, data.stream_id, data.name, data.stream_icon, data.category_id
+                    )
 
         elif isinstance(data, VodStream):
             self._show_vod_detail(data)

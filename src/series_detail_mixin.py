@@ -15,6 +15,12 @@ class SeriesDetailMixin:
     def _show_series_detail(self, series: Series):
         """Zeigt die Serien-Detailansicht an"""
         self._current_series = series
+        if series.category_id:
+            account = self.account_manager.get_selected()
+            if account:
+                self.session_manager.save_series(
+                    account.name, series.series_id, series.name, series.cover, series.category_id
+                )
         self.series_title_label.setText(series.name)
         self.series_plot_label.setText(series.plot or "")
         self.series_rating_label.setText(f"Bewertung: {series.rating}" if series.rating and series.rating not in ("0", "") else "")
