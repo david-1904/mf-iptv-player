@@ -580,12 +580,17 @@ class PlaybackMixin:
         self._stream_starting = False
 
     def _do_reconnect(self):
-        """Fuehrt einen Reconnect-Versuch durch"""
+        """Fuehrt einen Reconnect-Versuch durch – mit vollständigem mpv-Neustart.
+
+        Einfaches player.play() reicht nicht: nach einem Netzwerkabbruch kann
+        mpv intern in einem korrupten Zustand feststecken, der nur durch einen
+        kompletten Neustart der mpv-Instanz behoben wird.
+        """
         if not self._current_stream_url or not self._current_stream_type:
             return
         self._stream_starting = True
-        self._stream_start_timer.start(5000)
-        self.player.play(self._current_stream_url)
+        self._stream_start_timer.start(8000)
+        self.player.force_restart()
 
     def _on_buffering_timeout(self):
         """Watchdog: Stream buffert zu lange → Reconnect"""
