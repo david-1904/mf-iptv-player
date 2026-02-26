@@ -98,7 +98,7 @@ class PlaybackMixin:
                 self.player_area.show()
             else:
                 # Live-TV: side-by-side mit Kanalliste
-                self.channel_area.setFixedWidth(320)
+                self.channel_area.setFixedWidth(360)
                 self.player_area.show()
         elif is_vod_playback and self.channel_area.isVisible():
             self.channel_area.hide()
@@ -580,17 +580,17 @@ class PlaybackMixin:
         self._stream_starting = False
 
     def _do_reconnect(self):
-        """Fuehrt einen Reconnect-Versuch durch – mit vollständigem mpv-Neustart.
+        """Fuehrt einen Reconnect-Versuch durch.
 
-        Einfaches player.play() reicht nicht: nach einem Netzwerkabbruch kann
-        mpv intern in einem korrupten Zustand feststecken, der nur durch einen
-        kompletten Neustart der mpv-Instanz behoben wird.
+        Erster Versuch: schnelles player.play() ohne mpv-Neustart.
+        Falls mpv danach einfriert (nur Standbild), greift der Freeze-Watchdog
+        im MpvPlayerWidget nach 5s und macht einen vollstaendigen Neustart.
         """
         if not self._current_stream_url or not self._current_stream_type:
             return
         self._stream_starting = True
         self._stream_start_timer.start(8000)
-        self.player.force_restart()
+        self.player.play(self._current_stream_url)
 
     def _on_buffering_timeout(self):
         """Watchdog: Stream buffert zu lange → Reconnect"""

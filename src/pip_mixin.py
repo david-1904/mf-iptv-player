@@ -69,7 +69,7 @@ class PipMixin:
         self.main_page.layout().addWidget(self.player_area)
 
         # Kanalliste feste Breite
-        width = 400 if self.current_mode in ("vod", "series") else 320
+        width = 400 if self.current_mode in ("vod", "series") else 360
         self.channel_area.setFixedWidth(width)
 
     def _update_pip_position(self):

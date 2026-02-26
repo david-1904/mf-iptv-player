@@ -56,7 +56,7 @@ class CategoriesMixin:
             elif self._current_stream_type == "vod":
                 # Film laeuft + Wechsel zu Live/etc: Kanalliste anzeigen, side-by-side
                 self.channel_area.show()
-                self.channel_area.setFixedWidth(320)
+                self.channel_area.setFixedWidth(360)
                 if self._pip_mode:
                     self._exit_pip_mode()
             else:
