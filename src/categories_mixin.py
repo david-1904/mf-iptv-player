@@ -38,7 +38,7 @@ class CategoriesMixin:
         self.btn_recordings.setChecked(mode == "recordings")
 
         # Kategorie nur bei Live/VOD/Serien anzeigen
-        self.category_btn.setVisible(mode in ("live", "vod", "series"))
+        self.category_row.setVisible(mode in ("live", "vod", "series"))
         if mode not in ("live", "vod", "series"):
             self.category_list.hide()
 
