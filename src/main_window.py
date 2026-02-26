@@ -34,6 +34,7 @@ from account_mixin import AccountMixin
 from pip_mixin import PipMixin
 from channel_context_mixin import ChannelContextMixin
 from updater import UpdateChecker
+from app_settings import AppSettings
 
 
 class MainWindow(
@@ -55,9 +56,10 @@ class MainWindow(
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MF IPTV Player")
-        self.setMinimumSize(1200, 700)
+        self.setMinimumSize(1400, 800)
 
         self.account_manager = AccountManager()
+        self.app_settings = AppSettings()
         self.favorites_manager = FavoritesManager()
         self.history_manager = WatchHistoryManager()
         self.hidden_categories_manager = HiddenCategoriesManager()
@@ -83,6 +85,8 @@ class MainWindow(
         self._epg_cache: dict = {}
         self._current_epg_stream_id: int | None = None
         self._current_epg_has_catchup: bool = False
+        self._detail_prev_entry = None
+        self._detail_now_entry = None
 
         # Player-Zustand
         self._player_maximized = False
@@ -118,6 +122,7 @@ class MainWindow(
         self._setup_toolbar()
         self._setup_statusbar()
         self._load_initial_account()
+        self.showMaximized()
 
         asyncio.ensure_future(self._check_for_updates())
 
@@ -178,6 +183,8 @@ class MainWindow(
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape and self._player_maximized:
+            self._toggle_player_maximized()
+        elif event.key() == Qt.Key_F and event.modifiers() == Qt.NoModifier and self.player.is_playing:
             self._toggle_player_maximized()
         elif event.key() == Qt.Key_F and event.modifiers() == Qt.ControlModifier:
             self.content_stack.setCurrentWidget(self.main_page)

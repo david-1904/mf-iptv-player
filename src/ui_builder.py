@@ -584,7 +584,7 @@ class UiBuilderMixin:
         """)
         self._epg_splitter.addWidget(self.channel_list)
         self._epg_splitter.addWidget(self.epg_panel)
-        self._epg_splitter.setSizes([600, 260])
+        self._epg_splitter.setSizes([700, 180])
         cl_layout.addWidget(self._epg_splitter, stretch=1)
 
         outer_layout.addWidget(self.channel_nav_widget)
@@ -607,7 +607,7 @@ class UiBuilderMixin:
         return self.channel_stack
 
     def _create_channel_detail_panel(self) -> QWidget:
-        """Modernes Kanal-Detailpanel: Logo, Name, EPG mit Fortschrittsbalken."""
+        """Modernes Kanal-Detailpanel: Hero-Bild, Logo, Name, EPG mit Fortschrittsbalken."""
         panel = QWidget()
         panel.setObjectName("channelDetailPanel")
         panel.setStyleSheet("""
@@ -620,6 +620,29 @@ class UiBuilderMixin:
         outer = QVBoxLayout(panel)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
+
+        # ── Einklapp-Leiste ────────────────────────────────────────
+        epg_bar = QWidget()
+        epg_bar.setFixedHeight(30)
+        epg_bar.setStyleSheet("background-color: #0d0d18; border-bottom: 1px solid #1a1a2a;")
+        epg_bar_lay = QHBoxLayout(epg_bar)
+        epg_bar_lay.setContentsMargins(12, 0, 8, 0)
+        epg_bar_lbl = QLabel("EPG")
+        epg_bar_lbl.setStyleSheet("color: #555; font-size: 11px; font-weight: bold; letter-spacing: 1px;")
+        epg_bar_lay.addWidget(epg_bar_lbl)
+        epg_bar_lay.addStretch()
+        self.detail_collapse_btn = QPushButton("\u00d7")
+        self.detail_collapse_btn.setFixedSize(22, 22)
+        self.detail_collapse_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #555; border: none;
+                font-size: 16px; font-weight: bold; padding: 0;
+            }
+            QPushButton:hover { color: #ccc; }
+        """)
+        self.detail_collapse_btn.clicked.connect(self._hide_channel_detail)
+        epg_bar_lay.addWidget(self.detail_collapse_btn)
+        outer.addWidget(epg_bar)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -638,25 +661,35 @@ class UiBuilderMixin:
         content = QWidget()
         content.setStyleSheet("background: transparent;")
         lay = QVBoxLayout(content)
-        lay.setContentsMargins(36, 36, 36, 36)
+        lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(20)
         lay.setAlignment(Qt.AlignTop)
 
+        # Catchup-Button-Stil (genutzt in Header + DAVOR-Bereich)
+        _catchup_btn_ss = """
+            QPushButton {
+                background: transparent; color: #0078d4;
+                border: 1px solid #1a4a7a; border-radius: 8px;
+                font-size: 13px; font-weight: bold; padding: 0 16px;
+            }
+            QPushButton:hover { background: #0078d4; color: white; border-color: #0078d4; }
+        """
+
         # ── Header: Logo + Kanalname ──────────────────────────────
         header_row = QHBoxLayout()
-        header_row.setSpacing(20)
+        header_row.setSpacing(16)
 
         self.detail_logo = QLabel()
-        self.detail_logo.setFixedSize(88, 88)
+        self.detail_logo.setFixedSize(80, 80)
         self.detail_logo.setAlignment(Qt.AlignCenter)
         self.detail_logo.setStyleSheet("""
             background-color: #1a1a2a;
             border-radius: 12px;
             color: #444;
-            font-size: 28px;
+            font-size: 26px;
         """)
-        self.detail_logo.setText("📺")
-        header_row.addWidget(self.detail_logo, alignment=Qt.AlignTop)
+        self.detail_logo.setText("\U0001F4FA")
+        header_row.addWidget(self.detail_logo, alignment=Qt.AlignVCenter)
 
         name_block = QVBoxLayout()
         name_block.setSpacing(8)
@@ -684,7 +717,20 @@ class UiBuilderMixin:
             QPushButton:hover { background-color: #1094e8; }
         """)
         self.detail_play_btn.clicked.connect(lambda: self._play_detail_stream())
-        name_block.addWidget(self.detail_play_btn, alignment=Qt.AlignLeft)
+
+        # "Von Anfang"-Catchup-Button neben dem Abspielen-Button
+        self.detail_now_catchup_btn = QPushButton("\u25B6  Von Anfang")
+        self.detail_now_catchup_btn.setFixedHeight(40)
+        self.detail_now_catchup_btn.setStyleSheet(_catchup_btn_ss)
+        self.detail_now_catchup_btn.clicked.connect(self._play_detail_now_catchup)
+        self.detail_now_catchup_btn.hide()
+
+        play_row = QHBoxLayout()
+        play_row.setSpacing(10)
+        play_row.addWidget(self.detail_play_btn)
+        play_row.addWidget(self.detail_now_catchup_btn)
+        play_row.addStretch()
+        name_block.addLayout(play_row)
         header_row.addLayout(name_block, stretch=1)
         lay.addLayout(header_row)
 
@@ -693,6 +739,40 @@ class UiBuilderMixin:
         sep.setFixedHeight(1)
         sep.setStyleSheet("background-color: #1a1a2a; margin: 0;")
         lay.addWidget(sep)
+
+        # ── DAVOR-Bereich ─────────────────────────────────────────
+        self.detail_prev_widget = QWidget()
+        self.detail_prev_widget.setStyleSheet("background: transparent;")
+        prev_lay = QVBoxLayout(self.detail_prev_widget)
+        prev_lay.setContentsMargins(0, 0, 0, 0)
+        prev_lay.setSpacing(4)
+
+        davor_lbl = QLabel("DAVOR")
+        davor_lbl.setStyleSheet(
+            "font-size: 10px; font-weight: bold; color: #333; letter-spacing: 2px;"
+        )
+        prev_lay.addWidget(davor_lbl)
+
+        prev_row = QHBoxLayout()
+        prev_row.setSpacing(8)
+        self.detail_prev_title = QLabel("")
+        self.detail_prev_title.setStyleSheet("font-size: 16px; color: #555;")
+        self.detail_prev_title.setWordWrap(True)
+        prev_row.addWidget(self.detail_prev_title, stretch=1)
+        self.detail_prev_play_btn = QPushButton("\u25B6")
+        self.detail_prev_play_btn.setFixedHeight(28)
+        self.detail_prev_play_btn.setStyleSheet(_catchup_btn_ss)
+        self.detail_prev_play_btn.clicked.connect(self._play_detail_prev)
+        self.detail_prev_play_btn.hide()
+        prev_row.addWidget(self.detail_prev_play_btn, alignment=Qt.AlignVCenter)
+        prev_lay.addLayout(prev_row)
+
+        self.detail_prev_time = QLabel("")
+        self.detail_prev_time.setStyleSheet("font-size: 12px; color: #444;")
+        prev_lay.addWidget(self.detail_prev_time)
+
+        self.detail_prev_widget.hide()
+        lay.addWidget(self.detail_prev_widget)
 
         # ── JETZT-Bereich ─────────────────────────────────────────
         self.detail_now_section = QWidget()
@@ -707,15 +787,18 @@ class UiBuilderMixin:
         )
         now_lay.addWidget(jetzt_lbl)
 
-        self.detail_now_title = QLabel("–")
+        now_title_row = QHBoxLayout()
+        now_title_row.setSpacing(8)
+        self.detail_now_title = QLabel("\u2013")
         self.detail_now_title.setStyleSheet(
-            "font-size: 20px; font-weight: bold; color: #eeeeee;"
+            "font-size: 22px; font-weight: bold; color: #eeeeee;"
         )
         self.detail_now_title.setWordWrap(True)
-        now_lay.addWidget(self.detail_now_title)
+        now_title_row.addWidget(self.detail_now_title, stretch=1)
+        now_lay.addLayout(now_title_row)
 
         self.detail_now_time = QLabel("")
-        self.detail_now_time.setStyleSheet("font-size: 12px; color: #666;")
+        self.detail_now_time.setStyleSheet("font-size: 14px; color: #666;")
         now_lay.addWidget(self.detail_now_time)
 
         self.detail_now_progress = QProgressBar()
@@ -734,7 +817,7 @@ class UiBuilderMixin:
 
         self.detail_now_desc = QLabel("")
         self.detail_now_desc.setStyleSheet(
-            "font-size: 13px; color: #888; line-height: 1.6;"
+            "font-size: 15px; color: #888; line-height: 1.6;"
         )
         self.detail_now_desc.setWordWrap(True)
         self.detail_now_desc.hide()
@@ -756,7 +839,7 @@ class UiBuilderMixin:
         next_lay.addWidget(danach_lbl)
 
         self.detail_next_title = QLabel("")
-        self.detail_next_title.setStyleSheet("font-size: 16px; color: #aaa;")
+        self.detail_next_title.setStyleSheet("font-size: 18px; color: #aaa;")
         self.detail_next_title.setWordWrap(True)
         next_lay.addWidget(self.detail_next_title)
 
@@ -766,6 +849,26 @@ class UiBuilderMixin:
 
         self.detail_next_widget.hide()
         lay.addWidget(self.detail_next_widget)
+
+        # ── Catchup / Programm-Button ─────────────────────────────
+        self.detail_epg_action_btn = QPushButton("Programm  \u25B8")
+        self.detail_epg_action_btn.setFixedHeight(38)
+        self.detail_epg_action_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1a1a2a;
+                color: #aaa;
+                border: 1px solid #2a2a3a;
+                border-radius: 8px;
+                font-size: 13px;
+                padding: 0 18px;
+                text-align: left;
+            }
+            QPushButton:hover { background-color: #2a2a3a; color: #ddd; }
+            QPushButton:disabled { color: #444; border-color: #161622; }
+        """)
+        self.detail_epg_action_btn.clicked.connect(self._show_full_epg)
+        self.detail_epg_action_btn.setEnabled(False)
+        lay.addWidget(self.detail_epg_action_btn)
 
         lay.addStretch()
         scroll.setWidget(content)
@@ -1603,6 +1706,18 @@ class UiBuilderMixin:
         """)
         self.btn_stream_info.clicked.connect(self._toggle_stream_info)
         layout.addWidget(self.btn_stream_info)
+
+        # Vollbild-Button
+        sep4 = QFrame()
+        sep4.setFrameShape(QFrame.VLine)
+        sep4.setStyleSheet("color: #1e1e2e;")
+        layout.addWidget(sep4)
+
+        self.btn_fullscreen = QPushButton("\u26F6")
+        self.btn_fullscreen.setFixedSize(36, 36)
+        self.btn_fullscreen.setToolTip("Vollbild (F / Doppelklick)")
+        self.btn_fullscreen.clicked.connect(self._toggle_player_maximized)
+        layout.addWidget(self.btn_fullscreen)
 
         return bar
 
