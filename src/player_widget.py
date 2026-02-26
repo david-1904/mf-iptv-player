@@ -163,7 +163,7 @@ class MpvPlayerWidget(QOpenGLWidget):
             return
 
         elapsed = time.monotonic() - self._last_update_time
-        if elapsed > 8.0:
+        if elapsed > 5.0:
             print(f"[MPV] Render-Freeze erkannt ({elapsed:.1f}s ohne Update) – Vollneustart")
             self._last_update_time = time.monotonic()
             self._full_restart()
