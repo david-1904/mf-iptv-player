@@ -176,9 +176,9 @@ class UiBuilderMixin:
 
         # Titelzeile mit Schliessen-Button
         title_row = QHBoxLayout()
-        title = QLabel("Account hinzufuegen")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 16px;")
-        title_row.addWidget(title)
+        self.settings_title = QLabel("Account hinzuf\u00fcgen")
+        self.settings_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 16px;")
+        title_row.addWidget(self.settings_title)
         title_row.addStretch()
         self.btn_close_settings = QPushButton("Schliessen")
         self.btn_close_settings.setStyleSheet("""
@@ -248,6 +248,11 @@ class UiBuilderMixin:
         self.btn_add_account.clicked.connect(self._add_account)
         btn_layout.addWidget(self.btn_add_account)
 
+        self.btn_cancel_edit = QPushButton("Abbrechen")
+        self.btn_cancel_edit.clicked.connect(self._cancel_edit)
+        self.btn_cancel_edit.hide()
+        btn_layout.addWidget(self.btn_cancel_edit)
+
         layout.addLayout(btn_layout)
 
         # Account-Liste
@@ -258,9 +263,14 @@ class UiBuilderMixin:
 
         self.account_list = QListWidget()
         self.account_list.setMaximumHeight(200)
+        self.account_list.itemClicked.connect(self._on_account_list_clicked)
         layout.addWidget(self.account_list)
 
-        self.btn_delete_account = QPushButton("Account loeschen")
+        acc_hint = QLabel("Auf einen Account klicken, um ihn zu bearbeiten")
+        acc_hint.setStyleSheet("color: #555; font-size: 11px; margin: 2px 0;")
+        layout.addWidget(acc_hint)
+
+        self.btn_delete_account = QPushButton("Ausgew\u00e4hlten Account l\u00f6schen")
         self.btn_delete_account.clicked.connect(self._delete_account)
         layout.addWidget(self.btn_delete_account)
 

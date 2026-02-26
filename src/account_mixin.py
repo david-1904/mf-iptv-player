@@ -122,6 +122,44 @@ class AccountMixin:
         self._update_account_combo()
         self.content_stack.setCurrentWidget(self.settings_page)
 
+    def _on_account_list_clicked(self, item):
+        """Klick auf Account in der Liste: Formular zum Bearbeiten befuellen"""
+        row = self.account_list.currentRow()
+        if row < 0:
+            return
+        accounts = self.account_manager.get_all()
+        if row >= len(accounts):
+            return
+        acc = accounts[row]
+
+        self.input_name.setText(acc.name)
+        if acc.type == "m3u":
+            self.account_type_combo.setCurrentIndex(self.account_type_combo.findData("m3u"))
+            self.input_m3u_url.setText(acc.url)
+        else:
+            self.account_type_combo.setCurrentIndex(self.account_type_combo.findData("xtream"))
+            self.input_server.setText(acc.server)
+            self.input_username.setText(acc.username)
+            self.input_password.setText(acc.password)
+
+        self._editing_account_index = row
+        self.settings_title.setText("Account bearbeiten")
+        self.btn_add_account.setText("\u00c4nderungen speichern")
+        self.btn_cancel_edit.show()
+
+    def _cancel_edit(self):
+        """Bearbeitung abbrechen, Formular zuruecksetzen"""
+        self._editing_account_index = -1
+        self.input_name.clear()
+        self.input_server.clear()
+        self.input_username.clear()
+        self.input_password.clear()
+        self.input_m3u_url.clear()
+        self.account_list.clearSelection()
+        self.settings_title.setText("Account hinzuf\u00fcgen")
+        self.btn_add_account.setText("Account speichern")
+        self.btn_cancel_edit.hide()
+
     def _add_account(self):
         name = self.input_name.text().strip()
         account_type = self.account_type_combo.currentData()
@@ -144,7 +182,47 @@ class AccountMixin:
                 server=server, username=username, password=password,
             )
 
-        asyncio.ensure_future(self._test_and_add_account(entry))
+        if self._editing_account_index >= 0:
+            asyncio.ensure_future(self._test_and_update_account(self._editing_account_index, entry))
+        else:
+            asyncio.ensure_future(self._test_and_add_account(entry))
+
+    async def _test_and_update_account(self, index: int, entry: AccountEntry):
+        """Verbindung testen und bestehenden Account aktualisieren"""
+        self._show_loading("Teste Verbindung...")
+        self.btn_add_account.setEnabled(False)
+        try:
+            if entry.type == "m3u":
+                api = M3uProvider(entry.name, entry.url)
+                await api.load()
+            else:
+                creds = XtreamCredentials(
+                    server=entry.server, username=entry.username,
+                    password=entry.password, name=entry.name,
+                )
+                api = XtreamAPI(creds)
+                await api.get_account_info()
+
+            was_selected = (index == self.account_manager.selected_index)
+            self.account_manager.update_account(index, entry)
+            if was_selected:
+                self.api = api
+
+            self._cancel_edit()
+            self._update_account_combo()
+            self._hide_loading("Account gespeichert")
+
+            if was_selected:
+                self.live_categories = []
+                self.vod_categories = []
+                self.series_categories = []
+                self._search_cache_loaded = False
+                asyncio.ensure_future(self._load_categories())
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Verbindung fehlgeschlagen:\n{e}")
+            self._hide_loading("Verbindung fehlgeschlagen")
+        finally:
+            self.btn_add_account.setEnabled(True)
 
     async def _test_and_add_account(self, entry: AccountEntry):
         self._show_loading("Teste Verbindung...")
@@ -193,6 +271,11 @@ class AccountMixin:
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:
+                # Edit-Modus zuruecksetzen wenn der bearbeitete Account geloescht wird
+                if self._editing_account_index == row:
+                    self._cancel_edit()
+                elif self._editing_account_index > row:
+                    self._editing_account_index -= 1
                 self.account_manager.remove_account(row)
                 self._update_account_combo()
                 if not self.account_manager.get_all():
