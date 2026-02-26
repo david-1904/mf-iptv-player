@@ -35,7 +35,7 @@ class AccountMixin:
                 self.btn_series.setChecked(saved_mode == "series")
                 self.btn_favorites.setChecked(False)
                 self.btn_history.setChecked(False)
-                self.category_btn.setVisible(True)
+                self.category_row.setVisible(True)
                 self.sort_widget.setVisible(saved_mode in ("vod", "series"))
 
             if account.type == "m3u":

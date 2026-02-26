@@ -26,17 +26,17 @@ class UiBuilderMixin:
             }
             QPushButton {
                 text-align: left;
-                padding: 10px 14px;
-                margin: 2px 10px;
+                padding: 10px 16px;
+                margin: 2px 8px;
                 border: none;
                 border-radius: 8px;
                 background: transparent;
-                color: #999;
-                font-size: 13px;
+                color: #aaa;
+                font-size: 15px;
             }
             QPushButton:hover {
                 background-color: #1a1a2a;
-                color: #ccc;
+                color: #ddd;
             }
             QPushButton:checked {
                 background-color: #0078d4;
@@ -150,17 +150,17 @@ class UiBuilderMixin:
         self.btn_settings.setStyleSheet("""
             QPushButton {
                 text-align: left;
-                padding: 10px 14px;
-                margin: 2px 10px;
+                padding: 10px 16px;
+                margin: 2px 8px;
                 border: none;
                 border-radius: 8px;
                 background: transparent;
-                color: #666;
-                font-size: 12px;
+                color: #888;
+                font-size: 15px;
             }
             QPushButton:hover {
                 background-color: #1a1a2a;
-                color: #999;
+                color: #bbb;
             }
         """)
         self.btn_settings.clicked.connect(self._show_settings)
@@ -371,27 +371,36 @@ class UiBuilderMixin:
         cl_layout.setContentsMargins(0, 0, 0, 0)
         cl_layout.setSpacing(0)
 
-        # Kategorie-Auswahl (Button + inline Liste)
-        self.category_btn = QPushButton("Kategorie waehlen  \u25BE")
+        # Kategorie-Zeile (Label + Button, analog zur Sortierungs-Zeile)
+        self.category_row = QWidget()
+        self.category_row.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        _cat_row_layout = QHBoxLayout(self.category_row)
+        _cat_row_layout.setContentsMargins(12, 0, 0, 0)
+        _cat_row_layout.setSpacing(8)
+
+        _cat_label = QLabel("Kategorie:")
+        _cat_label.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        _cat_row_layout.addWidget(_cat_label)
+
+        self.category_btn = QPushButton("W\u00e4hlen  \u25BE")
         self.category_btn.setStyleSheet("""
             QPushButton {
-                padding: 8px 12px;
-                margin: 0;
-                background: #161622;
+                padding: 8px 8px;
+                background: transparent;
                 border: none;
-                border-bottom: 1px solid #1a1a2a;
                 border-radius: 0;
                 color: #ccc;
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: bold;
                 text-align: left;
             }
-            QPushButton:hover { background: #1c1c2c; color: white; }
+            QPushButton:hover { color: white; background: #1c1c2c; }
         """)
         self._category_items: list[tuple[str, str]] = []  # (name, id)
         self._current_category_index = -1
         self.category_btn.clicked.connect(self._toggle_category_list)
-        cl_layout.addWidget(self.category_btn)
+        _cat_row_layout.addWidget(self.category_btn, stretch=1)
+        cl_layout.addWidget(self.category_row)
 
         # Inline-Kategorie-Liste (aufklappbar)
         self.category_list = QListWidget()
