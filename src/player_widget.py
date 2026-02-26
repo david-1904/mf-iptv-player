@@ -202,6 +202,12 @@ class MpvPlayerWidget(QOpenGLWidget):
         # PlaybackMixin über den Neustart informieren → Stream neu starten
         self.gl_context_recreated.emit()
 
+    def force_restart(self):
+        """Vollständiger mpv-Neustart für externe Aufrufer (z.B. Reconnect-Handler).
+        Terminiert die mpv-Instanz komplett und erstellt alles neu.
+        """
+        self._full_restart()
+
     def _on_gl_context_destroyed(self):
         """Render-Kontext freigeben bevor der GL-Kontext zerstört wird"""
         self.makeCurrent()
