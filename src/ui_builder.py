@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QProgressBar, QAbstractItemView, QScroller, QMenu
 )
 from PySide6.QtCore import Qt, QSize, Slot, QTimer
-from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtGui import QAction, QPixmap, QFont
 
 from flow_layout import FlowLayout
 
@@ -1316,18 +1316,58 @@ class UiBuilderMixin:
         self._buffering_timer = QTimer()
         self._buffering_timer.timeout.connect(self._animate_buffering)
 
-        # PiP-Close-Button (nur im PiP-Modus sichtbar)
-        self.pip_close_btn = QPushButton("\u2715", area)
-        self.pip_close_btn.setFixedSize(28, 28)
-        self.pip_close_btn.setStyleSheet("""
-            QPushButton {
-                background: rgba(0, 0, 0, 160); color: #ccc; border: none;
-                border-radius: 14px; font-size: 13px;
+        # PiP-Kontrollleiste (schwebt oben im PiP-Fenster, nur im PiP-Modus)
+        self.pip_bar = QFrame(area)
+        self.pip_bar.setObjectName("pipBar")
+        self.pip_bar.setStyleSheet("""
+            QFrame#pipBar {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(0,0,0,210), stop:1 rgba(0,0,0,0));
+                border: none;
             }
-            QPushButton:hover { background: rgba(255, 50, 50, 200); color: white; }
         """)
+        _pip_layout = QHBoxLayout(self.pip_bar)
+        _pip_layout.setContentsMargins(8, 6, 4, 10)
+        _pip_layout.setSpacing(2)
+
+        self.pip_title_label = QLabel("")
+        self.pip_title_label.setStyleSheet(
+            "color: rgba(255,255,255,200); font-size: 10pt; background: transparent;"
+        )
+        _pip_layout.addWidget(self.pip_title_label, stretch=1)
+
+        _pip_font = QFont()
+        _pip_font.setPointSize(11)
+        _pip_btn_base = """
+            QPushButton {
+                background: transparent; color: white; border: none;
+                border-radius: 4px; padding: 0px;
+            }
+        """
+
+        self.pip_expand_btn = QPushButton("\u2197")   # ↗ Pfeil
+        self.pip_expand_btn.setFont(_pip_font)
+        self.pip_expand_btn.setFixedSize(28, 26)
+        self.pip_expand_btn.setToolTip("Vergrößern")
+        self.pip_expand_btn.setStyleSheet(
+            _pip_btn_base +
+            "QPushButton:hover { background: rgba(50,180,50,180); border-radius: 4px; }"
+        )
+        self.pip_expand_btn.clicked.connect(self._on_pip_expand)
+        _pip_layout.addWidget(self.pip_expand_btn)
+
+        self.pip_close_btn = QPushButton("\u00d7")    # × Multiplikationszeichen
+        self.pip_close_btn.setFont(_pip_font)
+        self.pip_close_btn.setFixedSize(28, 26)
+        self.pip_close_btn.setToolTip("Wiedergabe beenden")
+        self.pip_close_btn.setStyleSheet(
+            _pip_btn_base +
+            "QPushButton:hover { background: rgba(220,50,50,200); border-radius: 4px; }"
+        )
         self.pip_close_btn.clicked.connect(self._stop_playback)
-        self.pip_close_btn.hide()
+        _pip_layout.addWidget(self.pip_close_btn)
+
+        self.pip_bar.hide()
 
         return area
 
