@@ -55,7 +55,7 @@ class EpgMixin:
             return
 
         try:
-            epg_data = await self.api.get_short_epg(stream_id, limit=5)
+            epg_data = await self.api.get_short_epg(stream_id, limit=8)
             self._epg_cache[stream_id] = epg_data
             if self._current_epg_stream_id == stream_id:
                 self._update_epg_panel(epg_data)
@@ -189,7 +189,7 @@ class EpgMixin:
             self._play_catchup(dialog.selected_catchup_entry)
 
     def _play_catchup(self, entry: EpgEntry):
-        """Spielt eine vergangene Sendung via Catchup/Timeshift ab"""
+        """Spielt eine vergangene/aktuelle Sendung via Catchup ab (EPG bleibt sichtbar)."""
         if not self.api or self._current_epg_stream_id is None:
             return
 
@@ -201,41 +201,76 @@ class EpgMixin:
         channel_name = self.epg_channel_name.text()
         start_str = start.strftime("%H:%M")
         end_str = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
-        title = f"{channel_name} - {entry.title} ({start_str}-{end_str})"
+        title = f"{channel_name} \u2013 {entry.title} ({start_str}\u2013{end_str})"
 
-        self._play_stream(url, title, "vod")
+        # Als Live-Stream abspielen damit EPG-Panel (3-Spalten) sichtbar bleibt
+        self._play_stream(url, title, "live", stream_id)
+        # Timeshift aktiv: Seek-Controls einblenden
+        self._timeshift_active = True
+        self._update_seek_controls_visibility()
+
+    def _play_detail_prev(self):
+        """Spielt die vorherige Sendung via Catchup ab."""
+        if self._detail_prev_entry:
+            self._play_catchup(self._detail_prev_entry)
+
+    def _play_detail_now_catchup(self):
+        """Spielt die aktuelle Sendung ab Beginn via Catchup ab."""
+        if self._detail_now_entry:
+            self._play_catchup(self._detail_now_entry)
 
     # ── Kanal-Detailpanel ─────────────────────────────────────────────
 
     def _show_channel_detail(self, stream_data):
-        """Zeigt das Kanal-Detailpanel rechts (nur wenn kein Player aktiv)."""
-        # Nur anzeigen wenn kein Player laueft
-        if self.player_area.isVisible() and not self._pip_mode:
-            return
-
+        """Zeigt das Kanal-Detailpanel. Layout: Senderliste | EPG | TV (3 Spalten)."""
         self._detail_stream_data = stream_data
 
         name = getattr(stream_data, 'name', '') or getattr(stream_data, 'title', '')
         self.detail_channel_name.setText(name)
 
-        # Platzhalter bis Logo geladen
-        self.detail_logo.setText("📺")
+        # Logo-Platzhalter
+        self.detail_logo.setText("\U0001F4FA")
         self.detail_logo.setPixmap(QPixmap())
 
-        # EPG-Platzhalter bis Daten da sind
-        self.detail_now_title.setText("Lade Programm…")
+        # EPG-Platzhalter
+        self.detail_prev_widget.hide()
+        self.detail_now_title.setText("Lade Programm\u2026")
+        self.detail_now_catchup_btn.hide()
         self.detail_now_time.setText("")
         self.detail_now_progress.hide()
         self.detail_now_desc.hide()
         self.detail_next_widget.hide()
+        self.detail_epg_action_btn.setEnabled(False)
+        self.detail_epg_action_btn.setText("Programm  \u25B8")
+        self.detail_epg_action_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1a1a2a; color: #aaa;
+                border: 1px solid #2a2a3a; border-radius: 8px;
+                font-size: 13px; padding: 0 18px; text-align: left;
+            }
+            QPushButton:hover { background-color: #2a2a3a; color: #ddd; }
+            QPushButton:disabled { color: #444; border-color: #161622; }
+        """)
+        self._detail_prev_entry = None
+        self._detail_now_entry = None
 
-        # Layout anpassen: Kanalliste schmal, Detailpanel breit
-        self.channel_nav_widget.setMaximumWidth(360)
+        # EPG-Panel-Zeile verstecken, Senderliste bleibt immer sichtbar
         self._epg_splitter.setSizes([99999, 0])
         self.epg_panel.hide()
+
+        player_running = self.player_area.isVisible() and not self._pip_mode
+        if player_running:
+            # 3-Spalten: Senderliste schmal | EPG-Detail | Player
+            # Max 700px damit der Player immer genuegend Platz bekommt
+            ca_width = min(700, max(560, int(self.main_page.width() * 0.42)))
+            self.channel_nav_widget.setMaximumWidth(280)
+            self.channel_area.setFixedWidth(ca_width)
+        else:
+            # 2-Spalten: Senderliste schmal | EPG-Detail
+            self.channel_nav_widget.setMaximumWidth(360)
+
         self.channel_detail_panel.show()
 
-        # Logo async laden
         icon_url = getattr(stream_data, 'stream_icon', '') or getattr(stream_data, 'icon', '')
         if icon_url:
             asyncio.ensure_future(self._load_detail_logo(icon_url))
@@ -246,29 +281,50 @@ class EpgMixin:
             return
         self.channel_detail_panel.hide()
         self.channel_nav_widget.setMaximumWidth(16777215)
+        if self.player_area.isVisible() and not self._pip_mode:
+            self.channel_area.setFixedWidth(360)
         if self.current_mode == "live":
             self.epg_panel.show()
-            self._epg_splitter.setSizes([600, 260])
+            self._epg_splitter.setSizes([700, 180])
 
     def _update_detail_epg(self, epg_data: list):
-        """Befuellt den JETZT/DANACH-Bereich im Detailpanel mit EPG-Daten."""
+        """Befuellt den DAVOR/JETZT/DANACH-Bereich im Detailpanel mit EPG-Daten."""
         if not self.channel_detail_panel.isVisible():
             return
 
         now = datetime.now().timestamp()
+        prev = None
         current = None
         nxt = None
-        for entry in epg_data:
-            if entry.start_timestamp <= now <= entry.stop_timestamp:
+        for entry in sorted(epg_data, key=lambda e: e.start_timestamp):
+            if entry.stop_timestamp <= now:
+                prev = entry  # letzten vergangenen Eintrag merken
+            elif entry.start_timestamp <= now <= entry.stop_timestamp:
                 current = entry
             elif entry.start_timestamp > now and nxt is None:
                 nxt = entry
+
+        # Eintraege fuer Play-Button-Callbacks speichern
+        self._detail_prev_entry = prev
+        self._detail_now_entry = current
+
+        # DAVOR-Bereich
+        if prev:
+            s = datetime.fromtimestamp(prev.start_timestamp).strftime("%H:%M")
+            e = datetime.fromtimestamp(prev.stop_timestamp).strftime("%H:%M")
+            self.detail_prev_title.setText(prev.title)
+            self.detail_prev_time.setText(f"{s} \u2013 {e}")
+            self.detail_prev_play_btn.setVisible(self._current_epg_has_catchup)
+            self.detail_prev_widget.show()
+        else:
+            self.detail_prev_widget.hide()
 
         if current:
             s = datetime.fromtimestamp(current.start_timestamp).strftime("%H:%M")
             e = datetime.fromtimestamp(current.stop_timestamp).strftime("%H:%M")
             self.detail_now_title.setText(current.title)
-            self.detail_now_time.setText(f"{s} – {e}")
+            self.detail_now_catchup_btn.setVisible(self._current_epg_has_catchup)
+            self.detail_now_time.setText(f"{s} \u2013 {e}")
             dur = current.stop_timestamp - current.start_timestamp
             if dur > 0:
                 prog = max(0, min(100, int((now - current.start_timestamp) / dur * 100)))
@@ -294,15 +350,39 @@ class EpgMixin:
         else:
             self.detail_next_widget.hide()
 
+        # Catchup / Programm-Button konfigurieren
+        if self._current_epg_has_catchup:
+            self.detail_epg_action_btn.setText("\u25C4\u25C4  Catchup")
+            self.detail_epg_action_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #0a2a4a; color: #4fc3f7;
+                    border: 1px solid #0078d4; border-radius: 8px;
+                    font-size: 13px; font-weight: bold;
+                    padding: 0 18px; text-align: left;
+                }
+                QPushButton:hover { background-color: #0078d4; color: white; }
+            """)
+        else:
+            self.detail_epg_action_btn.setText("Programm  \u25B8")
+            self.detail_epg_action_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #1a1a2a; color: #aaa;
+                    border: 1px solid #2a2a3a; border-radius: 8px;
+                    font-size: 13px; padding: 0 18px; text-align: left;
+                }
+                QPushButton:hover { background-color: #2a2a3a; color: #ddd; }
+            """)
+        self.detail_epg_action_btn.setEnabled(True)
+
     async def _load_detail_logo(self, url: str):
-        """Laedt das Senderlogo fuer das Detailpanel (gross, abgerundet per CSS)."""
+        """Laedt das Senderlogo und setzt es als 80x80 Icon."""
         try:
             async with aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=5)
             ) as session:
-                pixmap = await self._fetch_poster(session, url, 88, 88)
+                pixmap = await self._fetch_poster(session, url, 160, 160)
                 if pixmap and self.channel_detail_panel.isVisible():
-                    scaled = pixmap.scaled(88, 88, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    scaled = pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     self.detail_logo.setPixmap(scaled)
                     self.detail_logo.setText("")
         except Exception:

@@ -112,8 +112,14 @@ class PlaybackMixin:
             self._exit_pip_mode()
 
         self._update_seek_controls_visibility()
-        # Detailpanel schliessen wenn Stream startet
-        self._hide_channel_detail()
+        # Detailpanel: bei Live-TV offen lassen (3-Spalten), bei VOD schliessen
+        if is_vod_playback or not self.channel_detail_panel.isVisible():
+            self._hide_channel_detail()
+        else:
+            # Live-TV mit offenem Detailpanel: 3-Spalten-Layout sicherstellen
+            ca_width = min(700, max(560, int(self.main_page.width() * 0.42)))
+            self.channel_nav_widget.setMaximumWidth(280)
+            self.channel_area.setFixedWidth(ca_width)
         self.player.play(url)
         self.btn_play_pause.setText("\u2759\u2759")
         self.player_info_label.setText("")
