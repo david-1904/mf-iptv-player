@@ -25,6 +25,19 @@ class AccountMixin:
         self._update_account_combo()
         account = self.account_manager.get_selected()
         if account:
+            # Letzten Modus wiederherstellen
+            is_m3u = account.type == "m3u"
+            saved_mode = self.session_manager.get_mode(account.name)
+            if saved_mode in ("live", "vod", "series") and not (saved_mode == "series" and is_m3u):
+                self.current_mode = saved_mode
+                self.btn_live.setChecked(saved_mode == "live")
+                self.btn_vod.setChecked(saved_mode == "vod")
+                self.btn_series.setChecked(saved_mode == "series")
+                self.btn_favorites.setChecked(False)
+                self.btn_history.setChecked(False)
+                self.category_btn.setVisible(True)
+                self.sort_widget.setVisible(saved_mode in ("vod", "series"))
+
             if account.type == "m3u":
                 self.api = M3uProvider(account.name, account.url)
                 self.content_stack.setCurrentWidget(self.main_page)

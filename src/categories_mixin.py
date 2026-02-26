@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QWidget, QCheckBox
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QFontMetrics, QColor
 
 from xtream_api import LiveStream, VodStream, Series
 
@@ -21,6 +21,11 @@ class CategoriesMixin:
         if mode == "search" and self.current_mode != "search":
             self._last_mode_before_search = self.current_mode
         self.current_mode = mode
+        # Session-Modus merken
+        if mode in ("live", "vod", "series"):
+            account = self.account_manager.get_selected()
+            if account:
+                self.session_manager.save_mode(account.name, mode)
         # Detailpanel schliessen bei Moduswechsel
         self._hide_channel_detail()
 
@@ -124,7 +129,18 @@ class CategoriesMixin:
             ]
 
             self._category_items = [(cat.category_name, cat.category_id) for cat in visible_cats]
-            self._current_category_index = 0 if visible_cats else -1
+
+            # Session-Restore: letzte Kategorie wiederfinden
+            session = self.session_manager.get(account_name, self.current_mode)
+            target_cat_idx = 0
+            if session and visible_cats:
+                saved_cat_id = session.get("category_id")
+                for i, cat in enumerate(visible_cats):
+                    if cat.category_id == saved_cat_id:
+                        target_cat_idx = i
+                        break
+
+            self._current_category_index = target_cat_idx if visible_cats else -1
             self.category_list.clear()
             for cat in visible_cats:
                 self.category_list.addItem(cat.category_name)
@@ -135,8 +151,11 @@ class CategoriesMixin:
             self.manage_hidden_btn.setVisible(has_hidden)
 
             if visible_cats:
-                self.category_btn.setText(f"{visible_cats[0].category_name}  \u25BE")
-                await self._load_items(visible_cats[0].category_id)
+                target_cat = visible_cats[target_cat_idx]
+                self.category_btn.setText(f"{target_cat.category_name}  \u25BE")
+                await self._load_items(target_cat.category_id)
+                if session:
+                    self._restore_session_item(session)
             else:
                 self.category_btn.setText("Keine Kategorien")
 
@@ -323,6 +342,96 @@ class CategoriesMixin:
 
         dialog.exec()
 
+    def _restore_session_item(self, session: dict):
+        """Stellt das zuletzt geöffnete Item aus der Session wieder her"""
+        mode = self.current_mode
+        if mode not in ("live", "vod", "series"):
+            return
+
+        # Nicht aktivieren wenn bereits aktiv (z.B. nach manuellem Refresh)
+        already_active = (
+            (mode == "live" and self._current_playing_stream_id is not None) or
+            (mode == "vod" and getattr(self, "_current_vod", None) is not None) or
+            (mode == "series" and getattr(self, "_current_series", None) is not None)
+        )
+
+        for i in range(self.channel_list.count()):
+            item = self.channel_list.item(i)
+            data = item.data(Qt.UserRole)
+
+            match = False
+            if mode == "live" and isinstance(data, LiveStream):
+                match = data.stream_id == session.get("stream_id")
+            elif mode == "vod" and isinstance(data, VodStream):
+                match = data.stream_id == session.get("stream_id")
+            elif mode == "series" and isinstance(data, Series):
+                match = data.series_id == session.get("series_id")
+
+            if match:
+                self.channel_list.setCurrentRow(i)
+                self.channel_list.scrollToItem(item)
+                if not already_active:
+                    self._on_channel_selected(item)
+                break
+
+    def _get_item_rating(self, data) -> str:
+        """Extrahiert die anzuzeigende Bewertung aus einem VOD/Serien-Item"""
+        if not isinstance(data, (VodStream, Series)):
+            return ""
+        rating_str = data.rating
+        if rating_str and rating_str not in ("0", "0.0", ""):
+            try:
+                val = float(rating_str)
+                if val > 0:
+                    return f"{val:.1f}"
+            except (ValueError, TypeError):
+                pass
+        return ""
+
+    def _draw_rating_badge(self, pixmap: QPixmap, rating: str) -> QPixmap:
+        """Zeichnet einen kleinen farbigen Rating-Badge auf das Poster"""
+        result = QPixmap(pixmap)
+        painter = QPainter(result)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        font = QFont()
+        font.setPointSize(max(7, min(10, result.height() // 22)))
+        font.setBold(True)
+        painter.setFont(font)
+
+        fm = QFontMetrics(font)
+        text = f"\u2605 {rating}"
+        text_w = fm.horizontalAdvance(text)
+        text_h = fm.height()
+        padding = 3
+        badge_w = text_w + padding * 2
+        badge_h = text_h + padding * 2
+
+        # Farbe je nach Bewertung
+        try:
+            val = float(rating)
+            if val >= 7.0:
+                color = QColor(46, 160, 67)   # Grün
+            elif val >= 5.0:
+                color = QColor(200, 140, 20)  # Orange
+            else:
+                color = QColor(200, 50, 50)   # Rot
+        except Exception:
+            color = QColor(80, 80, 80)
+
+        # Badge zeichnen
+        painter.setOpacity(0.85)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawRoundedRect(4, 4, badge_w, badge_h, 3, 3)
+
+        painter.setOpacity(1.0)
+        painter.setPen(QColor(255, 255, 255))
+        painter.drawText(4 + padding, 4 + padding + fm.ascent(), text)
+
+        painter.end()
+        return result
+
     async def _load_items(self, category_id: str):
         if not self.api:
             return
@@ -432,24 +541,27 @@ class CategoriesMixin:
             elif isinstance(data, Series):
                 url = data.cover
             if url:
-                items_to_load.append((i, url))
+                items_to_load.append((i, url, data))
 
         if not items_to_load:
             return
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async def load_one(index, url):
+            async def load_one(index, url, data):
                 async with sem:
                     if self._poster_load_generation != current_gen:
                         return
                     pixmap = await self._fetch_poster(session, url, icon_size.width(), icon_size.height())
                     if pixmap and self._poster_load_generation == current_gen:
+                        rating = self._get_item_rating(data)
+                        if rating:
+                            pixmap = self._draw_rating_badge(pixmap, rating)
                         item = self.channel_list.item(index)
                         if item:
                             item.setIcon(QIcon(pixmap))
 
             await asyncio.gather(
-                *[load_one(i, url) for i, url in items_to_load],
+                *[load_one(i, url, data) for i, url, data in items_to_load],
                 return_exceptions=True
             )
 

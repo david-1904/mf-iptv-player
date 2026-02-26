@@ -18,6 +18,7 @@ from favorites_manager import FavoritesManager
 from watch_history_manager import WatchHistoryManager
 from hidden_categories_manager import HiddenCategoriesManager
 from recorder import StreamRecorder
+from session_manager import SessionManager
 
 from ui_builder import UiBuilderMixin
 from playback_mixin import PlaybackMixin
@@ -60,6 +61,7 @@ class MainWindow(
         self.favorites_manager = FavoritesManager()
         self.history_manager = WatchHistoryManager()
         self.hidden_categories_manager = HiddenCategoriesManager()
+        self.session_manager = SessionManager()
         self.recorder = StreamRecorder()
         self.api: XtreamAPI | None = None
         self.current_mode = "live"  # live, vod, series, favorites, history, search
