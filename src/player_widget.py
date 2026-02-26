@@ -1,9 +1,10 @@
 """
 MPV Player Widget fuer PySide6 - OpenGL-basiert (Wayland-kompatibel)
 """
+import time
 from ctypes import CFUNCTYPE, c_void_p, c_char_p
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 import mpv
 
 import sys
@@ -49,6 +50,12 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._screensaver_inhibitions = []  # [(service, path, iface_name, cookie), ...]
         self._logind_fd = None               # systemd-logind idle-inhibit fd
 
+        # Freeze-Erkennung: Zeitstempel des letzten update_cb-Aufrufs von mpv
+        self._last_update_time = time.monotonic()
+        self._freeze_check_timer = QTimer()
+        self._freeze_check_timer.setInterval(5000)
+        self._freeze_check_timer.timeout.connect(self._check_render_freeze)
+
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
         self._stream_ended_signal.connect(self.stream_ended)
@@ -91,7 +98,7 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.player, 'opengl',
             opengl_init_params={'get_proc_address': self._proc_addr_wrapper}
         )
-        self.ctx.update_cb = lambda: self._mpv_update.emit()
+        self.ctx.update_cb = self._on_mpv_frame_update
 
         self._player_initialized = True
 
@@ -131,6 +138,39 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.player.play(self._pending_url)
             self._pending_url = None
 
+    def _on_mpv_frame_update(self):
+        """Wird von mpv aufgerufen wenn ein neues Frame bereit ist (mpv-interner Thread)."""
+        self._last_update_time = time.monotonic()
+        self._mpv_update.emit()
+
+    def _check_render_freeze(self):
+        """Freeze-Watchdog: erkennt wenn mpv keine neuen Frames mehr liefert.
+
+        Tritt auf nach Netzwerkabbruch, Bildschirmsperre oder mpv-internem Pipeline-Hänger.
+        Symptom: nur noch erstes Standbild, auch nach Senderwechsel.
+        Fix: Render-Kontext neu erstellen + Stream neu starten.
+        """
+        if not self.player or not self._player_initialized:
+            return
+        try:
+            # Nicht auslösen wenn pausiert oder kein Stream geladen
+            if self.player.pause or not self.player.path:
+                return
+        except Exception:
+            return
+        # Nicht auslösen während Buffering – das ist normales Warten
+        if self._is_buffering:
+            return
+
+        elapsed = time.monotonic() - self._last_update_time
+        if elapsed > 8.0:
+            print(f"[MPV] Render-Freeze erkannt ({elapsed:.1f}s ohne Update) – Neustart")
+            # Zeitstempel sofort zurücksetzen um Mehrfach-Trigger zu verhindern
+            self._last_update_time = time.monotonic()
+            self.makeCurrent()
+            self._reinit_render_context()
+            self.doneCurrent()
+
     def _on_gl_context_destroyed(self):
         """Render-Kontext freigeben bevor der GL-Kontext zerstört wird"""
         self.makeCurrent()
@@ -161,7 +201,7 @@ class MpvPlayerWidget(QOpenGLWidget):
                 self.player, 'opengl',
                 opengl_init_params={'get_proc_address': self._proc_addr_wrapper}
             )
-            self.ctx.update_cb = lambda: self._mpv_update.emit()
+            self.ctx.update_cb = self._on_mpv_frame_update
             self._mpv_update.emit()
             # Stream-Neustart anstoßen (video pipeline nach GL-Verlust steckt sonst fest)
             self.gl_context_recreated.emit()
@@ -287,6 +327,9 @@ class MpvPlayerWidget(QOpenGLWidget):
         """Spielt eine URL ab"""
         self._buffering_signal.emit(True)
         self._inhibit_screensaver()
+        # Freeze-Watchdog: Uhr zurücksetzen (mpv braucht Zeit zum Verbinden)
+        self._last_update_time = time.monotonic()
+        self._freeze_check_timer.start()
         if not self._player_initialized:
             self._pending_url = url
         else:
@@ -295,6 +338,7 @@ class MpvPlayerWidget(QOpenGLWidget):
     def stop(self):
         """Stoppt die Wiedergabe"""
         self._uninhibit_screensaver()
+        self._freeze_check_timer.stop()
         if self.player:
             self.player.stop()
 
@@ -446,6 +490,7 @@ class MpvPlayerWidget(QOpenGLWidget):
     def cleanup(self):
         """Raeumt auf bevor das Widget zerstoert wird"""
         self._uninhibit_screensaver()
+        self._freeze_check_timer.stop()
         self.makeCurrent()
         if self.ctx:
             self.ctx.free()
