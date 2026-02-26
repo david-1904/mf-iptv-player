@@ -425,7 +425,7 @@ class UiBuilderMixin:
             }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
-        self.category_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.category_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.category_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.category_list.customContextMenuRequested.connect(self._on_category_context_menu)
         self.category_list.itemClicked.connect(self._on_category_list_clicked)
