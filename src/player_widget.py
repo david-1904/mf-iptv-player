@@ -148,7 +148,7 @@ class MpvPlayerWidget(QOpenGLWidget):
 
         Tritt auf nach Netzwerkabbruch, Bildschirmsperre oder mpv-internem Pipeline-Hänger.
         Symptom: nur noch erstes Standbild, auch nach Senderwechsel.
-        Fix: Render-Kontext neu erstellen + Stream neu starten.
+        Fix: kompletter mpv-Neustart (nukleares Reset der gesamten Pipeline).
         """
         if not self.player or not self._player_initialized:
             return
@@ -164,12 +164,43 @@ class MpvPlayerWidget(QOpenGLWidget):
 
         elapsed = time.monotonic() - self._last_update_time
         if elapsed > 8.0:
-            print(f"[MPV] Render-Freeze erkannt ({elapsed:.1f}s ohne Update) – Neustart")
-            # Zeitstempel sofort zurücksetzen um Mehrfach-Trigger zu verhindern
+            print(f"[MPV] Render-Freeze erkannt ({elapsed:.1f}s ohne Update) – Vollneustart")
             self._last_update_time = time.monotonic()
-            self.makeCurrent()
-            self._reinit_render_context()
-            self.doneCurrent()
+            self._full_restart()
+
+    def _full_restart(self):
+        """Kompletter mpv-Neustart: terminiert die mpv-Instanz und erstellt alles neu.
+
+        Nötig wenn der Render-Kontext allein nicht ausreicht – z.B. wenn mpv intern
+        in einem fehlerhaften Zustand feststeckt (typisch nach Netzwerkabbrüchen).
+        """
+        self.makeCurrent()
+
+        if self.ctx:
+            try:
+                self.ctx.free()
+            except Exception:
+                pass
+            self.ctx = None
+
+        if self.player:
+            try:
+                self.player.terminate()
+            except Exception:
+                pass
+            self.player = None
+
+        self._player_initialized = False
+
+        try:
+            self._init_player()
+        except Exception as e:
+            print(f"[MPV] Vollneustart fehlgeschlagen: {e}")
+
+        self.doneCurrent()
+
+        # PlaybackMixin über den Neustart informieren → Stream neu starten
+        self.gl_context_recreated.emit()
 
     def _on_gl_context_destroyed(self):
         """Render-Kontext freigeben bevor der GL-Kontext zerstört wird"""
@@ -180,7 +211,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         self.doneCurrent()
 
     def _reinit_render_context(self):
-        """mpv Render-Kontext nach GL-Kontextverlust (Bildschirmsperre) neu erstellen"""
+        """mpv Render-Kontext nach Qt-GL-Kontextverlust neu erstellen (initializeGL-Pfad)."""
         if self.ctx:
             try:
                 self.ctx.free()
