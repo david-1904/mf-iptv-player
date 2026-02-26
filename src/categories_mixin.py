@@ -114,12 +114,13 @@ class CategoriesMixin:
                     self.series_categories = await self.api.get_series_categories()
                 categories = self.series_categories
 
-            # Versteckte Kategorien filtern
+            # Versteckte Kategorien filtern + leere Namen ausfiltern
             account = self.account_manager.get_selected()
             account_name = account.name if account else ""
             visible_cats = [
                 cat for cat in categories
-                if not self.hidden_categories_manager.is_hidden(account_name, self.current_mode, cat.category_id)
+                if cat.category_name.strip()
+                and not self.hidden_categories_manager.is_hidden(account_name, self.current_mode, cat.category_id)
             ]
 
             self._category_items = [(cat.category_name, cat.category_id) for cat in visible_cats]
@@ -197,10 +198,6 @@ class CategoriesMixin:
 
     def _on_category_list_clicked(self, item: QListWidgetItem):
         """Kategorie aus der inline-Liste gewaehlt"""
-        # Nur bei Einzelklick ohne Kontextmenue
-        selected = self.category_list.selectedItems()
-        if len(selected) > 1:
-            return
         index = self.category_list.row(item)
         self._current_category_index = index
         name, cat_id = self._category_items[index]
@@ -209,31 +206,63 @@ class CategoriesMixin:
 
     def _on_category_context_menu(self, pos):
         """Kontextmenue fuer Kategorie-Liste (Ausblenden)"""
-        selected = self.category_list.selectedItems()
-        if not selected:
-            return
-
         menu = QMenu(self)
-        if len(selected) == 1:
-            action = menu.addAction("Kategorie ausblenden")
-        else:
-            action = menu.addAction(f"{len(selected)} Kategorien ausblenden")
-
+        action = menu.addAction("Kategorien ausblenden...")
         result = menu.exec(self.category_list.mapToGlobal(pos))
-        if result != action:
-            return
+        if result == action:
+            self._show_hide_categories_dialog()
 
+    def _show_hide_categories_dialog(self):
+        """Zeigt Dialog zum Ausblenden von Kategorien (mit Checkboxen)"""
         account = self.account_manager.get_selected()
-        if not account:
+        if not account or not self._category_items:
             return
 
-        for item in selected:
-            index = self.category_list.row(item)
-            if 0 <= index < len(self._category_items):
-                name, cat_id = self._category_items[index]
-                self.hidden_categories_manager.hide(account.name, self.current_mode, cat_id, name)
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Kategorien ausblenden")
+        dialog.setMinimumWidth(350)
+        layout = QVBoxLayout(dialog)
 
-        asyncio.ensure_future(self._load_categories())
+        label = QLabel("Kategorien zum Ausblenden auswählen:")
+        layout.addWidget(label)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMaximumHeight(400)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+
+        checkboxes: list[tuple[QCheckBox, str, str]] = []
+        for name, cat_id in self._category_items:
+            cb = QCheckBox(name)
+            cb.setChecked(False)
+            scroll_layout.addWidget(cb)
+            checkboxes.append((cb, cat_id, name))
+
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
+
+        btn_layout = QHBoxLayout()
+        hide_btn = QPushButton("Ausblenden")
+        cancel_btn = QPushButton("Abbrechen")
+        btn_layout.addWidget(hide_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        def do_hide():
+            any_hidden = False
+            for cb, cat_id, name in checkboxes:
+                if cb.isChecked():
+                    self.hidden_categories_manager.hide(account.name, self.current_mode, cat_id, name)
+                    any_hidden = True
+            dialog.accept()
+            if any_hidden:
+                asyncio.ensure_future(self._load_categories())
+
+        hide_btn.clicked.connect(do_hide)
+        cancel_btn.clicked.connect(dialog.reject)
+        dialog.exec()
 
     def _show_hidden_categories_dialog(self):
         """Zeigt Dialog zum Verwalten ausgeblendeter Kategorien"""
