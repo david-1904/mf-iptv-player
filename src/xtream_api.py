@@ -150,7 +150,7 @@ class XtreamAPI:
                 category_name=c.get("category_name", ""),
                 parent_id=c.get("parent_id", 0)
             )
-            for c in (data or [])
+            for c in (data or []) if isinstance(c, dict)
         ]
 
     async def get_live_streams(self, category_id: Optional[str] = None) -> list[LiveStream]:
@@ -169,7 +169,7 @@ class XtreamAPI:
                 tv_archive=bool(s.get("tv_archive", 0)),
                 tv_archive_duration=int(s.get("tv_archive_duration", 0) or 0),
             )
-            for s in (data or [])
+            for s in (data or []) if isinstance(s, dict)
         ]
 
     async def get_vod_categories(self) -> list[Category]:
@@ -181,7 +181,7 @@ class XtreamAPI:
                 category_name=c.get("category_name", ""),
                 parent_id=c.get("parent_id", 0)
             )
-            for c in (data or [])
+            for c in (data or []) if isinstance(c, dict)
         ]
 
     async def get_vod_streams(self, category_id: Optional[str] = None) -> list[VodStream]:
@@ -201,7 +201,7 @@ class XtreamAPI:
                 category_id=str(s.get("category_id", "")),
                 container_extension=s.get("container_extension", "mp4")
             )
-            for s in (data or [])
+            for s in (data or []) if isinstance(s, dict)
         ]
 
     async def get_series_categories(self) -> list[Category]:
@@ -213,7 +213,7 @@ class XtreamAPI:
                 category_name=c.get("category_name", ""),
                 parent_id=c.get("parent_id", 0)
             )
-            for c in (data or [])
+            for c in (data or []) if isinstance(c, dict)
         ]
 
     async def get_series(self, category_id: Optional[str] = None) -> list[Series]:
@@ -233,7 +233,7 @@ class XtreamAPI:
                 added=str(s.get("added", "")),
                 category_id=str(s.get("category_id", ""))
             )
-            for s in (data or [])
+            for s in (data or []) if isinstance(s, dict)
         ]
 
     async def get_vod_info(self, vod_id: int) -> dict:
