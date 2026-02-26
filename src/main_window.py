@@ -63,6 +63,7 @@ class MainWindow(
         self.hidden_categories_manager = HiddenCategoriesManager()
         self.session_manager = SessionManager()
         self.recorder = StreamRecorder()
+        self._editing_account_index = -1  # -1 = neu anlegen, >=0 = bearbeiten
         self.api: XtreamAPI | None = None
         self.current_mode = "live"  # live, vod, series, favorites, history, search
         self._last_mode_before_search = "live"
