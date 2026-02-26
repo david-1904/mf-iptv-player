@@ -33,10 +33,11 @@ class PipMixin:
             }
         """)
 
-        # PiP-Close-Button positionieren und zeigen
-        self.pip_close_btn.move(self.player_area.width() - 34, 6)
-        self.pip_close_btn.raise_()
-        self.pip_close_btn.show()
+        # PiP-Leiste positionieren und zeigen
+        self.pip_title_label.setText(self._current_stream_title or "")
+        self.pip_bar.setGeometry(0, 0, self.player_area.width(), 40)
+        self.pip_bar.raise_()
+        self.pip_bar.show()
 
         # Position aktualisieren und anzeigen
         self._update_pip_position()
@@ -53,8 +54,8 @@ class PipMixin:
             return
         self._pip_mode = False
 
-        # PiP-Button verstecken
-        self.pip_close_btn.hide()
+        # PiP-Leiste verstecken
+        self.pip_bar.hide()
 
         # Feste Groesse aufheben
         self.player_area.setMinimumSize(0, 0)
@@ -71,6 +72,11 @@ class PipMixin:
         # Kanalliste feste Breite
         width = 400 if self.current_mode in ("vod", "series") else 360
         self.channel_area.setFixedWidth(width)
+
+    def _on_pip_expand(self):
+        """PiP verlassen und zurück zum Live-Modus mit vollem Player"""
+        self._exit_pip_mode()
+        self._switch_mode("live")
 
     def _update_pip_position(self):
         """Positioniert den PiP-Player in die rechte untere Ecke"""
