@@ -560,15 +560,15 @@ class UiBuilderMixin:
 
         self.channel_list = QListWidget()
         self._apply_channel_list_style(grid_mode=False)
+        self.channel_list.itemClicked.connect(self._on_channel_selected)
         self.channel_list.itemDoubleClicked.connect(self._on_channel_selected)
-        self.channel_list.itemClicked.connect(self._on_channel_clicked)
         self.channel_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.channel_list.customContextMenuRequested.connect(self._show_channel_context_menu)
         self.channel_list.viewport().installEventFilter(self)
 
         # EPG Panel
         self.epg_panel = self._create_epg_panel()
-        self.epg_panel.setMinimumHeight(80)
+        self.epg_panel.setMinimumHeight(200)
 
         # Splitter zwischen Kanalliste und EPG
         self._epg_splitter = QSplitter(Qt.Vertical)
@@ -584,15 +584,16 @@ class UiBuilderMixin:
         """)
         self._epg_splitter.addWidget(self.channel_list)
         self._epg_splitter.addWidget(self.epg_panel)
-        self._epg_splitter.setSizes([700, 180])
+        self._epg_splitter.setSizes([99999, 0])
+        self.epg_panel.hide()
         cl_layout.addWidget(self._epg_splitter, stretch=1)
 
-        outer_layout.addWidget(self.channel_nav_widget)
+        outer_layout.addWidget(self.channel_nav_widget, stretch=1)
 
         # Rechts: modernes Kanal-Detailpanel (standardmaessig versteckt)
         self.channel_detail_panel = self._create_channel_detail_panel()
         self.channel_detail_panel.hide()
-        outer_layout.addWidget(self.channel_detail_panel, stretch=1)
+        outer_layout.addWidget(self.channel_detail_panel)
 
         self.channel_stack.addWidget(channel_list_page)
 
@@ -621,28 +622,24 @@ class UiBuilderMixin:
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # ── Einklapp-Leiste ────────────────────────────────────────
-        epg_bar = QWidget()
-        epg_bar.setFixedHeight(30)
-        epg_bar.setStyleSheet("background-color: #0d0d18; border-bottom: 1px solid #1a1a2a;")
-        epg_bar_lay = QHBoxLayout(epg_bar)
-        epg_bar_lay.setContentsMargins(12, 0, 8, 0)
-        epg_bar_lbl = QLabel("EPG")
-        epg_bar_lbl.setStyleSheet("color: #555; font-size: 11px; font-weight: bold; letter-spacing: 1px;")
-        epg_bar_lay.addWidget(epg_bar_lbl)
-        epg_bar_lay.addStretch()
-        self.detail_collapse_btn = QPushButton("\u00d7")
-        self.detail_collapse_btn.setFixedSize(22, 22)
-        self.detail_collapse_btn.setStyleSheet("""
+        # Zurück-Leiste
+        back_bar = QWidget()
+        back_bar.setFixedHeight(36)
+        back_bar.setStyleSheet("background: #0d0d1a; border-bottom: 1px solid #1a1a2a;")
+        back_bar_layout = QHBoxLayout(back_bar)
+        back_bar_layout.setContentsMargins(8, 0, 8, 0)
+        self.detail_back_btn = QPushButton("‹  Senderliste")
+        self.detail_back_btn.setStyleSheet("""
             QPushButton {
-                background: transparent; color: #555; border: none;
-                font-size: 16px; font-weight: bold; padding: 0;
+                background: transparent; color: #777;
+                border: none; font-size: 13px; padding: 0 8px;
             }
             QPushButton:hover { color: #ccc; }
         """)
-        self.detail_collapse_btn.clicked.connect(self._hide_channel_detail)
-        epg_bar_lay.addWidget(self.detail_collapse_btn)
-        outer.addWidget(epg_bar)
+        self.detail_back_btn.clicked.connect(self._hide_channel_detail)
+        back_bar_layout.addWidget(self.detail_back_btn)
+        back_bar_layout.addStretch()
+        outer.addWidget(back_bar)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -661,8 +658,8 @@ class UiBuilderMixin:
         content = QWidget()
         content.setStyleSheet("background: transparent;")
         lay = QVBoxLayout(content)
-        lay.setContentsMargins(24, 24, 24, 24)
-        lay.setSpacing(20)
+        lay.setContentsMargins(24, 16, 24, 16)
+        lay.setSpacing(10)
         lay.setAlignment(Qt.AlignTop)
 
         # Catchup-Button-Stil (genutzt in Header + DAVOR-Bereich)
@@ -702,35 +699,6 @@ class UiBuilderMixin:
         self.detail_channel_name.setWordWrap(True)
         name_block.addWidget(self.detail_channel_name)
 
-        self.detail_play_btn = QPushButton("\u25B6\uFE0E  Abspielen")
-        self.detail_play_btn.setFixedHeight(40)
-        self.detail_play_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 0 28px;
-            }
-            QPushButton:hover { background-color: #1094e8; }
-        """)
-        self.detail_play_btn.clicked.connect(lambda: self._play_detail_stream())
-
-        # "Von Anfang"-Catchup-Button neben dem Abspielen-Button
-        self.detail_now_catchup_btn = QPushButton("\u25B6  Von Anfang")
-        self.detail_now_catchup_btn.setFixedHeight(40)
-        self.detail_now_catchup_btn.setStyleSheet(_catchup_btn_ss)
-        self.detail_now_catchup_btn.clicked.connect(self._play_detail_now_catchup)
-        self.detail_now_catchup_btn.hide()
-
-        play_row = QHBoxLayout()
-        play_row.setSpacing(10)
-        play_row.addWidget(self.detail_play_btn)
-        play_row.addWidget(self.detail_now_catchup_btn)
-        play_row.addStretch()
-        name_block.addLayout(play_row)
         header_row.addLayout(name_block, stretch=1)
         lay.addLayout(header_row)
 
@@ -814,6 +782,13 @@ class UiBuilderMixin:
         """)
         self.detail_now_progress.hide()
         now_lay.addWidget(self.detail_now_progress)
+
+        self.detail_now_catchup_btn = QPushButton("\u25B6  Von Anfang")
+        self.detail_now_catchup_btn.setFixedHeight(34)
+        self.detail_now_catchup_btn.setStyleSheet(_catchup_btn_ss)
+        self.detail_now_catchup_btn.clicked.connect(self._play_detail_now_catchup)
+        self.detail_now_catchup_btn.hide()
+        now_lay.addWidget(self.detail_now_catchup_btn, alignment=Qt.AlignLeft)
 
         self.detail_now_desc = QLabel("")
         self.detail_now_desc.setStyleSheet(
@@ -919,12 +894,15 @@ class UiBuilderMixin:
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(6)
         scroll.setWidget(content)
+        self._epg_content_widget = content
+        content.setCursor(Qt.PointingHandCursor)
+        content.installEventFilter(self)
 
         # Kopfzeile: Sendername + Button
         header = QHBoxLayout()
         header.setSpacing(8)
         self.epg_channel_name = QLabel("")
-        self.epg_channel_name.setStyleSheet("font-size: 13px; font-weight: bold; color: #0078d4;")
+        self.epg_channel_name.setStyleSheet("font-size: 15px; font-weight: bold; color: #0078d4;")
         header.addWidget(self.epg_channel_name)
         header.addStretch()
 
@@ -941,7 +919,7 @@ class UiBuilderMixin:
             QPushButton:hover { background-color: #0078d4; color: white; }
             QPushButton:disabled { border-color: #333; color: #444; }
         """)
-        self.btn_full_epg.clicked.connect(self._show_full_epg)
+        self.btn_full_epg.clicked.connect(self._toggle_channel_detail)
         self.btn_full_epg.setEnabled(False)
         header.addWidget(self.btn_full_epg)
         layout.addLayout(header)
@@ -953,7 +931,7 @@ class UiBuilderMixin:
 
         # Jetzt: Zeit + Titel
         self.epg_now_title = QLabel("")
-        self.epg_now_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #eee;")
+        self.epg_now_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
         self.epg_now_title.setWordWrap(True)
         layout.addWidget(self.epg_now_title)
 
@@ -974,10 +952,11 @@ class UiBuilderMixin:
         """)
         layout.addWidget(self.epg_progress)
 
-        # Beschreibung
+        # Beschreibung (versteckt)
         self.epg_now_desc = QLabel("")
-        self.epg_now_desc.setStyleSheet("font-size: 11px; color: #888; line-height: 1.3;")
+        self.epg_now_desc.setStyleSheet("font-size: 13px; color: #888; line-height: 1.3;")
         self.epg_now_desc.setWordWrap(True)
+        self.epg_now_desc.hide()
         layout.addWidget(self.epg_now_desc)
 
         # Danach-Label + Titel
@@ -986,7 +965,7 @@ class UiBuilderMixin:
         layout.addWidget(self.epg_next_label)
 
         self.epg_next_title = QLabel("")
-        self.epg_next_title.setStyleSheet("font-size: 12px; color: #999;")
+        self.epg_next_title.setStyleSheet("font-size: 14px; color: #999;")
         self.epg_next_title.setWordWrap(True)
         layout.addWidget(self.epg_next_title)
 
@@ -1789,9 +1768,9 @@ class UiBuilderMixin:
         overlay.setStyleSheet("""
             #fsControls {
                 background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
-                    stop:0 rgba(0, 0, 0, 220),
-                    stop:0.6 rgba(0, 0, 0, 150),
-                    stop:1 rgba(0, 0, 0, 0));
+                    stop:0 rgba(0, 0, 0, 240),
+                    stop:0.7 rgba(0, 0, 0, 210),
+                    stop:1 rgba(0, 0, 0, 80));
                 border: none;
             }
             QPushButton {
@@ -1808,12 +1787,107 @@ class UiBuilderMixin:
                 font-size: 12px;
                 background: transparent;
             }
+            QSlider {
+                background: transparent;
+            }
+            QProgressBar {
+                background: rgba(255, 255, 255, 30);
+                border: none;
+                border-radius: 1px;
+            }
+            QProgressBar::chunk {
+                background: #0078d4;
+                border-radius: 1px;
+            }
         """)
 
         layout = QVBoxLayout(overlay)
         layout.setContentsMargins(20, 0, 20, 16)
         layout.setSpacing(8)
         layout.addStretch()
+
+        # Info-Sektion: Kanallogo + Name + EPG (wird bei Mausbewegung befüllt)
+        fs_info_section = QWidget()
+        fs_info_section.setStyleSheet("background: transparent;")
+        info_layout = QHBoxLayout(fs_info_section)
+        info_layout.setContentsMargins(0, 0, 0, 4)
+        info_layout.setSpacing(12)
+
+        self.fs_channel_logo = QLabel()
+        self.fs_channel_logo.setFixedSize(120, 120)
+        self.fs_channel_logo.setStyleSheet("background: transparent;")
+        self.fs_channel_logo.setAlignment(Qt.AlignCenter)
+        self.fs_channel_logo.hide()
+        info_layout.addWidget(self.fs_channel_logo)
+
+        fs_text_col = QWidget()
+        fs_text_col.setStyleSheet("background: transparent;")
+        text_layout = QVBoxLayout(fs_text_col)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(3)
+
+        self.fs_channel_title = QLabel("")
+        self.fs_channel_title.setStyleSheet("font-size: 22px; font-weight: bold; color: white; background: transparent;")
+        text_layout.addWidget(self.fs_channel_title)
+
+        self.fs_epg_now = QLabel("")
+        self.fs_epg_now.setStyleSheet("font-size: 15px; color: #ccc; background: transparent;")
+        self.fs_epg_now.hide()
+        text_layout.addWidget(self.fs_epg_now)
+
+        # Fortschritts-Zeile: Seek-Slider (Catchup) oder visueller Balken
+        fs_prog_row = QWidget()
+        fs_prog_row.setStyleSheet("background: transparent;")
+        prog_row_layout = QHBoxLayout(fs_prog_row)
+        prog_row_layout.setContentsMargins(0, 2, 0, 2)
+        prog_row_layout.setSpacing(8)
+
+        self.fs_epg_von_anfang_btn = QPushButton("\u23EE")
+        self.fs_epg_von_anfang_btn.setFixedSize(36, 30)
+        self.fs_epg_von_anfang_btn.setToolTip("Von Anfang")
+        self.fs_epg_von_anfang_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(0,120,212,30); color: #4fc3f7;
+                border: 1px solid #0078d4; border-radius: 4px; font-size: 13px;
+            }
+            QPushButton:hover { background: rgba(0,120,212,60); }
+        """)
+        self.fs_epg_von_anfang_btn.clicked.connect(self._fs_play_von_anfang)
+        self.fs_epg_von_anfang_btn.hide()
+        prog_row_layout.addWidget(self.fs_epg_von_anfang_btn)
+
+        self.fs_epg_seek_slider = QSlider(Qt.Horizontal)
+        self.fs_epg_seek_slider.setRange(0, 1000)
+        self.fs_epg_seek_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                background: rgba(255,255,255,40); height: 4px; border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background: white; width: 14px; height: 14px;
+                margin: -5px 0; border-radius: 7px;
+            }
+            QSlider::sub-page:horizontal { background: #0078d4; border-radius: 2px; }
+        """)
+        self.fs_epg_seek_slider.sliderPressed.connect(lambda: setattr(self, '_fs_epg_seeking', True))
+        self.fs_epg_seek_slider.sliderReleased.connect(self._on_fs_epg_seek_released)
+        self.fs_epg_seek_slider.hide()
+        prog_row_layout.addWidget(self.fs_epg_seek_slider, stretch=1)
+
+        self.fs_epg_progress = QProgressBar()
+        self.fs_epg_progress.setFixedHeight(4)
+        self.fs_epg_progress.setTextVisible(False)
+        self.fs_epg_progress.hide()
+        prog_row_layout.addWidget(self.fs_epg_progress, stretch=1)
+
+        text_layout.addWidget(fs_prog_row)
+
+        self.fs_epg_next = QLabel("")
+        self.fs_epg_next.setStyleSheet("font-size: 14px; color: #aaa; background: transparent;")
+        self.fs_epg_next.hide()
+        text_layout.addWidget(self.fs_epg_next)
+
+        info_layout.addWidget(fs_text_col, stretch=1)
+        layout.addWidget(fs_info_section)
 
         # Zeile 1: Seek-Slider (nur bei VOD/Timeshift)
         self.fs_seek_row = QWidget()
@@ -1856,11 +1930,12 @@ class UiBuilderMixin:
         self.fs_dur_label.setFixedWidth(55)
         seek_layout.addWidget(self.fs_dur_label)
 
+        self.fs_seek_row.hide()
         layout.addWidget(self.fs_seek_row)
 
         # Zeile 2: Steuer-Buttons
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(4)
+        btn_row.setSpacing(6)
 
         self.fs_btn_play_pause = QPushButton("\u25B6\uFE0E")
         self.fs_btn_play_pause.setFixedSize(44, 44)
@@ -1869,21 +1944,41 @@ class UiBuilderMixin:
 
         self.fs_btn_skip_back = QPushButton("\u25C0\u25C0")
         self.fs_btn_skip_back.setFixedSize(44, 44)
-        self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-10))
+        self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-30))
+        self.fs_btn_skip_back.setToolTip("30s zurück")
+        self.fs_btn_skip_back.hide()
         btn_row.addWidget(self.fs_btn_skip_back)
 
         self.fs_btn_skip_forward = QPushButton("\u25B6\u25B6")
         self.fs_btn_skip_forward.setFixedSize(44, 44)
-        self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(10))
+        self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(30))
+        self.fs_btn_skip_forward.setToolTip("30s vor")
+        self.fs_btn_skip_forward.hide()
         btn_row.addWidget(self.fs_btn_skip_forward)
 
-        vol_icon = QLabel("\u266B")
-        vol_icon.setStyleSheet("font-size: 14px; color: #888; background: transparent;")
+        self.fs_btn_go_live = QPushButton("\u25CF  LIVE")
+        self.fs_btn_go_live.setFixedHeight(34)
+        self.fs_btn_go_live.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 68, 68, 30); color: #ff4444;
+                border: 1px solid #ff4444; padding: 4px 14px;
+                border-radius: 6px; font-size: 11px; font-weight: bold;
+            }
+            QPushButton:hover { background: rgba(255, 68, 68, 60); }
+        """)
+        self.fs_btn_go_live.clicked.connect(self._go_live)
+        self.fs_btn_go_live.hide()
+        btn_row.addWidget(self.fs_btn_go_live)
+
+        btn_row.addStretch()
+
+        vol_icon = QLabel("\U0001F50A")
+        vol_icon.setStyleSheet("font-size: 15px; color: #aaa; background: transparent;")
         btn_row.addWidget(vol_icon)
 
         self.fs_volume_slider = QSlider(Qt.Horizontal)
         self.fs_volume_slider.setRange(0, 100)
-        self.fs_volume_slider.setFixedWidth(100)
+        self.fs_volume_slider.setFixedWidth(110)
         self.fs_volume_slider.setStyleSheet("""
             QSlider::groove:horizontal {
                 background: rgba(255, 255, 255, 40);
@@ -1908,14 +2003,7 @@ class UiBuilderMixin:
         self.fs_volume_slider.valueChanged.connect(self._on_volume_changed)
         btn_row.addWidget(self.fs_volume_slider)
 
-        btn_row.addStretch()
-
-        self.fs_info_label = QLabel("")
-        self.fs_info_label.setStyleSheet("color: #ddd; font-size: 13px; background: transparent;")
-        self.fs_info_label.setAlignment(Qt.AlignCenter)
-        btn_row.addWidget(self.fs_info_label)
-
-        btn_row.addStretch()
+        btn_row.addSpacing(8)
 
         fs_exit_btn = QPushButton("\u26F6")
         fs_exit_btn.setFixedSize(44, 44)

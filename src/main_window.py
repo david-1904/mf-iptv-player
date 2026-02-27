@@ -171,6 +171,10 @@ class MainWindow(
                         self._show_fullscreen_controls()
                     else:
                         self._show_info_overlay()
+        elif event.type() == QEvent.MouseButtonRelease:
+            if obj is getattr(self, '_epg_content_widget', None):
+                self._toggle_channel_detail()
+                return False
         elif event.type() == QEvent.Enter:
             if obj is self.fullscreen_controls:
                 self._fs_controls_timer.stop()

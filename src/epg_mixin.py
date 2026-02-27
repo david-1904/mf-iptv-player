@@ -5,7 +5,7 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import QListWidgetItem
 from PySide6.QtGui import QPixmap
 
@@ -110,9 +110,7 @@ class EpgMixin:
             else:
                 self.epg_progress.hide()
 
-            desc = current_entry.description.strip() if current_entry.description else ""
-            self.epg_now_desc.setText(desc)
-            self.epg_now_desc.setVisible(bool(desc))
+            self.epg_now_desc.hide()
         else:
             self.epg_now_label.hide()
             self.epg_now_title.setText("")
@@ -258,34 +256,68 @@ class EpgMixin:
         self._epg_splitter.setSizes([99999, 0])
         self.epg_panel.hide()
 
-        player_running = self.player_area.isVisible() and not self._pip_mode
-        if player_running:
-            # 3-Spalten: Senderliste schmal | EPG-Detail | Player
-            # Max 700px damit der Player immer genuegend Platz bekommt
-            ca_width = min(700, max(560, int(self.main_page.width() * 0.42)))
-            self.channel_nav_widget.setMaximumWidth(280)
+        # 2-Spalten: Senderliste ausblenden, Detail einblenden (Slide)
+        self.channel_nav_widget.hide()
+        if self.player_area.isVisible() and not self._pip_mode:
+            ca_width = min(480, max(360, int(self.main_page.width() * 0.32)))
             self.channel_area.setFixedWidth(ca_width)
-        else:
-            # 2-Spalten: Senderliste schmal | EPG-Detail
-            self.channel_nav_widget.setMaximumWidth(360)
-
-        self.channel_detail_panel.show()
+        self._slide_in(self.channel_detail_panel)
 
         icon_url = getattr(stream_data, 'stream_icon', '') or getattr(stream_data, 'icon', '')
         if icon_url:
             asyncio.ensure_future(self._load_detail_logo(icon_url))
 
+        stream_id = getattr(stream_data, 'stream_id', None) or getattr(stream_data, 'id', None)
+        if stream_id:
+            asyncio.ensure_future(self._load_epg(stream_id))
+
     def _hide_channel_detail(self):
-        """Versteckt das Kanal-Detailpanel und stellt Normallayout wieder her."""
+        """Versteckt das Kanal-Detailpanel mit Slide-Animation."""
         if not hasattr(self, 'channel_detail_panel'):
             return
+        if not self.channel_detail_panel.isVisible():
+            return
+        self._slide_out(self.channel_detail_panel)
+
+    def _toggle_channel_detail(self):
+        """Toggle-Button: Detail-Panel auf- oder zuschieben."""
+        if self.channel_detail_panel.isVisible():
+            self._hide_channel_detail()
+        elif self._detail_stream_data:
+            self._show_channel_detail(self._detail_stream_data)
+
+    def _slide_in(self, widget):
+        """Schiebt das Detail-Panel von rechts ein."""
+        target = self.channel_area.width()
+        widget.setMaximumWidth(0)
+        widget.show()
+        self._slide_anim = QPropertyAnimation(widget, b"maximumWidth")
+        self._slide_anim.setDuration(220)
+        self._slide_anim.setStartValue(0)
+        self._slide_anim.setEndValue(target)
+        self._slide_anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._slide_anim.start()
+
+    def _slide_out(self, widget):
+        """Schiebt das Detail-Panel nach rechts zu."""
+        self._slide_anim = QPropertyAnimation(widget, b"maximumWidth")
+        self._slide_anim.setDuration(180)
+        self._slide_anim.setStartValue(widget.width())
+        self._slide_anim.setEndValue(0)
+        self._slide_anim.setEasingCurve(QEasingCurve.InCubic)
+        self._slide_anim.finished.connect(self._on_detail_hidden)
+        self._slide_anim.start()
+
+    def _on_detail_hidden(self):
+        """Wird nach der Slide-Out-Animation aufgerufen."""
         self.channel_detail_panel.hide()
-        self.channel_nav_widget.setMaximumWidth(16777215)
+        self.channel_detail_panel.setMaximumWidth(16777215)
+        self.channel_nav_widget.show()
         if self.player_area.isVisible() and not self._pip_mode:
             self.channel_area.setFixedWidth(360)
         if self.current_mode == "live":
             self.epg_panel.show()
-            self._epg_splitter.setSizes([700, 180])
+            self._epg_splitter.setSizes([700, 230])
 
     def _update_detail_epg(self, epg_data: list):
         """Befuellt den DAVOR/JETZT/DANACH-Bereich im Detailpanel mit EPG-Daten."""
