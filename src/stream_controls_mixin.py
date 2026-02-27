@@ -35,7 +35,8 @@ class StreamControlsMixin:
                 tid = track["id"]
                 action.triggered.connect(lambda checked, t=tid: self.player.set_audio_track(t))
 
-        menu.exec(self.btn_audio.mapToGlobal(self.btn_audio.rect().topLeft()))
+        btn = self.sender() or self.btn_audio
+        menu.exec(btn.mapToGlobal(btn.rect().topLeft()))
 
     def _show_subtitle_menu(self):
         """Zeigt Menu mit verfuegbaren Untertiteln"""
@@ -67,15 +68,22 @@ class StreamControlsMixin:
                 tid = track["id"]
                 action.triggered.connect(lambda checked, t=tid: self.player.set_subtitle_track(t))
 
-        # Menu unter dem Button anzeigen
-        menu.exec(self.btn_subtitle.mapToGlobal(self.btn_subtitle.rect().topLeft()))
+        btn = self.sender() or self.btn_subtitle
+        menu.exec(btn.mapToGlobal(btn.rect().topLeft()))
 
     def _toggle_stream_info(self):
         """Toggle stream info panel visibility"""
-        if self.btn_stream_info.isChecked():
+        # Sender kann btn_stream_info oder fs_btn_stream_info sein — beide sync halten
+        btn = self.sender()
+        checked = btn.isChecked() if btn else self.btn_stream_info.isChecked()
+        self.btn_stream_info.setChecked(checked)
+        fs_btn = getattr(self, 'fs_btn_stream_info', None)
+        if fs_btn:
+            fs_btn.setChecked(checked)
+        if checked:
             self.stream_info_panel.show()
             self._update_stream_info()
-            self.stream_info_timer.start(2000)  # Update every 2 seconds
+            self.stream_info_timer.start(2000)
         else:
             self.stream_info_panel.hide()
             self.stream_info_timer.stop()

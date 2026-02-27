@@ -107,8 +107,6 @@ class PipMixin:
         self.channel_loading.hide()
         if self.channel_stack.currentIndex() == 0:
             self.channel_list.show()
-            if self.current_mode == "live":
-                self.epg_panel.show()
 
     def _show_loading_error(self, error: str):
         """Zeigt Fehler im Loading-Overlay mit Retry-Button"""

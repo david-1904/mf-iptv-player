@@ -338,10 +338,10 @@ class UiBuilderMixin:
                     background-color: #121212;
                     border: none;
                     color: #ddd;
-                    font-size: 12px;
+                    font-size: 15px;
                 }
                 QListWidget::item {
-                    padding: 8px 10px;
+                    padding: 9px 12px;
                     border-bottom: 1px solid #1a1a2a;
                 }
                 QListWidget::item:hover {
@@ -579,7 +579,7 @@ class UiBuilderMixin:
                 height: 4px;
             }
             QSplitter::handle:vertical:hover {
-                background: #0078d4;
+                background: #e8691a;
             }
         """)
         self._epg_splitter.addWidget(self.channel_list)
@@ -665,11 +665,11 @@ class UiBuilderMixin:
         # Catchup-Button-Stil (genutzt in Header + DAVOR-Bereich)
         _catchup_btn_ss = """
             QPushButton {
-                background: transparent; color: #0078d4;
-                border: 1px solid #1a4a7a; border-radius: 8px;
+                background: transparent; color: #e8691a;
+                border: 1px solid #e8691a; border-radius: 8px;
                 font-size: 13px; font-weight: bold; padding: 0 16px;
             }
-            QPushButton:hover { background: #0078d4; color: white; border-color: #0078d4; }
+            QPushButton:hover { background: rgba(232, 105, 26, 30); color: #ffab6e; border-color: #ffab6e; }
         """
 
         # ── Header: Logo + Kanalname ──────────────────────────────
@@ -690,13 +690,13 @@ class UiBuilderMixin:
 
         name_block = QVBoxLayout()
         name_block.setSpacing(8)
-        name_block.setAlignment(Qt.AlignVCenter)
 
         self.detail_channel_name = QLabel("")
         self.detail_channel_name.setStyleSheet(
             "font-size: 26px; font-weight: bold; color: #ffffff;"
         )
         self.detail_channel_name.setWordWrap(True)
+        self.detail_channel_name.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         name_block.addWidget(self.detail_channel_name)
 
         header_row.addLayout(name_block, stretch=1)
@@ -751,7 +751,7 @@ class UiBuilderMixin:
 
         jetzt_lbl = QLabel("JETZT")
         jetzt_lbl.setStyleSheet(
-            "font-size: 10px; font-weight: bold; color: #0078d4; letter-spacing: 2px;"
+            "font-size: 10px; font-weight: bold; color: #e8691a; letter-spacing: 2px;"
         )
         now_lay.addWidget(jetzt_lbl)
 
@@ -777,18 +777,11 @@ class UiBuilderMixin:
                 background: #1e1e2e; border: none; border-radius: 2px;
             }
             QProgressBar::chunk {
-                background: #0078d4; border-radius: 2px;
+                background: #e8691a; border-radius: 2px;
             }
         """)
         self.detail_now_progress.hide()
         now_lay.addWidget(self.detail_now_progress)
-
-        self.detail_now_catchup_btn = QPushButton("\u25B6  Von Anfang")
-        self.detail_now_catchup_btn.setFixedHeight(34)
-        self.detail_now_catchup_btn.setStyleSheet(_catchup_btn_ss)
-        self.detail_now_catchup_btn.clicked.connect(self._play_detail_now_catchup)
-        self.detail_now_catchup_btn.hide()
-        now_lay.addWidget(self.detail_now_catchup_btn, alignment=Qt.AlignLeft)
 
         self.detail_now_desc = QLabel("")
         self.detail_now_desc.setStyleSheet(
@@ -800,46 +793,44 @@ class UiBuilderMixin:
 
         lay.addWidget(self.detail_now_section)
 
-        # ── DANACH-Bereich ────────────────────────────────────────
-        self.detail_next_widget = QWidget()
-        self.detail_next_widget.setStyleSheet("background: transparent;")
-        next_lay = QVBoxLayout(self.detail_next_widget)
-        next_lay.setContentsMargins(0, 0, 0, 0)
-        next_lay.setSpacing(6)
+        # ── DANACH-Bereich (dynamisch, bis zu 3 Eintraege) ────────────────────────
+        self.detail_future_section = QWidget()
+        self.detail_future_section.setStyleSheet("background: transparent;")
+        future_outer = QVBoxLayout(self.detail_future_section)
+        future_outer.setContentsMargins(0, 0, 0, 0)
+        future_outer.setSpacing(6)
 
         danach_lbl = QLabel("DANACH")
         danach_lbl.setStyleSheet(
             "font-size: 10px; font-weight: bold; color: #444; letter-spacing: 2px;"
         )
-        next_lay.addWidget(danach_lbl)
+        future_outer.addWidget(danach_lbl)
 
-        self.detail_next_title = QLabel("")
-        self.detail_next_title.setStyleSheet("font-size: 18px; color: #aaa;")
-        self.detail_next_title.setWordWrap(True)
-        next_lay.addWidget(self.detail_next_title)
+        self.detail_future_container = QWidget()
+        self.detail_future_container.setStyleSheet("background: transparent;")
+        self.detail_future_layout = QVBoxLayout(self.detail_future_container)
+        self.detail_future_layout.setContentsMargins(0, 0, 0, 0)
+        self.detail_future_layout.setSpacing(8)
+        future_outer.addWidget(self.detail_future_container)
 
-        self.detail_next_time = QLabel("")
-        self.detail_next_time.setStyleSheet("font-size: 12px; color: #555;")
-        next_lay.addWidget(self.detail_next_time)
+        self.detail_future_section.hide()
+        lay.addWidget(self.detail_future_section)
 
-        self.detail_next_widget.hide()
-        lay.addWidget(self.detail_next_widget)
-
-        # ── Catchup / Programm-Button ─────────────────────────────
-        self.detail_epg_action_btn = QPushButton("Programm  \u25B8")
+        # ── Vollstaendiges EPG-Button ──────────────────────────────
+        self.detail_epg_action_btn = QPushButton("Vollst\u00e4ndiges EPG  \u25B8")
         self.detail_epg_action_btn.setFixedHeight(38)
         self.detail_epg_action_btn.setStyleSheet("""
             QPushButton {
-                background-color: #1a1a2a;
-                color: #aaa;
-                border: 1px solid #2a2a3a;
+                background: transparent;
+                color: #e8691a;
+                border: 1px solid #e8691a;
                 border-radius: 8px;
                 font-size: 13px;
+                font-weight: bold;
                 padding: 0 18px;
-                text-align: left;
             }
-            QPushButton:hover { background-color: #2a2a3a; color: #ddd; }
-            QPushButton:disabled { color: #444; border-color: #161622; }
+            QPushButton:hover { background: rgba(232, 105, 26, 30); }
+            QPushButton:disabled { color: #555; border-color: #333; }
         """)
         self.detail_epg_action_btn.clicked.connect(self._show_full_epg)
         self.detail_epg_action_btn.setEnabled(False)
@@ -892,84 +883,106 @@ class UiBuilderMixin:
         content.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(6)
+        layout.setSpacing(0)
         scroll.setWidget(content)
         self._epg_content_widget = content
         content.setCursor(Qt.PointingHandCursor)
         content.installEventFilter(self)
 
-        # Kopfzeile: Sendername + Button
-        header = QHBoxLayout()
-        header.setSpacing(8)
+        # Haupt-Zeile: Logo links | EPG-Infos rechts
+        main_row = QHBoxLayout()
+        main_row.setSpacing(12)
+        main_row.setContentsMargins(0, 0, 0, 0)
+
+        # Logo: QFrame als Hintergrund-Container, Label innen transparent
+        # (Qt-Bug: background-color im QLabel-Stylesheet überdeckt setPixmap)
+        _epg_logo_frame = QFrame()
+        _epg_logo_frame.setFixedSize(64, 64)
+        _epg_logo_frame.setStyleSheet("QFrame { background-color: #1e1e2e; border-radius: 10px; }")
+        _epg_logo_inner = QHBoxLayout(_epg_logo_frame)
+        _epg_logo_inner.setContentsMargins(2, 2, 2, 2)
+        _epg_logo_inner.setSpacing(0)
+        self.epg_channel_logo = QLabel()
+        self.epg_channel_logo.setAlignment(Qt.AlignCenter)
+        self.epg_channel_logo.setStyleSheet("background: transparent;")
+        _epg_logo_inner.addWidget(self.epg_channel_logo)
+        main_row.addWidget(_epg_logo_frame, alignment=Qt.AlignTop)
+
+        # Rechte Spalte: Sendername + EPG-Infos + Button unten
+        right_col = QVBoxLayout()
+        right_col.setSpacing(4)
+        right_col.setContentsMargins(0, 0, 0, 0)
+
         self.epg_channel_name = QLabel("")
-        self.epg_channel_name.setStyleSheet("font-size: 15px; font-weight: bold; color: #0078d4;")
-        header.addWidget(self.epg_channel_name)
-        header.addStretch()
+        self.epg_channel_name.setStyleSheet("font-size: 14px; font-weight: bold; color: #e8691a;")
+        self.epg_channel_name.setWordWrap(False)
+        right_col.addWidget(self.epg_channel_name)
 
-        self.btn_full_epg = QPushButton("Programm \u25B8")
-        self.btn_full_epg.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #0078d4;
-                border: 1px solid #0078d4;
-                padding: 3px 12px;
-                border-radius: 4px;
-                font-size: 11px;
-            }
-            QPushButton:hover { background-color: #0078d4; color: white; }
-            QPushButton:disabled { border-color: #333; color: #444; }
-        """)
-        self.btn_full_epg.clicked.connect(self._toggle_channel_detail)
-        self.btn_full_epg.setEnabled(False)
-        header.addWidget(self.btn_full_epg)
-        layout.addLayout(header)
-
-        # Jetzt-Label
         self.epg_now_label = QLabel("JETZT")
-        self.epg_now_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #0078d4; letter-spacing: 1px;")
-        layout.addWidget(self.epg_now_label)
+        self.epg_now_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #e8691a; letter-spacing: 1px;")
+        right_col.addWidget(self.epg_now_label)
 
-        # Jetzt: Zeit + Titel
         self.epg_now_title = QLabel("")
-        self.epg_now_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
+        self.epg_now_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #eee;")
         self.epg_now_title.setWordWrap(True)
-        layout.addWidget(self.epg_now_title)
+        self.epg_now_title.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        right_col.addWidget(self.epg_now_title)
 
-        # Fortschrittsbalken
         self.epg_progress = QProgressBar()
         self.epg_progress.setFixedHeight(3)
         self.epg_progress.setTextVisible(False)
         self.epg_progress.setStyleSheet("""
-            QProgressBar {
-                background: #1a1a2a;
-                border: none;
-                border-radius: 1px;
-            }
-            QProgressBar::chunk {
-                background: #0078d4;
-                border-radius: 1px;
-            }
+            QProgressBar { background: #1a1a2a; border: none; border-radius: 1px; }
+            QProgressBar::chunk { background: #e8691a; border-radius: 1px; }
         """)
-        layout.addWidget(self.epg_progress)
+        right_col.addWidget(self.epg_progress)
 
         # Beschreibung (versteckt)
         self.epg_now_desc = QLabel("")
-        self.epg_now_desc.setStyleSheet("font-size: 13px; color: #888; line-height: 1.3;")
+        self.epg_now_desc.setStyleSheet("font-size: 13px; color: #888;")
         self.epg_now_desc.setWordWrap(True)
         self.epg_now_desc.hide()
-        layout.addWidget(self.epg_now_desc)
+        right_col.addWidget(self.epg_now_desc)
 
-        # Danach-Label + Titel
         self.epg_next_label = QLabel("DANACH")
-        self.epg_next_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #555; letter-spacing: 1px; margin-top: 4px;")
-        layout.addWidget(self.epg_next_label)
+        self.epg_next_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #555; letter-spacing: 1px;")
+        right_col.addWidget(self.epg_next_label)
 
         self.epg_next_title = QLabel("")
-        self.epg_next_title.setStyleSheet("font-size: 14px; color: #999;")
+        self.epg_next_title.setStyleSheet("font-size: 13px; color: #888;")
         self.epg_next_title.setWordWrap(True)
-        layout.addWidget(self.epg_next_title)
+        self.epg_next_title.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        right_col.addWidget(self.epg_next_title)
 
-        layout.addStretch()
+        right_col.addStretch()
+
+        # EPG-Button ganz unten rechts
+        self.btn_full_epg = QPushButton("EPG \u25B8")
+        self.btn_full_epg.setToolTip("Vollständiges Sendeprogramm anzeigen")
+        self.btn_full_epg.setFixedHeight(24)
+        self.btn_full_epg.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #e8691a;
+                border: 1px solid #e8691a;
+                padding: 2px 12px;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            QPushButton:hover { background-color: #e8691a; color: white; }
+            QPushButton:disabled { border-color: #333; color: #444; }
+        """)
+        self.btn_full_epg.clicked.connect(self._toggle_channel_detail)
+        self.btn_full_epg.setEnabled(False)
+        btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(0, 0, 0, 0)
+        btn_row.addStretch()
+        btn_row.addWidget(self.btn_full_epg)
+        right_col.addLayout(btn_row)
+
+        main_row.addLayout(right_col, stretch=1)
+        layout.addLayout(main_row)
+
         self._clear_epg_panel()
 
         return panel
@@ -1124,6 +1137,18 @@ class UiBuilderMixin:
         header_layout.addWidget(self.vod_title_label, stretch=1)
         layout.addWidget(header)
 
+        # Ladebalken (indeterminate, erscheint während Infos/Cover laden)
+        self.vod_loading_bar = QProgressBar()
+        self.vod_loading_bar.setRange(0, 0)
+        self.vod_loading_bar.setFixedHeight(3)
+        self.vod_loading_bar.setTextVisible(False)
+        self.vod_loading_bar.setStyleSheet("""
+            QProgressBar { background: #1a1a2a; border: none; }
+            QProgressBar::chunk { background: #0078d4; }
+        """)
+        self.vod_loading_bar.hide()
+        layout.addWidget(self.vod_loading_bar)
+
         # Scrollbarer Inhaltsbereich
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -1154,6 +1179,8 @@ class UiBuilderMixin:
             background-color: #1a1a2a;
             border-radius: 8px;
             border: 1px solid #2a2a3a;
+            color: #333;
+            font-size: 48px;
         """)
         self.vod_cover_label.setAlignment(Qt.AlignCenter)
         hero_layout.addWidget(self.vod_cover_label, alignment=Qt.AlignTop)
@@ -1312,6 +1339,14 @@ class UiBuilderMixin:
         header_layout = QHBoxLayout(self.player_header)
         header_layout.setContentsMargins(10, 0, 6, 0)
 
+        self.player_channel_logo = QLabel()
+        self.player_channel_logo.setFixedSize(22, 22)
+        self.player_channel_logo.setAlignment(Qt.AlignCenter)
+        self.player_channel_logo.setStyleSheet("background: transparent;")
+        self.player_channel_logo.hide()
+        header_layout.addWidget(self.player_channel_logo)
+        header_layout.addSpacing(6)
+
         self.player_title = QLabel("")
         self.player_title.setStyleSheet("font-size: 12px; font-weight: bold; color: #ccc;")
         header_layout.addWidget(self.player_title)
@@ -1351,7 +1386,7 @@ class UiBuilderMixin:
         self.buffering_overlay.setStyleSheet("""
             QLabel {
                 background-color: rgba(0, 0, 0, 180);
-                color: #0078d4;
+                color: #e8691a;
                 font-size: 16px;
                 font-weight: bold;
             }
@@ -1359,19 +1394,83 @@ class UiBuilderMixin:
         self.buffering_overlay.hide()
         self.buffering_overlay.setParent(player_container)
 
-        # Info-Overlay (Hover)
-        self.info_overlay = self._create_info_overlay(player_container)
-        self.info_overlay.hide()
-
-        self._info_overlay_timer = QTimer()
-        self._info_overlay_timer.setSingleShot(True)
-        self._info_overlay_timer.timeout.connect(self._hide_info_overlay)
-
         self.player_container = player_container
         self.fullscreen_controls = self._create_fullscreen_controls_overlay(player_container)
         self._fs_controls_timer = QTimer()
         self._fs_controls_timer.setSingleShot(True)
         self._fs_controls_timer.timeout.connect(self._hide_fullscreen_controls)
+
+        # Info-Overlay: groß Logo + aktuelle Sendung, erscheint beim Hover
+        self.info_overlay = QWidget(player_container)
+        self.info_overlay.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(0,0,0,0), stop:0.35 rgba(0,0,0,155), stop:1 rgba(0,0,0,220));
+        """)
+        self.info_overlay.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.info_overlay.hide()
+        _ov_layout = QHBoxLayout(self.info_overlay)
+        _ov_layout.setContentsMargins(24, 18, 24, 18)
+        _ov_layout.setSpacing(20)
+
+        # Großes Senderlogo links
+        self.overlay_logo = QLabel()
+        self.overlay_logo.setFixedSize(120, 120)
+        self.overlay_logo.setAlignment(Qt.AlignCenter)
+        self.overlay_logo.setStyleSheet("background: transparent;")
+        _ov_layout.addWidget(self.overlay_logo, alignment=Qt.AlignVCenter)
+
+        # Rechte Spalte: Sendername + JETZT/DANACH-Zeilen
+        _ov_text = QVBoxLayout()
+        _ov_text.setSpacing(5)
+        _ov_text.setContentsMargins(0, 0, 0, 0)
+        _ov_text.addStretch()
+
+        self.overlay_channel_name = QLabel()
+        self.overlay_channel_name.setStyleSheet(
+            "color: #e8691a; font-size: 12px; font-weight: bold; background: transparent;"
+        )
+        _ov_text.addWidget(self.overlay_channel_name)
+
+        # JETZT-Zeile
+        _now_row = QHBoxLayout()
+        _now_row.setSpacing(10)
+        _now_row.setContentsMargins(0, 0, 0, 0)
+        _now_lbl = QLabel("JETZT")
+        _now_lbl.setStyleSheet(
+            "color: #e8691a; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
+        )
+        _now_lbl.setFixedWidth(46)
+        _now_row.addWidget(_now_lbl, alignment=Qt.AlignVCenter)
+        self.overlay_now_title = QLabel()
+        self.overlay_now_title.setStyleSheet(
+            "color: #fff; font-size: 17px; font-weight: bold; background: transparent;"
+        )
+        _now_row.addWidget(self.overlay_now_title, stretch=1)
+        _ov_text.addLayout(_now_row)
+
+        # DANACH-Zeile
+        _next_row = QHBoxLayout()
+        _next_row.setSpacing(10)
+        _next_row.setContentsMargins(0, 0, 0, 0)
+        _next_lbl = QLabel("DANACH")
+        _next_lbl.setStyleSheet(
+            "color: #888; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
+        )
+        _next_lbl.setFixedWidth(46)
+        _next_row.addWidget(_next_lbl, alignment=Qt.AlignVCenter)
+        self.overlay_next_title = QLabel()
+        self.overlay_next_title.setStyleSheet(
+            "color: #aaa; font-size: 14px; background: transparent;"
+        )
+        _next_row.addWidget(self.overlay_next_title, stretch=1)
+        _ov_text.addLayout(_next_row)
+
+        _ov_text.addStretch()
+        _ov_layout.addLayout(_ov_text, stretch=1)
+
+        self._info_overlay_timer = QTimer()
+        self._info_overlay_timer.setSingleShot(True)
+        self._info_overlay_timer.timeout.connect(self._hide_info_overlay)
 
         self._buffering_watchdog = QTimer()
         self._buffering_watchdog.setSingleShot(True)
@@ -1401,6 +1500,10 @@ class UiBuilderMixin:
         player_layout.addWidget(self.stream_info_panel)
 
         layout.addLayout(player_layout, stretch=1)
+
+        # EPG-Zeile fuer Live-Streams (Slider + Catchup-Button)
+        self.live_epg_bar = self._create_live_epg_bar()
+        layout.addWidget(self.live_epg_bar)
 
         # Player-Controls
         self.player_controls = self._create_player_controls()
@@ -1472,6 +1575,87 @@ class UiBuilderMixin:
 
         return area
 
+    def _create_live_epg_bar(self) -> QWidget:
+        """EPG-Fortschrittszeile fuer Live-Streams (zwischen Video und Controls)"""
+        bar = QWidget()
+        bar.setFixedHeight(34)
+        bar.setStyleSheet("background: #0a0a12; border-top: 1px solid #1a1a2a;")
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(8)
+
+        self.live_epg_von_anfang_btn = QPushButton("\u21BA Anfang")
+        self.live_epg_von_anfang_btn.setFixedHeight(24)
+        self.live_epg_von_anfang_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #e8691a;
+                border: 1px solid #e8691a; padding: 1px 12px;
+                border-radius: 5px; font-size: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background: rgba(245, 166, 35, 30); }
+        """)
+        self.live_epg_von_anfang_btn.clicked.connect(self._live_play_von_anfang)
+        self.live_epg_von_anfang_btn.hide()
+        layout.addWidget(self.live_epg_von_anfang_btn)
+
+        self.live_epg_catchup_btn = QPushButton("\u25C4\u25C4 Catchup")
+        self.live_epg_catchup_btn.setFixedHeight(24)
+        self.live_epg_catchup_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #e8691a;
+                border: 1px solid #e8691a; padding: 1px 12px;
+                border-radius: 5px; font-size: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background: rgba(245, 166, 35, 30); }
+        """)
+        self.live_epg_catchup_btn.clicked.connect(self._show_full_epg)
+        self.live_epg_catchup_btn.hide()
+        layout.addWidget(self.live_epg_catchup_btn)
+
+        self.live_epg_epg_btn = QPushButton("EPG \u25B8")
+        self.live_epg_epg_btn.setFixedHeight(24)
+        self.live_epg_epg_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #e8691a;
+                border: 1px solid #e8691a; padding: 1px 12px;
+                border-radius: 5px; font-size: 12px; font-weight: bold;
+            }
+            QPushButton:hover { background: rgba(245, 166, 35, 30); }
+        """)
+        self.live_epg_epg_btn.clicked.connect(self._toggle_channel_detail)
+        layout.addWidget(self.live_epg_epg_btn)
+
+        self.live_epg_seek_slider = QSlider(Qt.Horizontal)
+        self.live_epg_seek_slider.setRange(0, 1000)
+        self.live_epg_seek_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                background: #1e1e2e; height: 4px; border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background: #e8691a; width: 12px; height: 12px;
+                margin: -4px 0; border-radius: 6px;
+            }
+            QSlider::sub-page:horizontal { background: #e8691a; border-radius: 2px; }
+        """)
+        self.live_epg_seek_slider.sliderPressed.connect(
+            lambda: setattr(self, '_live_epg_seeking', True))
+        self.live_epg_seek_slider.sliderReleased.connect(self._on_live_epg_seek_released)
+        self.live_epg_seek_slider.hide()
+        layout.addWidget(self.live_epg_seek_slider, stretch=1)
+
+        self.live_epg_progress = QProgressBar()
+        self.live_epg_progress.setFixedHeight(4)
+        self.live_epg_progress.setTextVisible(False)
+        self.live_epg_progress.setStyleSheet("""
+            QProgressBar { background: #1e1e2e; border: none; border-radius: 2px; }
+            QProgressBar::chunk { background: #e8691a; border-radius: 2px; }
+        """)
+        self.live_epg_progress.hide()
+        layout.addWidget(self.live_epg_progress, stretch=1)
+
+        bar.hide()
+        return bar
+
     def _create_player_controls(self) -> QWidget:
         """Erstellt die Player-Steuerleiste"""
         bar = QFrame()
@@ -1490,7 +1674,7 @@ class UiBuilderMixin:
                 border-radius: 6px;
             }
             QPushButton:hover { background-color: #1a1a2a; color: white; }
-            QPushButton:checked { color: #0078d4; }
+            QPushButton:checked { color: #e8691a; }
             QPushButton#recordBtn { color: #ccc; }
             QPushButton#recordBtn:checked { color: #ff4444; background: rgba(255, 68, 68, 30); }
             QPushButton#recordBtn:checked:hover { background: rgba(255, 68, 68, 60); }
@@ -1524,17 +1708,32 @@ class UiBuilderMixin:
         self.btn_record.clicked.connect(self._toggle_recording)
         layout.addWidget(self.btn_record)
 
+        # Zap-Buttons (Kanal zurück/vor)
+        self.btn_zap_prev = QPushButton("\u2190")
+        self.btn_zap_prev.setFixedSize(36, 36)
+        self.btn_zap_prev.setToolTip("Vorheriger Kanal")
+        self.btn_zap_prev.clicked.connect(self._zap_prev)
+        self.btn_zap_prev.hide()
+        layout.addWidget(self.btn_zap_prev)
+
+        self.btn_zap_next = QPushButton("\u2192")
+        self.btn_zap_next.setFixedSize(36, 36)
+        self.btn_zap_next.setToolTip("Nächster Kanal")
+        self.btn_zap_next.clicked.connect(self._zap_next)
+        self.btn_zap_next.hide()
+        layout.addWidget(self.btn_zap_next)
+
         # Skip-Buttons
         self.btn_skip_back = QPushButton("\u25C0\u25C0")
         self.btn_skip_back.setFixedSize(36, 36)
-        self.btn_skip_back.setToolTip("-10 Sekunden")
-        self.btn_skip_back.clicked.connect(lambda: self._skip_seconds(-10))
+        self.btn_skip_back.setToolTip("-30 Sekunden")
+        self.btn_skip_back.clicked.connect(lambda: self._skip_seconds(-30))
         layout.addWidget(self.btn_skip_back)
 
         self.btn_skip_forward = QPushButton("\u25B6\u25B6")
         self.btn_skip_forward.setFixedSize(36, 36)
-        self.btn_skip_forward.setToolTip("+10 Sekunden")
-        self.btn_skip_forward.clicked.connect(lambda: self._skip_seconds(10))
+        self.btn_skip_forward.setToolTip("+30 Sekunden")
+        self.btn_skip_forward.clicked.connect(lambda: self._skip_seconds(30))
         layout.addWidget(self.btn_skip_forward)
 
         # Trennlinie
@@ -1559,14 +1758,14 @@ class UiBuilderMixin:
                 border-radius: 2px;
             }
             QSlider::handle:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 width: 12px;
                 height: 12px;
                 margin: -4px 0;
                 border-radius: 6px;
             }
             QSlider::sub-page:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 border-radius: 2px;
             }
         """)
@@ -1598,14 +1797,14 @@ class UiBuilderMixin:
                 border-radius: 2px;
             }
             QSlider::handle:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 width: 12px;
                 height: 12px;
                 margin: -4px 0;
                 border-radius: 6px;
             }
             QSlider::sub-page:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 border-radius: 2px;
             }
         """)
@@ -1619,11 +1818,9 @@ class UiBuilderMixin:
         self.player_dur_label.setStyleSheet("color: #999; font-size: 11px;")
         layout.addWidget(self.player_dur_label)
 
-        # EPG-Info (nur fuer Live)
-        self.player_info_label = QLabel("")
-        self.player_info_label.setStyleSheet("color: #999; font-size: 11px;")
-        self.player_info_label.hide()
-        layout.addWidget(self.player_info_label, stretch=1)
+        # Stretch fuer Mitte (EPG-Info wurde entfernt, Hover-Overlay genuegt)
+        self.player_info_label = QLabel("")  # Bleibt fuer Code-Kompatibilitaet
+        layout.addStretch(1)
 
         # LIVE-Button (Timeshift → zurueck zu Live)
         self.btn_go_live = QPushButton("LIVE")
@@ -1681,7 +1878,7 @@ class UiBuilderMixin:
                 padding: 2px 10px; border-radius: 6px; font-size: 11px;
             }
             QPushButton:hover { border-color: #555; color: #ccc; }
-            QPushButton:checked { border-color: #0078d4; color: #0078d4; }
+            QPushButton:checked { border-color: #e8691a; color: #e8691a; }
         """)
         self.btn_stream_info.clicked.connect(self._toggle_stream_info)
         layout.addWidget(self.btn_stream_info)
@@ -1699,67 +1896,6 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_fullscreen)
 
         return bar
-
-    def _create_info_overlay(self, parent: QWidget) -> QWidget:
-        """Erstellt das Info-Overlay fuer Mouse-Hover ueber dem Player"""
-        overlay = QFrame(parent)
-        overlay.setObjectName("infoOverlay")
-        overlay.setStyleSheet("""
-            #infoOverlay {
-                background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
-                    stop:0 rgba(0, 0, 0, 200),
-                    stop:0.7 rgba(0, 0, 0, 140),
-                    stop:1 rgba(0, 0, 0, 0));
-                border: none;
-            }
-        """)
-
-        layout = QVBoxLayout(overlay)
-        layout.setContentsMargins(20, 40, 20, 16)
-        layout.setSpacing(6)
-
-        layout.addStretch()
-
-        # Zeile: Logo + Sendername
-        title_row = QHBoxLayout()
-        title_row.setSpacing(12)
-
-        self.overlay_logo = QLabel()
-        self.overlay_logo.setFixedSize(64, 64)
-        self.overlay_logo.setStyleSheet("background: transparent;")
-        self.overlay_logo.setAlignment(Qt.AlignCenter)
-        self.overlay_logo.hide()
-        title_row.addWidget(self.overlay_logo)
-
-        self.overlay_title = QLabel("")
-        self.overlay_title.setStyleSheet("font-size: 18px; font-weight: bold; color: white; background: transparent;")
-        title_row.addWidget(self.overlay_title, stretch=1)
-
-        layout.addLayout(title_row)
-
-        # EPG: Aktuelle Sendung
-        self.overlay_now = QLabel("")
-        self.overlay_now.setStyleSheet("font-size: 13px; color: #ccc; background: transparent;")
-        self.overlay_now.setWordWrap(True)
-        layout.addWidget(self.overlay_now)
-
-        # Fortschrittsbalken
-        self.overlay_progress = QProgressBar()
-        self.overlay_progress.setFixedHeight(3)
-        self.overlay_progress.setTextVisible(False)
-        self.overlay_progress.setStyleSheet("""
-            QProgressBar { background: rgba(255,255,255,30); border: none; border-radius: 1px; }
-            QProgressBar::chunk { background: #0078d4; border-radius: 1px; }
-        """)
-        self.overlay_progress.hide()
-        layout.addWidget(self.overlay_progress)
-
-        # EPG: Naechste Sendung
-        self.overlay_next = QLabel("")
-        self.overlay_next.setStyleSheet("font-size: 13px; color: #999; background: transparent;")
-        layout.addWidget(self.overlay_next)
-
-        return overlay
 
     def _create_fullscreen_controls_overlay(self, parent: QWidget) -> QWidget:
         """Vollbild-Kontrollleiste als Auto-Hide-Overlay"""
@@ -1782,6 +1918,9 @@ class UiBuilderMixin:
                 border-radius: 6px;
             }
             QPushButton:hover { background-color: rgba(255, 255, 255, 25); color: white; }
+            QPushButton#fsRecordBtn { color: #ccc; }
+            QPushButton#fsRecordBtn:checked { color: #ff4444; background: rgba(255, 68, 68, 30); }
+            QPushButton#fsRecordBtn:checked:hover { background: rgba(255, 68, 68, 60); }
             QLabel {
                 color: #ddd;
                 font-size: 12px;
@@ -1796,7 +1935,7 @@ class UiBuilderMixin:
                 border-radius: 1px;
             }
             QProgressBar::chunk {
-                background: #0078d4;
+                background: #e8691a;
                 border-radius: 1px;
             }
         """)
@@ -1842,15 +1981,16 @@ class UiBuilderMixin:
         prog_row_layout.setContentsMargins(0, 2, 0, 2)
         prog_row_layout.setSpacing(8)
 
-        self.fs_epg_von_anfang_btn = QPushButton("\u23EE")
-        self.fs_epg_von_anfang_btn.setFixedSize(36, 30)
-        self.fs_epg_von_anfang_btn.setToolTip("Von Anfang")
+        self.fs_epg_von_anfang_btn = QPushButton("\u21BA Anfang")
+        self.fs_epg_von_anfang_btn.setFixedHeight(30)
+        self.fs_epg_von_anfang_btn.setToolTip("Sendung von Anfang abspielen (Catchup)")
         self.fs_epg_von_anfang_btn.setStyleSheet("""
             QPushButton {
-                background: rgba(0,120,212,30); color: #4fc3f7;
-                border: 1px solid #0078d4; border-radius: 4px; font-size: 13px;
+                background: transparent; color: #e8691a;
+                border: 1px solid #e8691a; padding: 2px 14px;
+                border-radius: 6px; font-size: 13px; font-weight: bold;
             }
-            QPushButton:hover { background: rgba(0,120,212,60); }
+            QPushButton:hover { background: rgba(245, 166, 35, 30); }
         """)
         self.fs_epg_von_anfang_btn.clicked.connect(self._fs_play_von_anfang)
         self.fs_epg_von_anfang_btn.hide()
@@ -1866,7 +2006,7 @@ class UiBuilderMixin:
                 background: white; width: 14px; height: 14px;
                 margin: -5px 0; border-radius: 7px;
             }
-            QSlider::sub-page:horizontal { background: #0078d4; border-radius: 2px; }
+            QSlider::sub-page:horizontal { background: #e8691a; border-radius: 2px; }
         """)
         self.fs_epg_seek_slider.sliderPressed.connect(lambda: setattr(self, '_fs_epg_seeking', True))
         self.fs_epg_seek_slider.sliderReleased.connect(self._on_fs_epg_seek_released)
@@ -1918,7 +2058,7 @@ class UiBuilderMixin:
                 border-radius: 7px;
             }
             QSlider::sub-page:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 border-radius: 2px;
             }
         """)
@@ -1970,7 +2110,65 @@ class UiBuilderMixin:
         self.fs_btn_go_live.hide()
         btn_row.addWidget(self.fs_btn_go_live)
 
+        self.fs_btn_stop = QPushButton("\u25A0")
+        self.fs_btn_stop.setFixedSize(44, 44)
+        self.fs_btn_stop.setToolTip("Stop")
+        self.fs_btn_stop.clicked.connect(self._stop_playback)
+        btn_row.addWidget(self.fs_btn_stop)
+
+        self.fs_btn_record = QPushButton("\u25CF")
+        self.fs_btn_record.setObjectName("fsRecordBtn")
+        self.fs_btn_record.setCheckable(True)
+        self.fs_btn_record.setFixedSize(44, 44)
+        self.fs_btn_record.setToolTip("Aufnahme starten")
+        self.fs_btn_record.clicked.connect(self._toggle_recording)
+        btn_row.addWidget(self.fs_btn_record)
+
         btn_row.addStretch()
+
+        # Audio / Sub / Info
+        self.fs_btn_audio = QPushButton("Audio")
+        self.fs_btn_audio.setFixedHeight(32)
+        self.fs_btn_audio.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #aaa;
+                border: 1px solid #3a3a4a; padding: 2px 12px;
+                border-radius: 6px; font-size: 12px;
+            }
+            QPushButton:hover { border-color: #888; color: white; }
+        """)
+        self.fs_btn_audio.clicked.connect(self._show_audio_menu)
+        btn_row.addWidget(self.fs_btn_audio)
+
+        self.fs_btn_subtitle = QPushButton("Sub")
+        self.fs_btn_subtitle.setFixedHeight(32)
+        self.fs_btn_subtitle.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #aaa;
+                border: 1px solid #3a3a4a; padding: 2px 12px;
+                border-radius: 6px; font-size: 12px;
+            }
+            QPushButton:hover { border-color: #888; color: white; }
+        """)
+        self.fs_btn_subtitle.clicked.connect(self._show_subtitle_menu)
+        btn_row.addWidget(self.fs_btn_subtitle)
+
+        self.fs_btn_stream_info = QPushButton("Info")
+        self.fs_btn_stream_info.setCheckable(True)
+        self.fs_btn_stream_info.setFixedHeight(32)
+        self.fs_btn_stream_info.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #aaa;
+                border: 1px solid #3a3a4a; padding: 2px 12px;
+                border-radius: 6px; font-size: 12px;
+            }
+            QPushButton:hover { border-color: #888; color: white; }
+            QPushButton:checked { border-color: #e8691a; color: #e8691a; }
+        """)
+        self.fs_btn_stream_info.clicked.connect(self._toggle_stream_info)
+        btn_row.addWidget(self.fs_btn_stream_info)
+
+        btn_row.addSpacing(12)
 
         vol_icon = QLabel("\U0001F50A")
         vol_icon.setStyleSheet("font-size: 15px; color: #aaa; background: transparent;")
@@ -1993,7 +2191,7 @@ class UiBuilderMixin:
                 border-radius: 6px;
             }
             QSlider::sub-page:horizontal {
-                background: #0078d4;
+                background: #e8691a;
                 border-radius: 2px;
             }
         """)

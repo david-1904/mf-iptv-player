@@ -31,7 +31,8 @@ class VodDetailMixin:
         self.vod_cast_widget.hide()
         self.vod_genre_widget.hide()
         self.vod_cover_label.clear()
-        self.vod_cover_label.setText("...")
+        self.vod_cover_label.setText("🎬")
+        self.vod_loading_bar.show()
         self.btn_trailer.hide()
         self._current_trailer_url = ""
         self._clear_rating_badges()
@@ -225,6 +226,7 @@ class VodDetailMixin:
             self.btn_trailer.show()
 
             self._hide_loading("")
+            self.vod_loading_bar.hide()
 
             # Cover laden
             cover_url = info.get("cover_big", "") or info.get("movie_image", "") or vod.stream_icon
@@ -233,6 +235,7 @@ class VodDetailMixin:
 
         except Exception as e:
             self._hide_loading(f"Fehler: {e}")
+            self.vod_loading_bar.hide()
             if vod.stream_icon:
                 asyncio.ensure_future(self._load_vod_cover(vod.stream_icon))
 
@@ -291,12 +294,21 @@ class VodDetailMixin:
         # Fortsetzen-Dialog pruefen
         resume_pos = self._check_resume_position(vod.stream_id, "vod")
 
+        # PiP-Modus verlassen BEVOR _toggle_player_maximized aufgerufen wird,
+        # damit dieser nicht faelschlicherweise _switch_mode("live") triggert.
+        if self._pip_mode:
+            self._exit_pip_mode()
+
         self._play_stream(url, vod.name, "vod", vod.stream_id,
                           icon=getattr(vod, 'stream_icon', ''),
                           container_extension=vod.container_extension)
 
         if resume_pos > 0:
             QTimer.singleShot(500, lambda: self.player.seek(resume_pos, relative=False))
+
+        # Vollbild beim VOD-Start
+        if not self._player_maximized:
+            self._toggle_player_maximized()
 
     def _vod_back(self):
         """Zurueck zur Filmliste"""

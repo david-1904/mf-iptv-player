@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QStackedWidget,
     QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QTextEdit,
 )
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QPixmap
 
 from xtream_api import XtreamAPI, Category
@@ -87,6 +87,7 @@ class MainWindow(
         self._current_epg_has_catchup: bool = False
         self._detail_prev_entry = None
         self._detail_now_entry = None
+        self._detail_next_entry = None
 
         # Player-Zustand
         self._player_maximized = False
@@ -102,6 +103,7 @@ class MainWindow(
         # Timeshift-Zustand
         self._timeshift_active = False
         self._timeshift_paused_at: float = 0
+        self._timeshift_start_ts: float = 0.0  # Echtzeit-Timestamp bei dem der Catchup-Stream beginnt
 
         # Reconnect-Zustand
         self._reconnect_attempt = 0
@@ -118,6 +120,8 @@ class MainWindow(
         self._update_checker = UpdateChecker()
         self._update_release_info = None
 
+        self.setMinimumSize(920, 600)
+        self.resize(1400, 900)  # Vernuenftige Restore-Groesse fuer Fensterleisten-Doppelklick
         self._setup_ui()
         self._setup_toolbar()
         self._setup_statusbar()
@@ -156,21 +160,17 @@ class MainWindow(
                 self.buffering_overlay.setGeometry(0, 0, obj.width(), obj.height())
                 if self.fullscreen_controls.isVisible():
                     self._position_fullscreen_controls()
-            if self.info_overlay.parentWidget() is obj and self.info_overlay.isVisible():
-                w, h = obj.width(), obj.height()
-                overlay_h = min(180, h // 2)
-                self.info_overlay.setGeometry(0, h - overlay_h, w, overlay_h)
+                if self.info_overlay.isVisible():
+                    h = 165
+                    self.info_overlay.setGeometry(0, obj.height() - h, obj.width(), h)
             if obj is self.main_page and self._pip_mode:
                 self._update_pip_position()
             if obj is self.channel_list.viewport() and self.current_mode in ("vod", "series"):
                 self._update_grid_size()
         elif event.type() == QEvent.MouseMove:
-            if self.info_overlay.parentWidget() is obj or obj is self.player:
-                if self.player.is_playing:
-                    if self._player_maximized:
-                        self._show_fullscreen_controls()
-                    else:
-                        self._show_info_overlay()
+            if (obj is self.player_container or obj is self.player) and self.player.is_playing:
+                if self._player_maximized:
+                    self._show_fullscreen_controls()
         elif event.type() == QEvent.MouseButtonRelease:
             if obj is getattr(self, '_epg_content_widget', None):
                 self._toggle_channel_detail()
@@ -178,11 +178,14 @@ class MainWindow(
         elif event.type() == QEvent.Enter:
             if obj is self.fullscreen_controls:
                 self._fs_controls_timer.stop()
+            elif obj is self.player_container and self.player.is_playing:
+                self._info_overlay_timer.stop()
+                self._show_info_overlay()
         elif event.type() == QEvent.Leave:
-            if self.info_overlay.parentWidget() is obj:
-                self._info_overlay_timer.start(800)
-            elif obj is self.fullscreen_controls:
+            if obj is self.fullscreen_controls:
                 self._fs_controls_timer.start(3000)
+            elif obj is self.player_container:
+                self._info_overlay_timer.start(400)
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
@@ -196,6 +199,30 @@ class MainWindow(
             self.search_input.selectAll()
         else:
             super().keyPressEvent(event)
+
+    def changeEvent(self, event):
+        """OS-Fenstermaximierung/-Wiederherstellung ohne Layout-Bruch behandeln."""
+        if event.type() == QEvent.Type.WindowStateChange:
+            if not self._player_maximized:
+                QTimer.singleShot(60, self._refresh_player_layout)
+        super().changeEvent(event)
+
+    def _refresh_player_layout(self):
+        """Passt channel_area-Breite nach OS-Resize an."""
+        if self._player_maximized or not self.player_area.isVisible():
+            return
+        # VOD: Kanalliste bleibt ausgeblendet, Player fuellt volle Breite
+        if self._current_stream_type == "vod":
+            return
+        # Detail-Panel verwaltet seine eigene Breite — nicht ueberschreiben
+        if hasattr(self, 'channel_detail_panel') and self.channel_detail_panel.isVisible():
+            return
+        available = self.main_page.width()
+        if available <= 0:
+            return
+        # Breite proportional anpassen: 30% fuer Kanalliste, min 300, max 440
+        w = max(300, min(440, int(available * 0.30)))
+        self.channel_area.setFixedWidth(w)
 
     def closeEvent(self, event):
         self._save_current_position()
