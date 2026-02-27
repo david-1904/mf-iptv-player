@@ -32,6 +32,12 @@ class PlaybackMixin:
             return
 
         if isinstance(data, LiveStream):
+            # Sender-State fuer EPG-Detail-Toggle merken
+            self._detail_stream_data = data
+            self._current_epg_stream_id = data.stream_id
+            self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
+            self.epg_channel_name.setText(data.name)
+            asyncio.ensure_future(self._load_epg(data.stream_id))
             url = self.api.creds.stream_url(data.stream_id)
             self._play_stream(url, data.name, "live", data.stream_id, icon=data.stream_icon)
             if data.category_id:
@@ -112,14 +118,7 @@ class PlaybackMixin:
             self._exit_pip_mode()
 
         self._update_seek_controls_visibility()
-        # Detailpanel: bei Live-TV offen lassen (3-Spalten), bei VOD schliessen
-        if is_vod_playback or not self.channel_detail_panel.isVisible():
-            self._hide_channel_detail()
-        else:
-            # Live-TV mit offenem Detailpanel: 3-Spalten-Layout sicherstellen
-            ca_width = min(700, max(560, int(self.main_page.width() * 0.42)))
-            self.channel_nav_widget.setMaximumWidth(280)
-            self.channel_area.setFixedWidth(ca_width)
+        self._hide_channel_detail()
         self.player.play(url)
         self.btn_play_pause.setText("\u2759\u2759")
         self.player_info_label.setText("")
@@ -409,6 +408,8 @@ class PlaybackMixin:
         else:
             # Echtes OS-Fullscreen
             self._was_maximized_before_fullscreen = self.isMaximized()
+            self._info_overlay_timer.stop()
+            self._hide_info_overlay()
             self.sidebar.hide()
             self.channel_area.hide()
             self.player_header.hide()
@@ -504,18 +505,128 @@ class PlaybackMixin:
         """Positioniert die Fullscreen-Kontrollleiste am unteren Rand"""
         parent = self.fullscreen_controls.parentWidget()
         if parent:
-            ctrl_h = 120
+            ctrl_h = 260
             self.fullscreen_controls.setGeometry(0, parent.height() - ctrl_h, parent.width(), ctrl_h)
 
     def _show_fullscreen_controls(self):
         """Zeigt die Fullscreen-Kontrollleiste und startet den Auto-Hide-Timer"""
         if not self._player_maximized:
             return
+        self._update_fs_info()
+        self._update_fullscreen_controls()
         self._position_fullscreen_controls()
         self.fullscreen_controls.raise_()
         self.fullscreen_controls.show()
         self.unsetCursor()
         self._fs_controls_timer.start(3000)
+
+    def _update_fs_info(self):
+        """Befüllt die Info-Sektion im Fullscreen-Overlay (Kanal, EPG)"""
+        self.fs_channel_title.setText(self.player_title.text())
+
+        # Logo
+        logo_key = f"{self._current_stream_icon}_128x128"
+        if self._current_stream_icon:
+            if logo_key in self._image_cache:
+                cached = self._image_cache[logo_key]
+                if cached:
+                    self.fs_channel_logo.setPixmap(cached.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    self.fs_channel_logo.show()
+            else:
+                asyncio.ensure_future(self._load_overlay_logo(self._current_stream_icon))
+        else:
+            self.fs_channel_logo.hide()
+
+        # EPG
+        now_ts = datetime.now().timestamp()
+        current_entry = None
+        next_entry = None
+        if self._current_playing_stream_id and self._current_stream_type == "live":
+            epg = self._epg_cache.get(self._current_playing_stream_id, [])
+            for entry in epg:
+                if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+                    current_entry = entry
+                elif entry.start_timestamp > now_ts and next_entry is None:
+                    next_entry = entry
+
+        has_catchup_live = (self._current_epg_has_catchup
+                            and self._current_stream_type == "live")
+
+        if current_entry:
+            start = datetime.fromtimestamp(current_entry.start_timestamp).strftime("%H:%M")
+            end = datetime.fromtimestamp(current_entry.stop_timestamp).strftime("%H:%M")
+            self.fs_epg_now.setText(f"{start} – {end}   {current_entry.title}")
+            self.fs_epg_now.show()
+            self._fs_epg_current_entry = current_entry
+            duration = current_entry.stop_timestamp - current_entry.start_timestamp
+            if duration > 0:
+                if has_catchup_live:
+                    # Wert: im Timeshift aus player.position/duration, sonst aus Uhrzeit
+                    if self._timeshift_active:
+                        dur = self.player.duration or 0
+                        pos = self.player.position or 0
+                        val = max(0, min(1000, int(pos / dur * 1000))) if dur > 0 else 0
+                    else:
+                        elapsed = now_ts - current_entry.start_timestamp
+                        val = max(0, min(1000, int(elapsed / duration * 1000)))
+                    if not getattr(self, '_fs_epg_seeking', False):
+                        self.fs_epg_seek_slider.blockSignals(True)
+                        self.fs_epg_seek_slider.setValue(val)
+                        self.fs_epg_seek_slider.blockSignals(False)
+                    self.fs_epg_seek_slider.show()
+                    self.fs_epg_von_anfang_btn.show()
+                    self.fs_epg_progress.hide()
+                else:
+                    elapsed = now_ts - current_entry.start_timestamp
+                    self.fs_epg_progress.setValue(max(0, min(100, int(elapsed / duration * 100))))
+                    self.fs_epg_progress.show()
+                    self.fs_epg_seek_slider.hide()
+                    self.fs_epg_von_anfang_btn.hide()
+            else:
+                self.fs_epg_progress.hide()
+                self.fs_epg_seek_slider.hide()
+                self.fs_epg_von_anfang_btn.hide()
+        else:
+            self.fs_epg_now.hide()
+            self.fs_epg_progress.hide()
+            self.fs_epg_seek_slider.hide()
+            self.fs_epg_von_anfang_btn.hide()
+            self._fs_epg_current_entry = None
+
+        if next_entry:
+            start = datetime.fromtimestamp(next_entry.start_timestamp).strftime("%H:%M")
+            self.fs_epg_next.setText(f"Danach: {start}  {next_entry.title}")
+            self.fs_epg_next.show()
+        else:
+            self.fs_epg_next.hide()
+
+    def _on_fs_epg_seek_released(self):
+        """Nutzer hat EPG-Slider losgelassen → seekern oder Catchup starten"""
+        self._fs_epg_seeking = False
+        entry = getattr(self, '_fs_epg_current_entry', None)
+        if not entry:
+            return
+        if self._timeshift_active:
+            # Bereits im Timeshift: direkt im Stream seekern
+            dur = self.player.duration or 0
+            if dur > 0:
+                target = self.fs_epg_seek_slider.value() / 1000.0 * dur
+                self.player.seek(target, relative=False)
+            return
+        # Live → Catchup-URL mit angepasstem Startzeitpunkt
+        if not self.api or not self._current_playing_stream_id:
+            return
+        show_duration = entry.stop_timestamp - entry.start_timestamp
+        if show_duration <= 0:
+            return
+        seek_to = entry.start_timestamp + (self.fs_epg_seek_slider.value() / 1000.0) * show_duration
+        seek_to = min(seek_to, datetime.now().timestamp() - 10)
+        remaining = max(1, int((entry.stop_timestamp - seek_to) / 60))
+        url = self.api.creds.catchup_url(
+            self._current_playing_stream_id, datetime.fromtimestamp(seek_to), remaining)
+        self._play_stream(url, self._current_stream_title or "", "live", self._current_playing_stream_id)
+        self._timeshift_active = True
+        self._update_seek_controls_visibility()
 
     def _hide_fullscreen_controls(self):
         """Versteckt die Fullscreen-Kontrollleiste und blendet Cursor aus"""
@@ -536,26 +647,62 @@ class PlaybackMixin:
 
     def _update_fullscreen_controls(self):
         """Aktualisiert den Inhalt der Fullscreen-Kontrollleiste"""
-        if not self._player_maximized or not self.fullscreen_controls.isVisible():
+        if not self._player_maximized:
             return
-        # Play/Pause-Button synchronisieren
-        is_playing = self.player.is_playing
-        self.fs_btn_play_pause.setText("\u2759\u2759" if is_playing else "\u25B6\uFE0E")
-        # Seek-Zeile nur bei VOD oder Timeshift anzeigen
-        show_seek = self._current_stream_type == "vod" or self._timeshift_active
-        self.fs_seek_row.setVisible(show_seek)
-        if show_seek:
+
+        is_vod = self._current_stream_type == "vod"
+        is_live = self._current_stream_type == "live"
+        has_catchup = self._current_epg_has_catchup
+        timeshift = self._timeshift_active
+
+        # Play/Pause
+        self.fs_btn_play_pause.setText("\u2759\u2759" if self.player.is_playing else "\u25B6\uFE0E")
+
+        # Skip zurück: VOD, Timeshift oder Live+Catchup
+        self.fs_btn_skip_back.setVisible(is_vod or timeshift or (is_live and has_catchup))
+        # Skip vor: nur VOD oder Timeshift
+        self.fs_btn_skip_forward.setVisible(is_vod or timeshift)
+        # LIVE-Button: nur im Timeshift
+        self.fs_btn_go_live.setVisible(timeshift)
+        # EPG-Seek-Slider Wert laufend aktualisieren
+        if (self.fs_epg_seek_slider.isVisible()
+                and not getattr(self, '_fs_epg_seeking', False)):
+            if timeshift:
+                dur = self.player.duration or 0
+                pos = self.player.position or 0
+                val = max(0, min(1000, int(pos / dur * 1000))) if dur > 0 else 0
+            else:
+                entry = getattr(self, '_fs_epg_current_entry', None)
+                if entry:
+                    now_ts = datetime.now().timestamp()
+                    dur = entry.stop_timestamp - entry.start_timestamp
+                    val = max(0, min(1000, int((now_ts - entry.start_timestamp) / dur * 1000))) if dur > 0 else 0
+                else:
+                    val = None
+            if val is not None:
+                self.fs_epg_seek_slider.blockSignals(True)
+                self.fs_epg_seek_slider.setValue(val)
+                self.fs_epg_seek_slider.blockSignals(False)
+
+        # Seek-Zeile: nur VOD (Timeshift nutzt EPG-Slider in der Info-Sektion)
+        self.fs_seek_row.setVisible(is_vod)
+        if is_vod:
             pos = self.player.position or 0
             dur = self.player.duration or 0
             self.fs_pos_label.setText(self._format_time(pos))
             self.fs_dur_label.setText(self._format_time(dur))
             if dur > 0 and not self._fs_seeking:
                 self.fs_seek_slider.setValue(int(pos / dur * 1000))
-        # EPG-Info fuer Live-Streams
-        if self._current_stream_type == "live":
-            self.fs_info_label.setText(self.player_info_label.text())
-        else:
-            self.fs_info_label.setText("")
+
+    def _fs_play_von_anfang(self):
+        """Spielt die aktuelle Sendung ab Beginn via Catchup ab (aus Vollbild)"""
+        if not self._current_playing_stream_id:
+            return
+        now_ts = datetime.now().timestamp()
+        for entry in self._epg_cache.get(self._current_playing_stream_id, []):
+            if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+                self._play_catchup(entry)
+                return
 
     @Slot(str)
     def _on_stream_ended(self, reason: str):
@@ -650,8 +797,12 @@ class PlaybackMixin:
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
                 pixmap = await self._fetch_poster(session, url, 128, 128)
-                if pixmap and self._current_stream_icon == url and self.info_overlay.isVisible():
-                    self.overlay_logo.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                    self.overlay_logo.show()
+                if pixmap and self._current_stream_icon == url:
+                    if self.info_overlay.isVisible():
+                        self.overlay_logo.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        self.overlay_logo.show()
+                    if self.fullscreen_controls.isVisible():
+                        self.fs_channel_logo.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                        self.fs_channel_logo.show()
         except Exception:
             pass

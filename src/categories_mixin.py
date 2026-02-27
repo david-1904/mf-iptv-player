@@ -211,7 +211,11 @@ class CategoriesMixin:
         self.category_list.hide()
         self._epg_splitter.show()
         self.channel_list.show()
-        self.epg_panel.setVisible(self.current_mode == "live")
+        # EPG-Panel nur zeigen wenn Detail-Panel geschlossen ist
+        if self.current_mode == "live" and not self.channel_detail_panel.isVisible():
+            self.epg_panel.show()
+            if self._epg_splitter.sizes()[1] < 50:
+                self._epg_splitter.setSizes([700, 230])
         name = self._category_items[self._current_category_index][0] if self._current_category_index >= 0 else "Kategorie"
         self.category_btn.setText(f"{name}  \u25BE")
 
@@ -370,7 +374,7 @@ class CategoriesMixin:
             if match:
                 self.channel_list.setCurrentRow(i)
                 self.channel_list.scrollToItem(item)
-                if not already_active:
+                if not already_active and mode == "live":
                     self._on_channel_selected(item)
                 break
 
@@ -461,7 +465,7 @@ class CategoriesMixin:
             self.channel_list.setSpacing(0)
             self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
         self._apply_channel_list_style(grid_mode=is_grid)
-        self.epg_panel.setVisible(self.current_mode == "live")
+        self.epg_panel.hide()
 
         try:
             if self.current_mode == "live":
@@ -502,7 +506,7 @@ class CategoriesMixin:
 
             self._hide_loading(f"{self.channel_list.count()} Eintraege geladen")
 
-            # Ersten Live-Sender automatisch auswaehlen + Detailpanel zeigen
+            # Ersten Live-Sender markieren + EPG vorladen (Detail-Panel bleibt zu)
             if self.current_mode == "live" and self.channel_list.count() > 0:
                 self._initial_epg_loaded = True
                 first_item = self.channel_list.item(0)
@@ -510,10 +514,10 @@ class CategoriesMixin:
                     self.channel_list.setCurrentRow(0)
                     data = first_item.data(Qt.UserRole)
                     if hasattr(data, 'stream_id'):
+                        self._detail_stream_data = data
                         self._current_epg_stream_id = data.stream_id
                         self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
                         self.epg_channel_name.setText(data.name)
-                        self._show_channel_detail(data)
                         asyncio.ensure_future(self._load_epg(data.stream_id))
 
             # Poster/Logos laden
