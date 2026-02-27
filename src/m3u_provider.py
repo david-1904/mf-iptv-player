@@ -140,15 +140,15 @@ class M3uProvider:
         info: dict = {}
 
         # tvg-id
-        m = re.search(r'tvg-id="([^"]*)"', line)
+        m = re.search(r'tvg-id=["\']([^"\']*)["\']', line)
         info["tvg_id"] = m.group(1) if m else ""
 
         # tvg-logo
-        m = re.search(r'tvg-logo="([^"]*)"', line)
+        m = re.search(r'tvg-logo=["\']([^"\']*)["\']', line)
         info["logo"] = m.group(1) if m else ""
 
-        # group-title
-        m = re.search(r'group-title="([^"]*)"', line)
+        # group-title (einfache und doppelte Anführungszeichen)
+        m = re.search(r'group-title=["\']([^"\']*)["\']', line)
         info["group"] = m.group(1).strip() if m else "Allgemein"
 
         # Kanal-Name (nach dem letzten Komma)

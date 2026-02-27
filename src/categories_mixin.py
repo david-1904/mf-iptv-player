@@ -103,6 +103,11 @@ class CategoriesMixin:
         if not self.api:
             return
 
+        # Falls Kategorie-Dropdown offen war, korrekt schliessen
+        if self.category_list.isVisible():
+            self.category_list.hide()
+            self._epg_splitter.show()
+
         self._show_loading("Lade Kategorien...")
 
         try:
@@ -211,11 +216,7 @@ class CategoriesMixin:
         self.category_list.hide()
         self._epg_splitter.show()
         self.channel_list.show()
-        # EPG-Panel nur zeigen wenn Detail-Panel geschlossen ist
-        if self.current_mode == "live" and not self.channel_detail_panel.isVisible():
-            self.epg_panel.show()
-            if self._epg_splitter.sizes()[1] < 50:
-                self._epg_splitter.setSizes([700, 230])
+        pass
         name = self._category_items[self._current_category_index][0] if self._current_category_index >= 0 else "Kategorie"
         self.category_btn.setText(f"{name}  \u25BE")
 
@@ -473,7 +474,7 @@ class CategoriesMixin:
                 for item in items:
                     name = item.name
                     if item.tv_archive:
-                        name += "  \u25C2\u25C2"
+                        name += "  \u21BA"
                     list_item = QListWidgetItem(name)
                     list_item.setData(Qt.UserRole, item)
                     self.channel_list.addItem(list_item)

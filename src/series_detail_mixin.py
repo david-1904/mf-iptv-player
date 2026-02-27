@@ -113,6 +113,9 @@ class SeriesDetailMixin:
 
         resume_pos = self._check_resume_position(ep.id, "vod")
 
+        if self._pip_mode:
+            self._exit_pip_mode()
+
         self._play_stream(url, title, "vod", ep.id,
                           container_extension=ep.container_extension)
 

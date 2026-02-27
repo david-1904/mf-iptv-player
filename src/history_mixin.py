@@ -164,43 +164,43 @@ class HistoryMixin:
         return 0.0
 
     def _toggle_recording(self):
-        """Startet oder stoppt die Aufnahme"""
-        want_record = self.btn_record.isChecked()
-
-        if not want_record:
-            # Stoppen gewuenscht
-            if self.recorder.is_recording:
-                filepath = self.recorder.stop()
-                if filepath and filepath.exists() and filepath.stat().st_size > 0:
-                    self.status_bar.showMessage(f"Aufnahme gespeichert: {filepath.name}")
-                else:
-                    self.status_bar.showMessage("Aufnahme gestoppt")
-            self.btn_record.setChecked(False)
-            self.btn_record.setToolTip("Aufnahme starten")
+        """Startet oder stoppt die Aufnahme (aufrufbar von beiden Record-Buttons)"""
+        if self.recorder.is_recording:
+            # Stoppen
+            filepath = self.recorder.stop()
+            if filepath and filepath.exists() and filepath.stat().st_size > 0:
+                self.status_bar.showMessage(f"Aufnahme gespeichert: {filepath.name}")
+            else:
+                self.status_bar.showMessage("Aufnahme gestoppt")
+            self._sync_record_buttons(False)
         else:
-            # Starten gewuenscht
+            # Starten
             if not self._current_stream_url:
-                self.btn_record.setChecked(False)
+                self._sync_record_buttons(False)
                 return
-            # Falls noch alte Aufnahme laeuft, erst stoppen
-            if self.recorder.is_recording:
-                self.recorder.stop()
             filepath = self.recorder.start(self._current_stream_url, self._current_stream_title)
-            self.btn_record.setToolTip("Aufnahme stoppen")
             self.status_bar.showMessage(f"Aufnahme: {filepath.name}")
+            self._sync_record_buttons(True)
+
+    def _sync_record_buttons(self, recording: bool):
+        """Synchronisiert den Aufnahme-Status in allen Buttons."""
+        tip = "Aufnahme stoppen" if recording else "Aufnahme starten"
+        self.btn_record.setChecked(recording)
+        self.btn_record.setToolTip(tip)
+        fs_btn = getattr(self, 'fs_btn_record', None)
+        if fs_btn:
+            fs_btn.setChecked(recording)
+            fs_btn.setToolTip(tip)
 
     def _update_record_button(self):
         """Aktualisiert das Aussehen des Aufnahme-Buttons"""
-        recording = self.recorder.is_recording
-        self.btn_record.setChecked(recording)
-        self.btn_record.setToolTip("Aufnahme stoppen" if recording else "Aufnahme starten")
+        self._sync_record_buttons(self.recorder.is_recording)
 
     def _update_recording_status(self):
         """Aktualisiert den Aufnahme-Status in der Statusbar"""
         # Button-State synchronisieren falls ffmpeg unerwartet beendet
         if self.btn_record.isChecked() and not self.recorder.is_recording:
-            self.btn_record.setChecked(False)
-            self.btn_record.setToolTip("Aufnahme starten")
+            self._sync_record_buttons(False)
             self.status_bar.showMessage("Aufnahme beendet (ffmpeg gestoppt)")
             return
         if self.recorder.is_recording and self.recorder.start_time:
