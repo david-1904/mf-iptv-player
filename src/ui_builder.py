@@ -1,6 +1,8 @@
 """
 UI-Erstellung: Alle _create_* Methoden und Layout-Setup
 """
+import sys
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QStackedWidget, QListWidget, QListWidgetItem, QComboBox,
@@ -1451,8 +1453,14 @@ class UiBuilderMixin:
         self.buffering_overlay.hide()
         self.buffering_overlay.setParent(player_container)
 
+        player_container.setMouseTracking(True)
         self.player_container = player_container
         self.fullscreen_controls = self._create_fullscreen_controls_overlay(player_container)
+        # Windows: QOpenGLWidget ist ein natives Child-Window und liegt sonst immer
+        # über normalen Sibling-Widgets. WA_NativeWindow gibt dem Overlay ein eigenes
+        # HWND, damit Windows die Z-Reihenfolge korrekt über raise_() verwalten kann.
+        if sys.platform == "win32":
+            self.fullscreen_controls.setAttribute(Qt.WA_NativeWindow)
         self._fs_controls_timer = QTimer()
         self._fs_controls_timer.setSingleShot(True)
         self._fs_controls_timer.timeout.connect(self._hide_fullscreen_controls)

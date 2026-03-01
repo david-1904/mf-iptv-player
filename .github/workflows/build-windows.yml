@@ -22,7 +22,7 @@ jobs:
       - name: Abhaengigkeiten installieren
         run: |
           pip install -r requirements.txt
-          pip install pyinstaller Pillow cairosvg
+          pip install nuitka ordered-set zstandard Pillow cairosvg
 
       - name: libmpv herunterladen
         shell: pwsh
