@@ -120,6 +120,11 @@ class AccountMixin:
 
                 self._update_series_button_visibility()
 
+    def _on_hwdec_changed(self):
+        value = self.hwdec_combo.currentData()
+        self.app_settings.set("hwdec", value)
+        self.lbl_hwdec_hint.show()
+
     def _show_settings(self):
         self._update_account_combo()
         self.content_stack.setCurrentWidget(self.settings_page)
