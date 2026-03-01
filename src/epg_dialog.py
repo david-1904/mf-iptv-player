@@ -198,12 +198,12 @@ class EpgDialog(QDialog):
         if self._schedule_callback and (is_current or is_future):
             btn_rec = QPushButton("\U0001F4F9")
             btn_rec.setToolTip("Aufnahme planen")
-            btn_rec.setFixedHeight(28)
+            btn_rec.setFixedHeight(32)
             btn_rec.setStyleSheet("""
                 QPushButton {
                     background: transparent; color: #888;
                     border: 1px solid #444; border-radius: 6px;
-                    font-size: 12px; padding: 2px 8px;
+                    font-size: 17px; padding: 2px 8px;
                 }
                 QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
             """)
