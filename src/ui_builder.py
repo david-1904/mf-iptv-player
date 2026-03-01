@@ -144,6 +144,17 @@ class UiBuilderMixin:
         self.btn_recordings.clicked.connect(lambda: self._switch_mode("recordings"))
         layout.addWidget(self.btn_recordings)
 
+        # Trennlinie
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setStyleSheet("background-color: #1a1a2a; margin: 4px 10px;")
+        layout.addWidget(line2)
+
+        # Aktualisieren-Button
+        self.btn_refresh = QPushButton("\u21BB  Aktualisieren")
+        self.btn_refresh.clicked.connect(self._refresh_current)
+        layout.addWidget(self.btn_refresh)
+
         # Spacer
         layout.addStretch()
 
