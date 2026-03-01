@@ -7,7 +7,7 @@ import platform
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QStackedWidget,
-    QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QTextEdit,
+    QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QTextEdit, QApplication,
 )
 from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QPixmap
@@ -318,9 +318,16 @@ class MainWindow(
 
         progress.hide()
         if success:
-            status_label.setText("Update erfolgreich! Bitte App neu starten.")
-            status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
-            update_btn.setText("\u2714  Bitte App neu starten")
+            if msg == "RESTART":
+                # Windows: Updater-Script läuft, App jetzt beenden
+                status_label.setText("Update heruntergeladen – App wird neu gestartet…")
+                status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
+                QTimer.singleShot(1500, QApplication.instance().quit)
+            else:
+                # Linux: git pull, manueller Neustart nötig
+                status_label.setText("Update erfolgreich! Bitte App neu starten.")
+                status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
+                update_btn.setText("\u2714  Bitte App neu starten")
         else:
             status_label.setText(f"Fehler: {msg}")
             status_label.setStyleSheet("color: #f44336;")
