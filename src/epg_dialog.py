@@ -14,7 +14,8 @@ from xtream_api import EpgEntry
 class EpgDialog(QDialog):
     """Dialog mit vollstaendigem Programmueberblick"""
 
-    def __init__(self, channel_name: str, epg_data: list[EpgEntry], has_catchup: bool = False, parent=None):
+    def __init__(self, channel_name: str, epg_data: list[EpgEntry], has_catchup: bool = False,
+                 schedule_callback=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Programm - {channel_name}")
         self.setMinimumSize(520, 500)
@@ -26,6 +27,7 @@ class EpgDialog(QDialog):
             }
         """)
         self._has_catchup = has_catchup
+        self._schedule_callback = schedule_callback
         self.selected_catchup_entry: EpgEntry | None = None
         self._setup_ui(channel_name, epg_data)
 
@@ -190,6 +192,22 @@ class EpgDialog(QDialog):
             """)
             btn_play.clicked.connect(lambda checked=False, e=entry: self._on_catchup_clicked(e))
             title_line.addWidget(btn_play)
+
+        # Aufnahme-planen-Button für zukünftige und aktuelle Sendungen
+        if self._schedule_callback and (is_current or is_future):
+            btn_rec = QPushButton("\U0001F4F9")
+            btn_rec.setToolTip("Aufnahme planen")
+            btn_rec.setFixedHeight(28)
+            btn_rec.setStyleSheet("""
+                QPushButton {
+                    background: transparent; color: #888;
+                    border: 1px solid #444; border-radius: 6px;
+                    font-size: 12px; padding: 2px 8px;
+                }
+                QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
+            """)
+            btn_rec.clicked.connect(lambda checked=False, e=entry: self._schedule_callback(e))
+            title_line.addWidget(btn_rec)
 
         layout.addLayout(title_line)
 
