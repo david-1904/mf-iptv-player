@@ -96,7 +96,7 @@ class SeriesDetailMixin:
     async def _load_series_cover(self, url: str):
         """Laedt das Serien-Cover asynchron"""
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            pixmap = await self._fetch_poster(session, url, 130, 195)
+            pixmap = await self._fetch_poster(session, url, 160, 240)
             if pixmap:
                 self.series_cover_label.setPixmap(pixmap)
                 self.series_cover_label.setText("")
