@@ -2,6 +2,7 @@
 Account-Verwaltung: Laden, Hinzufuegen, Loeschen, Wechseln
 """
 import asyncio
+from datetime import datetime
 
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QMessageBox
@@ -105,6 +106,7 @@ class AccountMixin:
                 self._epg_cache = {}
                 self._initial_epg_loaded = False
 
+                self._show_loading("Lade Kategorien…")
                 if account.type == "m3u":
                     self.api = M3uProvider(account.name, account.url)
                     asyncio.ensure_future(self._load_m3u_and_categories())
@@ -121,6 +123,59 @@ class AccountMixin:
     def _show_settings(self):
         self._update_account_combo()
         self.content_stack.setCurrentWidget(self.settings_page)
+        asyncio.ensure_future(self._refresh_line_info())
+
+    async def _refresh_line_info(self):
+        if not self.api or not isinstance(self.api, XtreamAPI):
+            self.lbl_line_info.setText("Kein aktiver Xtream-Account")
+            return
+
+        self.lbl_line_info.setText("Wird geladen…")
+        try:
+            data = await self.api.get_account_info()
+        except Exception as e:
+            self.lbl_line_info.setText(f"Fehler beim Laden: {e}")
+            return
+
+        user_info = data.get("user_info", {}) if isinstance(data, dict) else {}
+        if not user_info:
+            self.lbl_line_info.setText("Keine Account-Informationen verfügbar")
+            return
+
+        status = user_info.get("status", "–")
+        exp_date_raw = user_info.get("exp_date")
+        max_conn = user_info.get("max_connections", "–")
+        active_conn = user_info.get("active_cons", "0")
+        is_trial = user_info.get("is_trial", "0") == "1"
+
+        # Ablaufdatum berechnen
+        exp_str = "–"
+        days_str = ""
+        if exp_date_raw:
+            try:
+                exp_dt = datetime.fromtimestamp(int(exp_date_raw))
+                exp_str = exp_dt.strftime("%d.%m.%Y")
+                days_left = (exp_dt - datetime.now()).days
+                if days_left > 0:
+                    days_str = f"  ·  Noch {days_left} Tage"
+                elif days_left == 0:
+                    days_str = "  ·  Läuft heute ab"
+                else:
+                    days_str = f"  ·  Abgelaufen vor {abs(days_left)} Tagen"
+            except (ValueError, OSError):
+                pass
+
+        account_name = getattr(self.api.creds, "name", "") or self.api.creds.username
+        trial_hint = "  (Test-Account)" if is_trial else ""
+
+        color = "#6fcf97" if status.lower() == "active" else "#f44336"
+        text = (
+            f"<b>{account_name}</b>{trial_hint}<br>"
+            f"Status: <span style='color:{color}'>{status}</span><br>"
+            f"Gültig bis: {exp_str}{days_str}<br>"
+            f"Verbindungen: {active_conn} / {max_conn}"
+        )
+        self.lbl_line_info.setText(text)
 
     def _on_account_list_clicked(self, item):
         """Klick auf Account in der Liste: Formular zum Bearbeiten befuellen"""

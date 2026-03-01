@@ -297,6 +297,40 @@ class UiBuilderMixin:
         self.btn_delete_account.clicked.connect(self._delete_account)
         layout.addWidget(self.btn_delete_account)
 
+        # Line-Status
+        layout.addSpacing(24)
+        line_status_row = QHBoxLayout()
+        line_status_title = QLabel("Line-Status")
+        line_status_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        line_status_row.addWidget(line_status_title)
+        line_status_row.addStretch()
+        self.btn_refresh_line_info = QPushButton("\u21bb")
+        self.btn_refresh_line_info.setToolTip("Aktualisieren")
+        self.btn_refresh_line_info.setStyleSheet("""
+            QPushButton {
+                padding: 2px 8px; border-radius: 4px;
+                background: #2a2a3a; border: 1px solid #3a3a4a; color: #aaa;
+            }
+            QPushButton:hover { background: #3a3a4a; color: white; }
+        """)
+        self.btn_refresh_line_info.clicked.connect(lambda: asyncio.ensure_future(self._refresh_line_info()))
+        line_status_row.addWidget(self.btn_refresh_line_info)
+        layout.addLayout(line_status_row)
+
+        self.lbl_line_info = QLabel("Kein aktiver Account")
+        self.lbl_line_info.setStyleSheet("""
+            QLabel {
+                background: #1a1a2a;
+                border: 1px solid #2a2a3a;
+                border-radius: 8px;
+                padding: 12px 16px;
+                color: #aaa;
+                font-size: 13px;
+            }
+        """)
+        self.lbl_line_info.setWordWrap(True)
+        layout.addWidget(self.lbl_line_info)
+
         layout.addStretch()
 
         return page
