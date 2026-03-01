@@ -454,6 +454,7 @@ class PlaybackMixin:
                 self.channel_area.show()
             self.player_header.show()
             self.player_controls.show()
+            self.status_bar.show()
             self._player_maximized = False
             self.showMaximized()
         else:
@@ -466,6 +467,7 @@ class PlaybackMixin:
             self.player_header.hide()
             self.live_epg_bar.hide()
             self.player_controls.hide()
+            self.status_bar.hide()
             self._player_maximized = True
             self.showFullScreen()
             # Windows: showFullScreen() kann Relayout triggern der Widgets wieder einblendet
@@ -478,6 +480,7 @@ class PlaybackMixin:
             self.player_header.hide()
             self.player_controls.hide()
             self.live_epg_bar.hide()
+            self.status_bar.hide()
 
     def _on_player_escape(self):
         """Escape im Player druecken -> Fullscreen oder PiP verlassen"""
