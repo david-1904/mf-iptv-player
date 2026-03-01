@@ -1137,19 +1137,19 @@ class UiBuilderMixin:
     def _create_series_detail_page(self) -> QWidget:
         """Erstellt die Serien-Detailansicht mit Staffeln und Episoden"""
         page = QWidget()
-        page.setStyleSheet("background-color: #121212;")
+        page.setStyleSheet("background-color: #0a0a12;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header: Zurueck-Button + Serientitel
+        # Header: nur Zurueck-Button
         header = QFrame()
         header.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
         header.setFixedHeight(40)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 0, 8, 0)
 
-        self.btn_series_back = QPushButton("\u2190 Zurueck")
+        self.btn_series_back = QPushButton("\u2190 Zur\u00fcck")
         self.btn_series_back.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #0078d4; border: none;
@@ -1159,92 +1159,113 @@ class UiBuilderMixin:
         """)
         self.btn_series_back.clicked.connect(self._series_back)
         header_layout.addWidget(self.btn_series_back)
-
-        self.series_title_label = QLabel("")
-        self.series_title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
-        header_layout.addWidget(self.series_title_label, stretch=1)
+        header_layout.addStretch()
         layout.addWidget(header)
 
-        # Info-Bereich: Cover + Plot
-        info_frame = QFrame()
-        info_frame.setStyleSheet("border-bottom: 1px solid #1a1a2a;")
-        info_layout = QHBoxLayout(info_frame)
-        info_layout.setContentsMargins(10, 10, 10, 10)
-        info_layout.setSpacing(12)
+        # Hero-Bereich: Cover + Info nebeneinander
+        hero = QFrame()
+        hero.setStyleSheet("background-color: #10101a; border-bottom: 1px solid #1a1a2a;")
+        hero_layout = QHBoxLayout(hero)
+        hero_layout.setContentsMargins(16, 16, 16, 16)
+        hero_layout.setSpacing(16)
 
+        # Cover (links)
         self.series_cover_label = QLabel()
-        self.series_cover_label.setFixedSize(120, 180)
-        self.series_cover_label.setStyleSheet("background-color: #1e1e2e; border-radius: 6px; border: none;")
+        self.series_cover_label.setFixedSize(130, 195)
+        self.series_cover_label.setStyleSheet("""
+            background-color: #1a1a2e;
+            border-radius: 8px;
+            border: 1px solid #2a2a3e;
+            color: #2a2a4a;
+            font-size: 36px;
+        """)
         self.series_cover_label.setAlignment(Qt.AlignCenter)
-        info_layout.addWidget(self.series_cover_label, alignment=Qt.AlignTop)
+        self.series_cover_label.setText("\u25B6")
+        hero_layout.addWidget(self.series_cover_label, alignment=Qt.AlignTop)
 
-        meta_layout = QVBoxLayout()
-        meta_layout.setSpacing(6)
+        # Info-Spalte (rechts)
+        info_col = QVBoxLayout()
+        info_col.setSpacing(8)
+        info_col.setContentsMargins(0, 0, 0, 0)
+
+        self.series_title_label = QLabel("")
+        self.series_title_label.setWordWrap(True)
+        self.series_title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        info_col.addWidget(self.series_title_label)
+
+        self.series_subtitle_label = QLabel("")
+        self.series_subtitle_label.setStyleSheet("font-size: 12px; color: #555;")
+        self.series_subtitle_label.setWordWrap(True)
+        info_col.addWidget(self.series_subtitle_label)
+
+        self.series_rating_label = QLabel("")
+        self.series_rating_label.setStyleSheet("""
+            font-size: 12px; font-weight: bold; color: #f0c040;
+            background-color: #1e1c08; padding: 3px 10px;
+            border-radius: 6px; border: 1px solid #3a3810;
+        """)
+        self.series_rating_label.hide()
+        info_col.addWidget(self.series_rating_label, alignment=Qt.AlignLeft)
 
         self.series_plot_label = QLabel("")
         self.series_plot_label.setWordWrap(True)
-        self.series_plot_label.setStyleSheet("color: #bbb; font-size: 12px; border: none;")
-        self.series_plot_label.setAlignment(Qt.AlignTop)
-        meta_layout.addWidget(self.series_plot_label, stretch=1)
+        self.series_plot_label.setStyleSheet("font-size: 13px; color: #999; line-height: 150%;")
+        self.series_plot_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        info_col.addWidget(self.series_plot_label, stretch=1)
 
-        self.series_rating_label = QLabel("")
-        self.series_rating_label.setStyleSheet("color: #f0c040; font-size: 12px; border: none;")
-        meta_layout.addWidget(self.series_rating_label)
+        hero_layout.addLayout(info_col, stretch=1)
+        layout.addWidget(hero)
 
-        info_layout.addLayout(meta_layout, stretch=1)
-        layout.addWidget(info_frame)
-
-        # Staffel-Auswahl
+        # Season-Header: "EPISODEN" + Staffel-Dropdown
         season_bar = QFrame()
-        season_bar.setFixedHeight(36)
+        season_bar.setFixedHeight(44)
         season_bar.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
         season_layout = QHBoxLayout(season_bar)
-        season_layout.setContentsMargins(10, 2, 10, 2)
+        season_layout.setContentsMargins(16, 0, 12, 0)
+        season_layout.setSpacing(12)
 
-        season_label = QLabel("Staffel:")
-        season_label.setStyleSheet("color: #999; font-size: 12px;")
-        season_layout.addWidget(season_label)
+        episodes_lbl = QLabel("EPISODEN")
+        episodes_lbl.setStyleSheet("font-size: 10px; font-weight: bold; color: #444; letter-spacing: 1px;")
+        season_layout.addWidget(episodes_lbl)
+        season_layout.addStretch()
 
         self.season_combo = QComboBox()
         self.season_combo.setStyleSheet("""
             QComboBox {
-                padding: 4px 8px; background: #1e1e2e; border: 1px solid #2a2a3a;
-                border-radius: 6px; color: white; font-size: 12px; min-width: 100px;
+                padding: 5px 12px; background: #1a1a2a;
+                border: 1px solid #2a2a3a; border-radius: 14px;
+                color: #ccc; font-size: 12px; min-width: 110px;
             }
-            QComboBox:hover { border-color: #0078d4; }
-            QComboBox::drop-down { border: none; }
+            QComboBox:hover { border-color: #0078d4; color: white; }
+            QComboBox::drop-down { border: none; padding-right: 8px; }
             QComboBox QAbstractItemView {
-                background: #1e1e2e; color: white;
-                selection-background-color: #0078d4; border: 1px solid #2a2a3a;
+                background: #1a1a2a; color: white;
+                selection-background-color: #0078d4;
+                border: 1px solid #2a2a3a;
             }
         """)
         self.season_combo.currentIndexChanged.connect(self._on_season_changed)
         season_layout.addWidget(self.season_combo)
-        season_layout.addStretch()
         layout.addWidget(season_bar)
 
         # Episoden-Liste
         self.episode_list = QListWidget()
         self.episode_list.setStyleSheet("""
             QListWidget {
-                background-color: #121212; border: none; color: #ddd; font-size: 12px;
+                background-color: #0a0a12; border: none; outline: none;
             }
             QListWidget::item {
-                padding: 8px 10px; border-bottom: 1px solid #1a1a2a;
+                border-bottom: 1px solid #111120;
+                padding: 0px;
             }
-            QListWidget::item:hover { background-color: #1a1a2a; }
-            QListWidget::item:selected {
-                background-color: #0a2a4a; border-left: 3px solid #0078d4; color: white;
-            }
-            QScrollBar:vertical {
-                background: #121212; width: 8px;
-            }
-            QScrollBar::handle:vertical {
-                background: #444; border-radius: 4px; min-height: 20px;
-            }
+            QListWidget::item:hover { background-color: #111120; }
+            QListWidget::item:selected { background-color: #0a1e33; }
+            QScrollBar:vertical { background: #0a0a12; width: 6px; }
+            QScrollBar::handle:vertical { background: #2a2a3a; border-radius: 3px; min-height: 20px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
-        self.episode_list.itemDoubleClicked.connect(self._on_episode_selected)
+        self.episode_list.setMouseTracking(True)
+        self.episode_list.itemClicked.connect(self._on_episode_selected)
         layout.addWidget(self.episode_list, stretch=1)
 
         # Serien-Daten-Cache

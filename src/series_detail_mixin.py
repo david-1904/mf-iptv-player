@@ -4,8 +4,10 @@ Serien-Details: Staffeln, Episoden, Cover-Laden
 import asyncio
 import aiohttp
 
-from PySide6.QtCore import Qt, Slot, QTimer
-from PySide6.QtWidgets import QListWidgetItem
+from PySide6.QtCore import Qt, Slot, QTimer, QSize
+from PySide6.QtWidgets import (
+    QListWidgetItem, QWidget, QHBoxLayout, QLabel, QSizePolicy
+)
 
 from xtream_api import Series
 
@@ -23,9 +25,15 @@ class SeriesDetailMixin:
                 )
         self.series_title_label.setText(series.name)
         self.series_plot_label.setText(series.plot or "")
-        self.series_rating_label.setText(f"Bewertung: {series.rating}" if series.rating and series.rating not in ("0", "") else "")
+        self.series_subtitle_label.setText("")
+        rating = series.rating if series.rating and series.rating not in ("0", "") else ""
+        if rating:
+            self.series_rating_label.setText(f"\u2605  {rating}")
+            self.series_rating_label.show()
+        else:
+            self.series_rating_label.hide()
         self.series_cover_label.clear()
-        self.series_cover_label.setText("...")
+        self.series_cover_label.setText("\u25B6")
         self.season_combo.clear()
         self.episode_list.clear()
         self._series_data = None
@@ -44,9 +52,25 @@ class SeriesDetailMixin:
             info = data.get("info", {})
             plot = info.get("plot", "") or series.plot or ""
             self.series_plot_label.setText(plot)
-            rating = str(info.get("rating", "")) or series.rating
+            rating = str(info.get("rating", "")) or series.rating or ""
             if rating and rating not in ("0", ""):
-                self.series_rating_label.setText(f"Bewertung: {rating}")
+                self.series_rating_label.setText(f"\u2605  {rating}")
+                self.series_rating_label.show()
+            else:
+                self.series_rating_label.hide()
+
+            # Subtitle: Jahr · Genre · Staffeln
+            parts = []
+            year = str(info.get("releaseDate", "") or info.get("release_date", "") or "")[:4]
+            if year and year.isdigit():
+                parts.append(year)
+            genre = str(info.get("genre", "") or "").strip()
+            if genre:
+                parts.append(genre[:40])
+            n_seasons = len(data["seasons"])
+            if n_seasons:
+                parts.append(f"{n_seasons} {'Staffel' if n_seasons == 1 else 'Staffeln'}")
+            self.series_subtitle_label.setText("  \u00b7  ".join(parts))
 
             # Staffeln eintragen
             self.season_combo.blockSignals(True)
@@ -72,7 +96,7 @@ class SeriesDetailMixin:
     async def _load_series_cover(self, url: str):
         """Laedt das Serien-Cover asynchron"""
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            pixmap = await self._fetch_poster(session, url, 120, 180)
+            pixmap = await self._fetch_poster(session, url, 130, 195)
             if pixmap:
                 self.series_cover_label.setPixmap(pixmap)
                 self.series_cover_label.setText("")
@@ -93,12 +117,45 @@ class SeriesDetailMixin:
 
         episodes = self._series_data["episodes"].get(season, [])
         for ep in episodes:
-            text = f"E{ep.episode_num:02d}  {ep.title}"
-            if ep.duration:
-                text += f"  ({ep.duration})"
-            item = QListWidgetItem(text)
+            item = QListWidgetItem()
             item.setData(Qt.UserRole, ep)
+            item.setSizeHint(QSize(0, 54))
+
+            card = QWidget()
+            card.setStyleSheet("background: transparent;")
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(14, 0, 14, 0)
+            card_layout.setSpacing(12)
+
+            # Episode-Badge
+            badge = QLabel(f"E{ep.episode_num:02d}")
+            badge.setFixedSize(36, 22)
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setStyleSheet("""
+                background-color: #0a1e33;
+                color: #5a9fd4;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: bold;
+            """)
+            card_layout.addWidget(badge, alignment=Qt.AlignVCenter)
+
+            # Titel
+            title_lbl = QLabel(ep.title)
+            title_lbl.setStyleSheet("color: #ccc; font-size: 13px; background: transparent;")
+            title_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            title_lbl.setMaximumWidth(99999)
+            card_layout.addWidget(title_lbl, stretch=1)
+
+            # Dauer
+            if ep.duration:
+                dur_lbl = QLabel(ep.duration)
+                dur_lbl.setStyleSheet("color: #444; font-size: 11px; background: transparent;")
+                dur_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                card_layout.addWidget(dur_lbl)
+
             self.episode_list.addItem(item)
+            self.episode_list.setItemWidget(item, card)
 
         self.status_bar.showMessage(f"Staffel {season}: {len(episodes)} Episoden")
 
