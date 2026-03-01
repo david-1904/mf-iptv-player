@@ -634,6 +634,11 @@ class UiBuilderMixin:
             }
         """)
         self.sort_combo.currentIndexChanged.connect(self._on_sort_changed)
+        saved_sort = self.app_settings.get("vod_sort_index", 0)
+        if saved_sort:
+            self.sort_combo.blockSignals(True)
+            self.sort_combo.setCurrentIndex(saved_sort)
+            self.sort_combo.blockSignals(False)
         sort_layout.addWidget(self.sort_combo)
         sort_layout.addStretch()
 
