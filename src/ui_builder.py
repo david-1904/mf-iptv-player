@@ -1206,15 +1206,23 @@ class UiBuilderMixin:
         """)
         self.series_rating_label.hide()
         info_col.addWidget(self.series_rating_label, alignment=Qt.AlignLeft)
-
-        self.series_plot_label = QLabel("")
-        self.series_plot_label.setWordWrap(True)
-        self.series_plot_label.setStyleSheet("font-size: 14px; color: #aaa;")
-        self.series_plot_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        info_col.addWidget(self.series_plot_label, stretch=1)
+        info_col.addStretch()
 
         hero_layout.addLayout(info_col, stretch=1)
         layout.addWidget(hero)
+
+        # Beschreibung: volle Breite unterhalb des Hero
+        plot_frame = QFrame()
+        plot_frame.setStyleSheet("background-color: #0e0e1a; border-bottom: 1px solid #1a1a2a;")
+        plot_layout = QVBoxLayout(plot_frame)
+        plot_layout.setContentsMargins(16, 12, 16, 12)
+
+        self.series_plot_label = QLabel("")
+        self.series_plot_label.setWordWrap(True)
+        self.series_plot_label.setStyleSheet("font-size: 13px; color: #999; line-height: 160%;")
+        self.series_plot_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        plot_layout.addWidget(self.series_plot_label)
+        layout.addWidget(plot_frame)
 
         # Season-Bar: Dropdown links
         season_bar = QFrame()
