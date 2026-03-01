@@ -511,6 +511,7 @@ class CategoriesMixin:
                     self.channel_list.addItem(list_item)
 
             self._hide_loading(f"{self.channel_list.count()} Eintraege geladen")
+            self._update_current_list_item_display()
 
             # Ersten Live-Sender markieren + EPG vorladen (Detail-Panel bleibt zu)
             if self.current_mode == "live" and self.channel_list.count() > 0:
