@@ -59,9 +59,38 @@ class HistoryMixin:
         self.epg_panel.setVisible(False)
         self.channel_list.clear()
 
+        # Geplante / laufende Aufnahmen oben anzeigen
+        active = self.schedule_manager.get_active()
+        now = datetime.now().timestamp()
+        for rec in active:
+            if rec.status == "recording":
+                label = f"\u23FA  {rec.channel_name}"
+                if rec.epg_title:
+                    label += f" \u2013 {rec.epg_title}"
+                end_str = datetime.fromtimestamp(rec.end_timestamp).strftime("%H:%M")
+                label += f"  \u2022  L\u00e4uft bis {end_str}"
+            else:
+                start_str = datetime.fromtimestamp(rec.start_timestamp).strftime("%d.%m. %H:%M")
+                end_str = datetime.fromtimestamp(rec.end_timestamp).strftime("%H:%M")
+                label = f"\U0001F4F9  {rec.channel_name}"
+                if rec.epg_title:
+                    label += f" \u2013 {rec.epg_title}"
+                label += f"  \u2022  {start_str} \u2013 {end_str}"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, ("scheduled", rec))
+            item.setForeground(
+                __import__("PySide6.QtGui", fromlist=["QColor"]).QColor(
+                    "#e8691a" if rec.status == "recording" else "#6fcf97"
+                )
+            )
+            self.channel_list.addItem(item)
+
         rec_dir = self.recorder.output_dir
-        if not rec_dir.exists():
+        if not rec_dir.exists() and not active:
             self.status_bar.showMessage("Keine Aufnahmen vorhanden")
+            return
+        elif not rec_dir.exists():
+            self.status_bar.showMessage(f"{len(active)} geplante Aufnahmen")
             return
 
         files = sorted(

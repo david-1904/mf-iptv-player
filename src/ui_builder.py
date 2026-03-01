@@ -891,9 +891,25 @@ class UiBuilderMixin:
         now_title_row.addWidget(self.detail_now_title, stretch=1)
         now_lay.addLayout(now_title_row)
 
+        now_time_row = QHBoxLayout()
+        now_time_row.setSpacing(8)
         self.detail_now_time = QLabel("")
         self.detail_now_time.setStyleSheet("font-size: 14px; color: #666;")
-        now_lay.addWidget(self.detail_now_time)
+        now_time_row.addWidget(self.detail_now_time, stretch=1)
+        self.detail_now_rec_btn = QPushButton("\U0001F4F9")
+        self.detail_now_rec_btn.setToolTip("Aufnahme planen")
+        self.detail_now_rec_btn.setFixedHeight(26)
+        self.detail_now_rec_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #888;
+                border: 1px solid #444; border-radius: 4px;
+                font-size: 12px; padding: 0 6px;
+            }
+            QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
+        """)
+        self.detail_now_rec_btn.hide()
+        now_time_row.addWidget(self.detail_now_rec_btn, alignment=Qt.AlignVCenter)
+        now_lay.addLayout(now_time_row)
 
         self.detail_now_progress = QProgressBar()
         self.detail_now_progress.setFixedHeight(4)

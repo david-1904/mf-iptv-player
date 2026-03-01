@@ -35,6 +35,8 @@ from pip_mixin import PipMixin
 from channel_context_mixin import ChannelContextMixin
 from updater import UpdateChecker
 from app_settings import AppSettings
+from schedule_manager import ScheduleManager
+from schedule_mixin import ScheduleMixin
 
 
 class MainWindow(
@@ -51,6 +53,7 @@ class MainWindow(
     AccountMixin,
     PipMixin,
     ChannelContextMixin,
+    ScheduleMixin,
     QMainWindow,
 ):
     def __init__(self):
@@ -65,6 +68,7 @@ class MainWindow(
         self.hidden_categories_manager = HiddenCategoriesManager()
         self.session_manager = SessionManager()
         self.recorder = StreamRecorder()
+        self.schedule_manager = ScheduleManager()
         self._editing_account_index = -1  # -1 = neu anlegen, >=0 = bearbeiten
         self.api: XtreamAPI | None = None
         self.current_mode = "live"  # live, vod, series, favorites, history, search
@@ -131,6 +135,7 @@ class MainWindow(
         self.showMaximized()
 
         asyncio.ensure_future(self._check_for_updates())
+        asyncio.ensure_future(self._schedule_checker_loop())
 
     def _setup_ui(self):
         central = QWidget()

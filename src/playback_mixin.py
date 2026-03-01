@@ -28,6 +28,26 @@ class PlaybackMixin:
             self._play_stream(str(filepath), name, "vod")
             return
 
+        # Geplante Aufnahme: Abbrechen-Dialog
+        if isinstance(data, tuple) and len(data) == 2 and data[0] == "scheduled":
+            from PySide6.QtWidgets import QMessageBox
+            rec = data[1]
+            label = rec.channel_name
+            if rec.epg_title:
+                label += f" \u2013 {rec.epg_title}"
+            reply = QMessageBox.question(
+                self, "Geplante Aufnahme",
+                f"Aufnahme abbrechen?\n{label}",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                if rec.status == "recording" or self.recorder.is_recording:
+                    self.recorder.stop()
+                    self._sync_record_buttons(False)
+                self.schedule_manager.remove(rec.id)
+                self._load_recordings()
+            return
+
         if not self.api:
             return
 

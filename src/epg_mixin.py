@@ -6,7 +6,7 @@ import aiohttp
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve
-from PySide6.QtWidgets import QListWidgetItem, QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QListWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtGui import QPixmap
 
 from xtream_api import LiveStream, EpgEntry
@@ -375,11 +375,21 @@ class EpgMixin:
                 self.detail_now_desc.show()
             else:
                 self.detail_now_desc.hide()
+            # 📹-Button fuer JETZT verdrahten
+            try:
+                self.detail_now_rec_btn.clicked.disconnect()
+            except RuntimeError:
+                pass
+            self.detail_now_rec_btn.clicked.connect(
+                lambda checked=False, e=current: self._schedule_from_epg(e)
+            )
+            self.detail_now_rec_btn.show()
         else:
             self.detail_now_title.setText("Keine EPG-Daten")
             self.detail_now_time.setText("")
             self.detail_now_progress.hide()
             self.detail_now_desc.hide()
+            self.detail_now_rec_btn.hide()
 
         # DANACH: bis zu 3 zukuenftige Eintraege dynamisch aufbauen
         while self.detail_future_layout.count():
@@ -399,10 +409,29 @@ class EpgMixin:
                 title_lbl = QLabel(entry.title)
                 title_lbl.setStyleSheet("font-size: 15px; color: #aaa;")
                 title_lbl.setWordWrap(True)
+                entry_lay.addWidget(title_lbl)
+                # Zeitzeile + 📹-Button
+                time_row = QHBoxLayout()
+                time_row.setSpacing(6)
                 time_lbl = QLabel(f"{s} \u2013 {e_time}")
                 time_lbl.setStyleSheet("font-size: 12px; color: #555;")
-                entry_lay.addWidget(title_lbl)
-                entry_lay.addWidget(time_lbl)
+                time_row.addWidget(time_lbl, stretch=1)
+                rec_btn = QPushButton("\U0001F4F9")
+                rec_btn.setToolTip("Aufnahme planen")
+                rec_btn.setFixedHeight(22)
+                rec_btn.setStyleSheet("""
+                    QPushButton {
+                        background: transparent; color: #666;
+                        border: 1px solid #333; border-radius: 3px;
+                        font-size: 11px; padding: 0 5px;
+                    }
+                    QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
+                """)
+                rec_btn.clicked.connect(
+                    lambda checked=False, e=entry: self._schedule_from_epg(e)
+                )
+                time_row.addWidget(rec_btn, alignment=Qt.AlignVCenter)
+                entry_lay.addLayout(time_row)
                 self.detail_future_layout.addWidget(entry_w)
             self.detail_future_section.show()
         else:
@@ -438,6 +467,20 @@ class EpgMixin:
                     self.epg_channel_logo.setPixmap(pixmap)
         except Exception:
             pass
+
+    def _schedule_from_epg(self, entry):
+        """Oeffnet den Planungsdialog fuer eine EPG-Sendung."""
+        if not self.api or self._current_epg_stream_id is None:
+            return
+        channel_name = self.epg_channel_name.text()
+        stream_url = self.api.creds.stream_url(self._current_epg_stream_id)
+        self._open_schedule_dialog(
+            channel_name=channel_name,
+            stream_url=stream_url,
+            start_ts=entry.start_timestamp,
+            end_ts=entry.stop_timestamp,
+            epg_title=entry.title,
+        )
 
     def _play_detail_stream(self):
         """Spielt den im Detailpanel angezeigten Sender ab."""
