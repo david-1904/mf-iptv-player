@@ -118,7 +118,12 @@ class UpdateChecker:
             return False, str(e)
 
     async def update_windows(self, download_url: str, progress_callback=None) -> tuple[bool, str]:
-        """Laedt ZIP herunter und ersetzt Dateien (Windows-Update)."""
+        """Laedt ZIP herunter, entpackt in Temp-Ordner und startet Updater-Script.
+
+        Da die laufende EXE auf Windows nicht ueberschrieben werden kann, wird ein
+        Batch-Script erstellt das nach dem App-Exit die Dateien kopiert und die App
+        neu startet. Die App muss danach selbst beendet werden (return-Wert 'RESTART').
+        """
         if not download_url:
             return False, "Kein Download-Link verfuegbar."
 
@@ -149,35 +154,61 @@ class UpdateChecker:
 
                         # Zielverzeichnis = Verzeichnis der EXE
                         app_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(__file__))
+                        exe_name = os.path.basename(sys.executable) if getattr(sys, "frozen", False) else "MF IPTV Player.exe"
+                        exe_path = os.path.join(app_dir, exe_name)
 
+                        # In Temp-Ordner entpacken
+                        extract_dir = tempfile.mkdtemp(prefix="mfiptv_update_")
                         with zipfile.ZipFile(tmp.name, "r") as zf:
-                            # In temp-Ordner entpacken
-                            extract_dir = tempfile.mkdtemp()
                             zf.extractall(extract_dir)
 
-                            # Dateien kopieren
-                            entries = os.listdir(extract_dir)
-                            source_dir = extract_dir
-                            if len(entries) == 1 and os.path.isdir(os.path.join(extract_dir, entries[0])):
-                                source_dir = os.path.join(extract_dir, entries[0])
+                        # Unterordner-Struktur normalisieren (ZIP enthaelt oft einen Unterordner)
+                        entries = os.listdir(extract_dir)
+                        source_dir = extract_dir
+                        if len(entries) == 1 and os.path.isdir(os.path.join(extract_dir, entries[0])):
+                            source_dir = os.path.join(extract_dir, entries[0])
 
-                            for item in os.listdir(source_dir):
-                                src = os.path.join(source_dir, item)
-                                dst = os.path.join(app_dir, item)
-                                if os.path.isdir(src):
-                                    if os.path.exists(dst):
-                                        shutil.rmtree(dst)
-                                    shutil.copytree(src, dst)
-                                else:
-                                    shutil.copy2(src, dst)
+                        # Batch-Script erstellen das nach App-Exit kopiert und neu startet
+                        pid = os.getpid()
+                        bat_path = os.path.join(tempfile.gettempdir(), "mfiptv_updater.bat")
+                        bat = f"""@echo off
+chcp 65001 >nul
+:: Warten bis der App-Prozess beendet ist
+:wait
+timeout /t 1 /nobreak >nul
+tasklist /fi "PID eq {pid}" 2>nul | find "{pid}" >nul
+if not errorlevel 1 goto wait
 
-                            shutil.rmtree(extract_dir)
+:: Dateien kopieren (robocopy: /E=Unterordner, /IS=gleiche Dateien, /IT=gedatete, /NP/NFL/NDL=kein Output)
+robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NP /NFL /NDL /NJH /NJS
+
+:: Temp-Ordner aufräumen
+rd /s /q "{extract_dir}"
+
+:: App neu starten
+start "" "{exe_path}"
+del "%~f0"
+"""
+                        with open(bat_path, "w", encoding="utf-8") as f:
+                            f.write(bat)
+
+                        # Batch-Script detached starten (laeuft weiter nach App-Exit)
+                        import subprocess
+                        subprocess.Popen(
+                            ["cmd.exe", "/c", bat_path],
+                            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                            close_fds=True,
+                        )
 
                         if progress_callback:
-                            progress_callback("Update erfolgreich!")
-                        return True, "Update erfolgreich installiert."
+                            progress_callback("App wird neu gestartet...")
+                        return True, "RESTART"
+
                     finally:
-                        os.unlink(tmp.name)
+                        try:
+                            os.unlink(tmp.name)
+                        except OSError:
+                            pass
 
         except Exception as e:
             logger.error("Windows-Update fehlgeschlagen: %s", e)
