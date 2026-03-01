@@ -37,9 +37,10 @@ class MpvPlayerWidget(QOpenGLWidget):
     _buffering_signal = Signal(bool)
     _stream_ended_signal = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, hwdec: str = "auto"):
         super().__init__(parent)
         self.setFocusPolicy(Qt.StrongFocus)
+        self._hwdec_setting = hwdec
 
         self.player = None
         self.ctx = None
@@ -82,9 +83,11 @@ class MpvPlayerWidget(QOpenGLWidget):
         if self._player_initialized:
             return
 
-        # Windows: Hardware-Decoding (auto-copy) verursacht auf manchen GPU-Treibern
-        # grüne Pixel → Software-Decoding verwenden (etwas mehr CPU, aber stabil)
-        hwdec = 'no' if sys.platform == 'win32' else 'auto-copy'
+        # "auto" = Plattform-Standard: Windows → 'no', Linux → 'auto-copy'
+        if self._hwdec_setting == "auto":
+            hwdec = 'no' if sys.platform == 'win32' else 'auto-copy'
+        else:
+            hwdec = self._hwdec_setting
         self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
         self.player['keep-open'] = True
         if sys.platform == 'win32':

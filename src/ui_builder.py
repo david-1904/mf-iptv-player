@@ -333,6 +333,32 @@ class UiBuilderMixin:
         self.lbl_line_info.setWordWrap(True)
         layout.addWidget(self.lbl_line_info)
 
+        # Wiedergabe-Einstellungen
+        layout.addSpacing(24)
+        playback_title = QLabel("Wiedergabe")
+        playback_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        layout.addWidget(playback_title)
+
+        hwdec_row = QHBoxLayout()
+        hwdec_label = QLabel("Hardware-Dekodierung:")
+        hwdec_label.setStyleSheet("font-size: 13px; color: #ccc;")
+        hwdec_row.addWidget(hwdec_label)
+        self.hwdec_combo = QComboBox()
+        self.hwdec_combo.addItem("Automatisch (empfohlen)", "auto")
+        self.hwdec_combo.addItem("Hardware + Kopie (auto-copy)", "auto-copy")
+        self.hwdec_combo.addItem("Software (kompatibel, mehr CPU)", "no")
+        saved_hwdec = self.app_settings.get("hwdec", "auto")
+        idx = self.hwdec_combo.findData(saved_hwdec)
+        self.hwdec_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.hwdec_combo.currentIndexChanged.connect(self._on_hwdec_changed)
+        hwdec_row.addWidget(self.hwdec_combo, stretch=1)
+        layout.addLayout(hwdec_row)
+
+        self.lbl_hwdec_hint = QLabel("↻ App neu starten damit die Änderung wirkt")
+        self.lbl_hwdec_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
+        self.lbl_hwdec_hint.hide()
+        layout.addWidget(self.lbl_hwdec_hint)
+
         layout.addStretch()
 
         return page
@@ -1463,7 +1489,7 @@ class UiBuilderMixin:
         pc_layout.setContentsMargins(0, 0, 0, 0)
         pc_layout.setSpacing(0)
 
-        self.player = MpvPlayerWidget()
+        self.player = MpvPlayerWidget(hwdec=self.app_settings.get("hwdec", "auto"))
         self.player.double_clicked.connect(self._toggle_player_maximized)
         self.player.escape_pressed.connect(self._on_player_escape)
         self.player.buffering_changed.connect(self._on_buffering)
