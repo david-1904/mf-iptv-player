@@ -186,7 +186,12 @@ if not errorlevel 1 (
 )
 
 echo  Kopiere Dateien...
-robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NP /NFL /NDL /NJH /NJS >nul 2>nul
+robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NJH /NJS
+if errorlevel 8 (
+    echo FEHLER beim Kopieren! Bitte manuell aktualisieren.
+    pause
+    exit /b 1
+)
 
 echo  Raeume auf...
 rd /s /q "{extract_dir}" >nul 2>nul
@@ -199,9 +204,14 @@ del "%~f0"
                         with open(bat_path, "w", encoding="utf-8") as f:
                             f.write(bat)
 
-                        # os.startfile = equivalent zum Doppelklick im Explorer:
-                        # oeffnet CMD-Fenster, laeuft voellig unabhaengig vom Elternprozess
-                        os.startfile(bat_path)
+                        # ShellExecuteW: exakt wie Doppelklick im Explorer, zuverlaessig aus PyInstaller-Bundle
+                        import ctypes
+                        SW_SHOWNORMAL = 1
+                        result = ctypes.windll.shell32.ShellExecuteW(
+                            None, "open", bat_path, None, None, SW_SHOWNORMAL
+                        )
+                        if result <= 32:
+                            raise RuntimeError(f"ShellExecuteW fehlgeschlagen (Code {result})")
 
                         if progress_callback:
                             progress_callback("App wird neu gestartet...")
