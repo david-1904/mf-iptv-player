@@ -168,36 +168,90 @@ class UpdateChecker:
                         if len(entries) == 1 and os.path.isdir(os.path.join(extract_dir, entries[0])):
                             source_dir = os.path.join(extract_dir, entries[0])
 
-                        # Batch-Script erstellen das nach App-Exit kopiert und neu startet
+                        # PowerShell-Script erstellen das nach App-Exit ein Fortschrittsfenster zeigt
                         pid = os.getpid()
-                        bat_path = os.path.join(tempfile.gettempdir(), "mfiptv_updater.bat")
-                        bat = f"""@echo off
-chcp 65001 >nul
-:: Warten bis der App-Prozess beendet ist
-:wait
-timeout /t 1 /nobreak >nul
-tasklist /fi "PID eq {pid}" 2>nul | find /i "{pid}" >nul 2>nul
-if not errorlevel 1 goto wait
+                        ps_path = os.path.join(tempfile.gettempdir(), "mfiptv_updater.ps1")
+                        # Pfade fuer PowerShell escapen (keine einfachen Anfuehrungszeichen in Pfaden erlaubt)
+                        src_esc = source_dir.replace("'", "''")
+                        app_esc = app_dir.replace("'", "''")
+                        ext_esc = extract_dir.replace("'", "''")
+                        exe_esc = exe_path.replace("'", "''")
+                        ps = f"""Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
-:: Dateien kopieren (robocopy: /E=Unterordner, /IS=gleiche Dateien, /IT=gedatete, /NP/NFL/NDL=kein Output)
-robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NP /NFL /NDL /NJH /NJS >nul 2>nul
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'MF IPTV Player - Update'
+$form.Size = New-Object System.Drawing.Size(380, 140)
+$form.StartPosition = 'CenterScreen'
+$form.FormBorderStyle = 'FixedDialog'
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+$form.ControlBox = $false
+$form.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
 
-:: Temp-Ordner aufräumen
-rd /s /q "{extract_dir}" >nul 2>nul
+$lbl = New-Object System.Windows.Forms.Label
+$lbl.Text = 'Update wird installiert...'
+$lbl.ForeColor = [System.Drawing.Color]::White
+$lbl.Font = New-Object System.Drawing.Font('Segoe UI', 11)
+$lbl.AutoSize = $false
+$lbl.Size = New-Object System.Drawing.Size(360, 30)
+$lbl.Location = New-Object System.Drawing.Point(10, 20)
+$lbl.TextAlign = 'MiddleCenter'
+$form.Controls.Add($lbl)
 
-:: App neu starten
-start "" "{exe_path}"
-del "%~f0"
+$sub = New-Object System.Windows.Forms.Label
+$sub.Text = 'Bitte warten...'
+$sub.ForeColor = [System.Drawing.Color]::FromArgb(160, 160, 160)
+$sub.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+$sub.AutoSize = $false
+$sub.Size = New-Object System.Drawing.Size(360, 20)
+$sub.Location = New-Object System.Drawing.Point(10, 55)
+$sub.TextAlign = 'MiddleCenter'
+$form.Controls.Add($sub)
+
+$form.Show()
+$form.Refresh()
+
+# Warten bis App-Prozess beendet
+$sub.Text = 'Warte auf App-Beendigung...'
+$form.Refresh()
+do {{
+    Start-Sleep -Milliseconds 500
+    $proc = Get-Process -Id {pid} -ErrorAction SilentlyContinue
+}} while ($proc)
+
+# Dateien kopieren
+$sub.Text = 'Dateien werden kopiert...'
+$form.Refresh()
+& robocopy '{src_esc}' '{app_esc}' /E /IS /IT /NP /NFL /NDL /NJH /NJS | Out-Null
+
+# Temp-Ordner loeschen
+$sub.Text = 'Aufraumen...'
+$form.Refresh()
+Remove-Item -Path '{ext_esc}' -Recurse -Force -ErrorAction SilentlyContinue
+
+# App neu starten
+$sub.Text = 'App wird gestartet...'
+$form.Refresh()
+Start-Process '{exe_esc}'
+Start-Sleep -Milliseconds 800
+
+$form.Close()
+Remove-Item -Path $MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue
 """
-                        with open(bat_path, "w", encoding="utf-8") as f:
-                            f.write(bat)
+                        with open(ps_path, "w", encoding="utf-8") as f:
+                            f.write(ps)
 
-                        # Batch-Script unsichtbar und detached starten
+                        # PowerShell-Script detached starten (mit sichtbarem Fenster)
                         import subprocess
-                        CREATE_NO_WINDOW = 0x08000000
+                        CREATE_NEW_PROCESS_GROUP = 0x00000200
+                        DETACHED_PROCESS = 0x00000008
                         subprocess.Popen(
-                            ["cmd.exe", "/c", bat_path],
-                            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+                            [
+                                "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                "-WindowStyle", "Hidden", "-File", ps_path,
+                            ],
+                            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
                             close_fds=True,
                         )
 
