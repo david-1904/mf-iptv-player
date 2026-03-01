@@ -105,6 +105,8 @@ class PlaybackMixin:
         """Spielt einen Stream im integrierten Player ab"""
         # Reconnect-Zustand zuruecksetzen
         self._stream_starting = True  # end-file waehrend Verbindungsaufbau ignorieren
+        self._vod_eof_received = False  # Reset: Buffering-Overlay wieder erlauben
+        self._vod_has_played = False    # Reset: noch nicht angespielt
         self._stream_start_timer.start(5000)  # Sicherheitsnetz: nach 5s aufheben
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
@@ -225,6 +227,9 @@ class PlaybackMixin:
     @Slot(bool)
     def _on_buffering(self, buffering: bool):
         """Zeigt/versteckt den Lade-Indikator im Player"""
+        # VOD normal beendet → keine Buffering-Overlays mehr anzeigen
+        if buffering and getattr(self, '_vod_eof_received', False):
+            return
         if buffering:
             # Overlay auf volle Groesse des Parents setzen
             parent = self.buffering_overlay.parentWidget()
@@ -243,6 +248,8 @@ class PlaybackMixin:
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
             self._stream_start_timer.stop()
+            if self._current_stream_type == "vod":
+                self._vod_has_played = True  # Stream hat tatsächlich gespielt
             if self._reconnect_attempt > 0:
                 self.status_bar.showMessage(f"Verbunden: {self._current_stream_title}", 4000)
             self._reconnect_attempt = 0
@@ -890,6 +897,21 @@ class PlaybackMixin:
         """Wird aufgerufen wenn mpv den Stream beendet (Thread-safe via Signal)"""
         if not self._current_stream_url or not self._current_stream_type:
             return
+        # VOD normal beendet: VOR dem _stream_starting-Guard behandeln,
+        # damit das Flag auch während der Schutzphase gesetzt wird
+        if self._current_stream_type == "vod" and reason in ('eof', 'unknown'):
+            if getattr(self, '_vod_eof_received', False):
+                return  # Guard gegen doppelten Aufruf
+            self._vod_eof_received = True  # Blockiert weitere Buffering-Overlays
+            self.buffering_overlay.hide()
+            self._buffering_timer.stop()
+            self._buffering_watchdog.stop()
+            self._mark_as_fully_watched()
+            # Vollbild-Verlassen und Cleanup verzögert ausführen (nach Signal-Handler-Rückkehr),
+            # damit kein Render-Deadlock zwischen mpv-Event-Thread und Qt-Main-Thread entsteht
+            QTimer.singleShot(0, self._handle_vod_end)
+            self.status_bar.showMessage("Gesehen ✓")
+            return
         # Absichtlich gestoppt oder noch im Verbindungsaufbau → kein Reconnect
         if reason in ('stop', 'quit'):
             return
@@ -900,6 +922,33 @@ class PlaybackMixin:
         elif self._current_stream_type == "vod" and reason == 'error':
             self.buffering_overlay.hide()
             self.status_bar.showMessage("Fehler: Video konnte nicht geladen werden")
+
+    def _handle_vod_end(self):
+        """Cleanup nach VOD-Ende: Player stoppen, Vollbild verlassen, zur Detailansicht zurück.
+        Wird verzögert via QTimer.singleShot(0) aufgerufen, damit der mpv-Signal-Handler
+        vollständig abgeschlossen ist bevor Qt Window-State-Änderungen durchgeführt werden.
+        """
+        # Player erst stoppen (verhindert mpv-Render während Vollbild-Transition)
+        try:
+            self.player.stop()
+        except Exception:
+            pass
+        if self._player_maximized:
+            self._toggle_player_maximized()
+        # Zur Detailansicht zurücknavigieren: player_area ausblenden, channel_area einblenden
+        self.player_area.hide()
+        self.channel_area.show()
+        self.channel_area.setMinimumWidth(0)
+        self.channel_area.setMaximumWidth(16777215)
+        # Richtige Detail-Seite anzeigen
+        if self.channel_stack.currentIndex() == 1:
+            # Serien-Detailansicht: Episodenliste mit Gesehen-Status aktualisieren
+            season_idx = self.season_combo.currentIndex()
+            if season_idx >= 0:
+                self._populate_episodes(self.season_combo.itemData(season_idx))
+        elif hasattr(self, '_current_vod') and self._current_vod:
+            # Film-Detailansicht
+            self.channel_stack.setCurrentIndex(2)
 
     def _schedule_reconnect(self):
         """Plant den naechsten Reconnect-Versuch"""

@@ -142,10 +142,21 @@ class SeriesDetailMixin:
             return
 
         episodes = self._series_data["episodes"].get(season, [])
+
+        # Gesehen-Status für alle Episoden voraufladen
+        account = self.account_manager.get_selected()
+        watched_ids = set()
+        if account:
+            for ep in episodes:
+                pos, dur = self.history_manager.get_position(ep.id, "vod", account.name)
+                if pos > 0 and dur > 0 and (pos / dur) >= 0.9:
+                    watched_ids.add(ep.id)
+
         for ep in episodes:
             item = QListWidgetItem()
             item.setData(Qt.UserRole, ep)
 
+            is_watched = ep.id in watched_ids
             has_duration = bool(ep.duration)
             item.setSizeHint(QSize(0, 58 if has_duration else 46))
 
@@ -155,17 +166,26 @@ class SeriesDetailMixin:
             card_layout.setContentsMargins(14, 0, 14, 0)
             card_layout.setSpacing(12)
 
-            # Episode-Badge
-            badge = QLabel(f"E{ep.episode_num:02d}")
+            # Episode-Badge (grün wenn gesehen, blau sonst)
+            badge = QLabel("✓" if is_watched else f"E{ep.episode_num:02d}")
             badge.setFixedSize(36, 22)
             badge.setAlignment(Qt.AlignCenter)
-            badge.setStyleSheet("""
-                background-color: #0a1e33;
-                color: #5a9fd4;
-                border-radius: 4px;
-                font-size: 11px;
-                font-weight: bold;
-            """)
+            if is_watched:
+                badge.setStyleSheet("""
+                    background-color: #0d2d0d;
+                    color: #5cb85c;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: bold;
+                """)
+            else:
+                badge.setStyleSheet("""
+                    background-color: #0a1e33;
+                    color: #5a9fd4;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
             card_layout.addWidget(badge, alignment=Qt.AlignVCenter)
 
             # Titel + Dauer untereinander
@@ -173,8 +193,9 @@ class SeriesDetailMixin:
             text_col.setSpacing(2)
             text_col.setContentsMargins(0, 0, 0, 0)
 
+            title_color = "#666" if is_watched else "#ccc"
             title_lbl = QLabel(ep.title)
-            title_lbl.setStyleSheet("color: #ccc; font-size: 13px; background: transparent;")
+            title_lbl.setStyleSheet(f"color: {title_color}; font-size: 13px; background: transparent;")
             title_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             text_col.addWidget(title_lbl)
 
