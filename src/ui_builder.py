@@ -898,12 +898,12 @@ class UiBuilderMixin:
         now_time_row.addWidget(self.detail_now_time, stretch=1)
         self.detail_now_rec_btn = QPushButton("\U0001F4F9")
         self.detail_now_rec_btn.setToolTip("Aufnahme planen")
-        self.detail_now_rec_btn.setFixedHeight(26)
+        self.detail_now_rec_btn.setFixedHeight(30)
         self.detail_now_rec_btn.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #888;
                 border: 1px solid #444; border-radius: 4px;
-                font-size: 12px; padding: 0 6px;
+                font-size: 17px; padding: 0 6px;
             }
             QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
         """)

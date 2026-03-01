@@ -422,12 +422,12 @@ class EpgMixin:
                 time_row.addWidget(time_lbl, stretch=1)
                 rec_btn = QPushButton("\U0001F4F9")
                 rec_btn.setToolTip("Aufnahme planen")
-                rec_btn.setFixedHeight(22)
+                rec_btn.setFixedHeight(26)
                 rec_btn.setStyleSheet("""
                     QPushButton {
                         background: transparent; color: #666;
                         border: 1px solid #333; border-radius: 3px;
-                        font-size: 11px; padding: 0 5px;
+                        font-size: 15px; padding: 0 5px;
                     }
                     QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
                 """)
