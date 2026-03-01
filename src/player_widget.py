@@ -84,6 +84,12 @@ class MpvPlayerWidget(QOpenGLWidget):
 
         self.player = mpv.MPV(vo='libmpv', hwdec='auto-copy')
         self.player['keep-open'] = True
+        if sys.platform == 'win32':
+            # WASAPI Exclusive Mode deaktivieren – verhindert Audio-Ausfall wenn
+            # ein anderes Programm den Audio-Device belegt oder bei manchen Treibern
+            self.player['audio-exclusive'] = 'no'
+            # Fallback: DirectSound falls WASAPI komplett versagt
+            self.player['ao'] = 'wasapi,dsound'
 
         def _get_proc_address(ctx, name):
             glctx = self.context()
