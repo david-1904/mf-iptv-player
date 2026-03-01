@@ -166,6 +166,30 @@ class HistoryMixin:
         )
         self.history_manager.add_or_update(entry)
 
+    def _mark_as_fully_watched(self):
+        """Markiert den aktuellen Stream als vollständig gesehen."""
+        if not self._current_playing_stream_id or not self._current_stream_type:
+            return
+        account = self.account_manager.get_selected()
+        if not account:
+            return
+        # Letzte gespeicherte Duration holen (player-state ist bei eof evtl. schon zurückgesetzt)
+        _, dur = self.history_manager.get_position(
+            self._current_playing_stream_id, self._current_stream_type, account.name)
+        # pos = dur → pos/dur = 1.0 ≥ 0.9 → gilt als gesehen, kein Fortsetzen-Dialog
+        fully = max(dur, 1.0)
+        entry = WatchEntry(
+            stream_id=self._current_playing_stream_id,
+            stream_type=self._current_stream_type,
+            account_name=account.name,
+            title=self._current_stream_title,
+            icon=self._current_stream_icon,
+            position=fully,
+            duration=fully,
+            container_extension=self._current_container_ext,
+        )
+        self.history_manager.add_or_update(entry)
+
     def _check_resume_position(self, stream_id: int, stream_type: str) -> float:
         """Prueft ob eine gespeicherte Position existiert und fragt den Benutzer"""
         account = self.account_manager.get_selected()

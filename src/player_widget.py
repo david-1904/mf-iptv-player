@@ -89,7 +89,6 @@ class MpvPlayerWidget(QOpenGLWidget):
         else:
             hwdec = self._hwdec_setting
         self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
-        self.player['keep-open'] = True
         if sys.platform == 'win32':
             # WASAPI Exclusive Mode deaktivieren – verhindert Audio-Ausfall wenn
             # ein anderes Programm den Audio-Device belegt oder bei manchen Treibern
@@ -121,13 +120,18 @@ class MpvPlayerWidget(QOpenGLWidget):
         # Buffering-State beobachten
         @self.player.property_observer('paused-for-cache')
         def _on_paused_for_cache(_name, value):
+            # Nicht feuern wenn Stream schon beendet ist (time_pos=None nach EOF)
+            if value and self.player and self.player.time_pos is None:
+                return
             self._buffering_signal.emit(bool(value))
 
         @self.player.property_observer('core-idle')
         def _on_core_idle(_name, value):
             # core-idle + nicht pausiert = buffering/laden
+            # time_pos is None bedeutet Stream ist beendet (kein falsches Buffering am EOF)
             if value and self.player and not self.player.pause and self.player.path:
-                self._buffering_signal.emit(True)
+                if self.player.time_pos is not None:
+                    self._buffering_signal.emit(True)
             elif not value:
                 self._buffering_signal.emit(False)
 
