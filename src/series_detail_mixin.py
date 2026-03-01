@@ -24,7 +24,7 @@ class SeriesDetailMixin:
                     account.name, series.series_id, series.name, series.cover, series.category_id
                 )
         self.series_title_label.setText(series.name)
-        self.series_plot_label.setText(series.plot or "")
+        self.series_plot_label.setPlainText(series.plot or "")
         self.series_subtitle_label.setText("")
         rating = series.rating if series.rating and series.rating not in ("0", "") else ""
         if rating:
@@ -37,6 +37,16 @@ class SeriesDetailMixin:
         self.season_combo.clear()
         self.episode_list.clear()
         self._series_data = None
+        self._series_trailer_url = ""
+        self.btn_series_trailer.hide()
+
+        # Volle Fensterbreite fuer Serien-Detail: Player voruebergehend ausblenden
+        self._series_player_was_visible = self.player_area.isVisible()
+        if self._series_player_was_visible:
+            self.player_area.hide()
+        self.channel_area.show()
+        self.channel_area.setMinimumWidth(0)
+        self.channel_area.setMaximumWidth(16777215)
 
         self.channel_stack.setCurrentIndex(1)
         asyncio.ensure_future(self._load_series_detail(series))
@@ -51,7 +61,7 @@ class SeriesDetailMixin:
             # Info aktualisieren (API liefert oft ausfuehrlichere Daten)
             info = data.get("info", {})
             plot = info.get("plot", "") or series.plot or ""
-            self.series_plot_label.setText(plot)
+            self.series_plot_label.setPlainText(plot)
             rating = str(info.get("rating", "")) or series.rating or ""
             if rating and rating not in ("0", ""):
                 self.series_rating_label.setText(f"\u2605  {rating}")
@@ -85,6 +95,19 @@ class SeriesDetailMixin:
 
             self._hide_loading(f"{len(data['seasons'])} Staffeln geladen")
 
+            # Trailer
+            import urllib.parse
+            trailer = info.get("youtube_trailer", "") or info.get("trailer", "")
+            if trailer:
+                if trailer.startswith("http"):
+                    self._series_trailer_url = trailer
+                else:
+                    self._series_trailer_url = f"https://www.youtube.com/watch?v={trailer}"
+            else:
+                query = urllib.parse.quote_plus(f"{series.name} trailer")
+                self._series_trailer_url = f"https://www.youtube.com/results?search_query={query}"
+            self.btn_series_trailer.show()
+
             # Cover laden
             cover_url = info.get("cover", "") or series.cover
             if cover_url:
@@ -96,7 +119,7 @@ class SeriesDetailMixin:
     async def _load_series_cover(self, url: str):
         """Laedt das Serien-Cover asynchron"""
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            pixmap = await self._fetch_poster(session, url, 170, 255)
+            pixmap = await self._fetch_poster(session, url, 200, 300)
             if pixmap:
                 self.series_cover_label.setPixmap(pixmap)
                 self.series_cover_label.setText("")
@@ -184,6 +207,20 @@ class SeriesDetailMixin:
         if resume_pos > 0:
             QTimer.singleShot(500, lambda: self.player.seek(resume_pos, relative=False))
 
+    def _play_series_trailer(self):
+        """Oeffnet den Serien-Trailer im Browser"""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        if self._series_trailer_url:
+            QDesktopServices.openUrl(QUrl(self._series_trailer_url))
+
     def _series_back(self):
         """Zurueck zur Kanalliste"""
         self.channel_stack.setCurrentIndex(0)
+        # Player-Zustand wiederherstellen
+        if getattr(self, "_series_player_was_visible", False):
+            self.player_area.show()
+            if getattr(self, "_current_stream_type", None) == "live":
+                self.channel_area.setFixedWidth(360)
+            else:
+                self.channel_area.hide()
