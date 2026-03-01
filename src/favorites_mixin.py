@@ -12,8 +12,17 @@ from favorites_manager import Favorite
 
 class FavoritesMixin:
 
+    def _set_fav_filter(self, ftype):
+        """Setzt den Favoriten-Filter und aktualisiert die Button-Hervorhebung."""
+        self._current_fav_filter = ftype
+        for t, btn in self._fav_filter_buttons.items():
+            btn.setProperty("active", "true" if t == ftype else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+        self._load_favorites()
+
     def _load_favorites(self):
-        """Laedt und zeigt Favoriten an"""
+        """Laedt und zeigt Favoriten an, gefiltert nach aktuellem Typ-Filter."""
         QScroller.ungrabGesture(self.channel_list.viewport())
         self.channel_list.setViewMode(QListWidget.ListMode)
         self.channel_list.setIconSize(QSize(0, 0))
@@ -30,16 +39,22 @@ class FavoritesMixin:
         if not account:
             return
 
-        favorites = self.favorites_manager.get_all(account.name)
+        ftype = getattr(self, "_current_fav_filter", None)
+        if ftype:
+            favorites = self.favorites_manager.get_by_type(ftype, account.name)
+        else:
+            favorites = self.favorites_manager.get_all(account.name)
 
+        type_icons = {"live": "📺", "vod": "🎬", "series": "📖"}
         for fav in favorites:
-            # Stern-Symbol vor dem Namen
-            text = f"\u2605 {fav.name}"
+            icon = type_icons.get(fav.type, "★")
+            text = f"{icon} {fav.name}"
             list_item = QListWidgetItem(text)
             list_item.setData(Qt.UserRole, fav)
             self.channel_list.addItem(list_item)
 
-        self.status_bar.showMessage(f"{len(favorites)} Favoriten")
+        label = {"live": "Live TV", "vod": "Filme", "series": "Serien"}.get(ftype, "Favoriten")
+        self.status_bar.showMessage(f"{len(favorites)} {label}")
 
     def _is_item_favorite(self, data, account_name: str) -> bool:
         """Prueft ob ein Item ein Favorit ist"""

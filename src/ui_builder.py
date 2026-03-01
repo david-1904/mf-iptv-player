@@ -471,6 +471,36 @@ class UiBuilderMixin:
         _cat_row_layout.addWidget(self.category_btn, stretch=1)
         cl_layout.addWidget(self.category_row)
 
+        # Favoriten-Filter-Leiste (nur im Favoriten-Modus sichtbar)
+        self.fav_filter_row = QWidget()
+        self.fav_filter_row.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        _fav_layout = QHBoxLayout(self.fav_filter_row)
+        _fav_layout.setContentsMargins(8, 4, 8, 4)
+        _fav_layout.setSpacing(6)
+
+        self._fav_filter_buttons = {}
+        _fav_btn_style = """
+            QPushButton {{
+                padding: 4px 12px; border-radius: 12px; font-size: 12px;
+                background: transparent; border: 1px solid #2a2a3a; color: #888;
+            }}
+            QPushButton:hover {{ border-color: #0078d4; color: #ccc; }}
+            QPushButton[active="true"] {{ background: #0078d4; border-color: #0078d4; color: white; font-weight: bold; }}
+        """
+        for label, ftype in [("Alle", None), ("📺 Live", "live"), ("🎬 Filme", "vod"), ("📖 Serien", "series")]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(_fav_btn_style)
+            btn.setProperty("active", "false")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda checked, t=ftype: self._set_fav_filter(t))
+            _fav_layout.addWidget(btn)
+            self._fav_filter_buttons[ftype] = btn
+
+        self._fav_filter_buttons[None].setProperty("active", "true")
+        _fav_layout.addStretch()
+        self.fav_filter_row.hide()
+        cl_layout.addWidget(self.fav_filter_row)
+
         # Inline-Kategorie-Liste (aufklappbar)
         self.category_list = QListWidget()
         self.category_list.setStyleSheet("""
