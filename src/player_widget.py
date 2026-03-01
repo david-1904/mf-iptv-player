@@ -82,7 +82,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         if self._player_initialized:
             return
 
-        self.player = mpv.MPV(vo='libmpv', hwdec='auto')
+        self.player = mpv.MPV(vo='libmpv', hwdec='auto-copy')
         self.player['keep-open'] = True
 
         def _get_proc_address(ctx, name):
