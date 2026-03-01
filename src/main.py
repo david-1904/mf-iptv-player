@@ -158,10 +158,14 @@ def main():
     app.setOrganizationName("IPTVApp")
     app.setDesktopFileName("iptv-player")
 
-    if getattr(sys, 'frozen', False):
-        icon_path = os.path.join(_base_path(), "icon.svg")
+    base = _base_path() if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Windows: .ico bevorzugen (bessere Taskbar-Qualitaet), sonst SVG
+    if sys.platform == 'win32':
+        icon_path = os.path.join(base, "icon.ico")
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(base, "icon.svg")
     else:
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.svg")
+        icon_path = os.path.join(base, "icon.svg")
     app.setWindowIcon(QIcon(icon_path))
 
     setup_dark_theme(app)
