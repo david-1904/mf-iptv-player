@@ -96,6 +96,10 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.player['audio-exclusive'] = 'no'
             # Fallback: DirectSound falls WASAPI komplett versagt
             self.player['ao'] = 'wasapi,dsound'
+            # ICC-Profil-Verwaltung deaktivieren – verhindert systemweite Farb-
+            # korruption wenn mpv das Monitor-ICC-Profil laedt aber nicht zuruecksetzt
+            self.player['icc-profile-auto'] = 'no'
+            self.player['target-colorspace-hint'] = 'yes'
 
         def _get_proc_address(ctx, name):
             glctx = self.context()
