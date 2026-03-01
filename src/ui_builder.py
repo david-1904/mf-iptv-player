@@ -145,6 +145,29 @@ class UiBuilderMixin:
         # Spacer
         layout.addStretch()
 
+        # Update-Button (initially hidden, shown by _check_for_updates)
+        self.btn_update = QPushButton("\u2B07  Update verfügbar")
+        self.btn_update.setStyleSheet("""
+            QPushButton {
+                text-align: left;
+                padding: 10px 16px;
+                margin: 2px 8px;
+                border: 1px solid #27ae60;
+                border-radius: 8px;
+                background: #1a3a2a;
+                color: #6fcf97;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+                color: #fff;
+            }
+        """)
+        self.btn_update.setCursor(Qt.PointingHandCursor)
+        self.btn_update.hide()
+        layout.addWidget(self.btn_update)
+
         # Einstellungen-Button
         self.btn_settings = QPushButton("\u2699  Einstellungen")
         self.btn_settings.setStyleSheet("""
