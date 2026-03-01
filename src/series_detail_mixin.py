@@ -96,7 +96,7 @@ class SeriesDetailMixin:
     async def _load_series_cover(self, url: str):
         """Laedt das Serien-Cover asynchron"""
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            pixmap = await self._fetch_poster(session, url, 160, 240)
+            pixmap = await self._fetch_poster(session, url, 170, 255)
             if pixmap:
                 self.series_cover_label.setPixmap(pixmap)
                 self.series_cover_label.setText("")
@@ -119,7 +119,9 @@ class SeriesDetailMixin:
         for ep in episodes:
             item = QListWidgetItem()
             item.setData(Qt.UserRole, ep)
-            item.setSizeHint(QSize(0, 54))
+
+            has_duration = bool(ep.duration)
+            item.setSizeHint(QSize(0, 58 if has_duration else 46))
 
             card = QWidget()
             card.setStyleSheet("background: transparent;")
@@ -140,19 +142,22 @@ class SeriesDetailMixin:
             """)
             card_layout.addWidget(badge, alignment=Qt.AlignVCenter)
 
-            # Titel
+            # Titel + Dauer untereinander
+            text_col = QVBoxLayout()
+            text_col.setSpacing(2)
+            text_col.setContentsMargins(0, 0, 0, 0)
+
             title_lbl = QLabel(ep.title)
             title_lbl.setStyleSheet("color: #ccc; font-size: 13px; background: transparent;")
             title_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-            title_lbl.setMaximumWidth(99999)
-            card_layout.addWidget(title_lbl, stretch=1)
+            text_col.addWidget(title_lbl)
 
-            # Dauer
-            if ep.duration:
+            if has_duration:
                 dur_lbl = QLabel(ep.duration)
                 dur_lbl.setStyleSheet("color: #444; font-size: 11px; background: transparent;")
-                dur_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                card_layout.addWidget(dur_lbl)
+                text_col.addWidget(dur_lbl)
+
+            card_layout.addLayout(text_col, stretch=1)
 
             self.episode_list.addItem(item)
             self.episode_list.setItemWidget(item, card)

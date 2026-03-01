@@ -1162,18 +1162,16 @@ class UiBuilderMixin:
         header_layout.addStretch()
         layout.addWidget(header)
 
-        # Hero-Bereich: Cover gross zentriert oben, Info darunter
+        # Hero-Bereich: Cover links (gross), Info rechts daneben
         hero = QFrame()
         hero.setStyleSheet("background-color: #10101a; border-bottom: 1px solid #1a1a2a;")
-        hero_layout = QVBoxLayout(hero)
-        hero_layout.setContentsMargins(20, 20, 20, 16)
+        hero_layout = QHBoxLayout(hero)
+        hero_layout.setContentsMargins(16, 16, 16, 16)
         hero_layout.setSpacing(14)
 
-        # Cover zentriert
-        cover_row = QHBoxLayout()
-        cover_row.setContentsMargins(0, 0, 0, 0)
+        # Cover links, gross
         self.series_cover_label = QLabel()
-        self.series_cover_label.setFixedSize(160, 240)
+        self.series_cover_label.setFixedSize(170, 255)
         self.series_cover_label.setStyleSheet("""
             background-color: #1a1a2e;
             border-radius: 10px;
@@ -1183,42 +1181,39 @@ class UiBuilderMixin:
         """)
         self.series_cover_label.setAlignment(Qt.AlignCenter)
         self.series_cover_label.setText("\u25B6")
-        cover_row.addStretch()
-        cover_row.addWidget(self.series_cover_label)
-        cover_row.addStretch()
-        hero_layout.addLayout(cover_row)
+        hero_layout.addWidget(self.series_cover_label, alignment=Qt.AlignTop)
 
-        # Titel
+        # Info rechts
+        info_col = QVBoxLayout()
+        info_col.setSpacing(8)
+        info_col.setContentsMargins(0, 0, 0, 0)
+
         self.series_title_label = QLabel("")
         self.series_title_label.setWordWrap(True)
-        self.series_title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        self.series_title_label.setAlignment(Qt.AlignCenter)
-        hero_layout.addWidget(self.series_title_label)
+        self.series_title_label.setStyleSheet("font-size: 17px; font-weight: bold; color: white;")
+        info_col.addWidget(self.series_title_label)
 
-        # Subtitle: Jahr · Genre · Staffeln
         self.series_subtitle_label = QLabel("")
-        self.series_subtitle_label.setStyleSheet("font-size: 12px; color: #555;")
-        self.series_subtitle_label.setAlignment(Qt.AlignCenter)
+        self.series_subtitle_label.setStyleSheet("font-size: 11px; color: #555;")
         self.series_subtitle_label.setWordWrap(True)
-        hero_layout.addWidget(self.series_subtitle_label)
+        info_col.addWidget(self.series_subtitle_label)
 
-        # Rating-Badge
         self.series_rating_label = QLabel("")
         self.series_rating_label.setStyleSheet("""
-            font-size: 12px; font-weight: bold; color: #f0c040;
-            background-color: #1e1c08; padding: 3px 10px;
-            border-radius: 6px; border: 1px solid #3a3810;
+            font-size: 11px; font-weight: bold; color: #f0c040;
+            background-color: #1e1c08; padding: 2px 8px;
+            border-radius: 5px; border: 1px solid #3a3810;
         """)
         self.series_rating_label.hide()
-        hero_layout.addWidget(self.series_rating_label, alignment=Qt.AlignHCenter)
+        info_col.addWidget(self.series_rating_label, alignment=Qt.AlignLeft)
 
-        # Plot
         self.series_plot_label = QLabel("")
         self.series_plot_label.setWordWrap(True)
-        self.series_plot_label.setStyleSheet("font-size: 13px; color: #888;")
+        self.series_plot_label.setStyleSheet("font-size: 14px; color: #aaa;")
         self.series_plot_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        hero_layout.addWidget(self.series_plot_label)
+        info_col.addWidget(self.series_plot_label, stretch=1)
 
+        hero_layout.addLayout(info_col, stretch=1)
         layout.addWidget(hero)
 
         # Season-Bar: Dropdown links
