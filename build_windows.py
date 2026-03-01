@@ -74,6 +74,7 @@ args = [
     "--windowed",
     "--add-data", os.path.join(here, "src", "assets") + os.pathsep + "assets",
     "--add-data", icon_svg + os.pathsep + ".",
+    "--add-data", icon_ico + os.pathsep + ".",
     "--add-binary", add_binary,
     "--paths", os.path.join(here, "src"),
     "--noconfirm",
