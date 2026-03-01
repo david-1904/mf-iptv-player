@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (
     QStackedWidget, QListWidget, QListWidgetItem, QComboBox,
     QPushButton, QLineEdit, QLabel, QSlider,
     QFrame, QStatusBar, QGroupBox, QScrollArea, QSplitter,
-    QProgressBar, QAbstractItemView, QScroller, QMenu, QTextEdit
+    QProgressBar, QAbstractItemView, QScroller, QMenu, QTextEdit,
+    QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize, Slot, QTimer
 from PySide6.QtGui import QPixmap, QFont
@@ -82,7 +83,6 @@ class UiBuilderMixin:
         self.search_input.setStyleSheet("""
             QLineEdit {
                 padding: 7px 10px;
-                margin: 4px 10px;
                 background: #1e1e2e;
                 border: 1px solid #2a2a3a;
                 border-radius: 8px;
@@ -93,7 +93,12 @@ class UiBuilderMixin:
         """)
         self.search_input.returnPressed.connect(self._execute_search)
         self.search_input.textChanged.connect(self._on_search_text_changed)
-        layout.addWidget(self.search_input)
+        _search_wrapper = QWidget()
+        _sw_layout = QHBoxLayout(_search_wrapper)
+        _sw_layout.setContentsMargins(10, 4, 10, 0)
+        _sw_layout.setSpacing(0)
+        _sw_layout.addWidget(self.search_input)
+        layout.addWidget(_search_wrapper)
         layout.addSpacing(4)
 
         # Trennlinie
@@ -1107,6 +1112,7 @@ class UiBuilderMixin:
         self.btn_full_epg = QPushButton("EPG \u25B8")
         self.btn_full_epg.setToolTip("Vollständiges Sendeprogramm anzeigen")
         self.btn_full_epg.setFixedHeight(24)
+        self.btn_full_epg.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.btn_full_epg.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -2506,10 +2512,28 @@ class UiBuilderMixin:
     def _setup_statusbar(self):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        self.status_bar.setFixedHeight(28)
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                background-color: #0d0d14;
+                color: #e0e0e0;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0 10px;
+            }
+            QStatusBar::item { border: none; }
+        """)
         self.status_bar.showMessage("Bereit")
 
         self.loading_bar = QProgressBar()
         self.loading_bar.setRange(0, 0)  # indeterminate
-        self.loading_bar.setFixedSize(120, 14)
+        self.loading_bar.setFixedSize(120, 12)
+        self.loading_bar.setStyleSheet("""
+            QProgressBar {
+                background: #1a1a2e; border: 1px solid #2a2a4a;
+                border-radius: 3px;
+            }
+            QProgressBar::chunk { background: #0078d4; border-radius: 3px; }
+        """)
         self.loading_bar.hide()
         self.status_bar.addPermanentWidget(self.loading_bar)
