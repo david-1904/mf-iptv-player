@@ -2078,6 +2078,20 @@ class UiBuilderMixin:
         self.btn_stream_info.clicked.connect(self._toggle_stream_info)
         layout.addWidget(self.btn_stream_info)
 
+        # Zoom-Button (Normal / Fill / Stretch)
+        self.btn_zoom = QPushButton("Normal")
+        self.btn_zoom.setFixedHeight(26)
+        self.btn_zoom.setToolTip("Bildgr\u00f6\u00dfe wechseln: Normal \u2192 Fill \u2192 Stretch")
+        self.btn_zoom.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #888; border: 1px solid #2a2a3a;
+                padding: 2px 10px; border-radius: 6px; font-size: 11px;
+            }
+            QPushButton:hover { border-color: #555; color: #ccc; }
+        """)
+        self.btn_zoom.clicked.connect(self._cycle_zoom_mode)
+        layout.addWidget(self.btn_zoom)
+
         # Vollbild-Button
         sep4 = QFrame()
         sep4.setFrameShape(QFrame.VLine)
@@ -2362,6 +2376,19 @@ class UiBuilderMixin:
         """)
         self.fs_btn_stream_info.clicked.connect(self._toggle_stream_info)
         btn_row.addWidget(self.fs_btn_stream_info)
+
+        self.fs_btn_zoom = QPushButton("Normal")
+        self.fs_btn_zoom.setFixedHeight(32)
+        self.fs_btn_zoom.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #aaa;
+                border: 1px solid #3a3a4a; padding: 2px 12px;
+                border-radius: 6px; font-size: 12px;
+            }
+            QPushButton:hover { border-color: #888; color: white; }
+        """)
+        self.fs_btn_zoom.clicked.connect(self._cycle_zoom_mode)
+        btn_row.addWidget(self.fs_btn_zoom)
 
         btn_row.addSpacing(12)
 

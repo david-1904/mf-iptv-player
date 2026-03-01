@@ -88,6 +88,27 @@ class StreamControlsMixin:
             self.stream_info_panel.hide()
             self.stream_info_timer.stop()
 
+    def _cycle_zoom_mode(self):
+        """Wechselt zwischen Normal / Fill / Stretch"""
+        _ZOOM_MODES = [
+            ("Normal",  0.0, True),   # panscan=0, keepaspect=yes
+            ("Fill",    1.0, True),   # panscan=1 (zoom+crop), keepaspect=yes
+            ("Stretch", 0.0, False),  # panscan=0, keepaspect=no (strecken)
+        ]
+        idx = getattr(self, "_zoom_mode_index", 0)
+        idx = (idx + 1) % len(_ZOOM_MODES)
+        self._zoom_mode_index = idx
+        name, panscan, keepaspect = _ZOOM_MODES[idx]
+        try:
+            self.player.player["panscan"] = panscan
+            self.player.player["keepaspect"] = keepaspect
+        except Exception:
+            pass
+        self.btn_zoom.setText(name)
+        if hasattr(self, "fs_btn_zoom"):
+            self.fs_btn_zoom.setText(name)
+        self.status_bar.showMessage(f"Bildgr\u00f6\u00dfe: {name}")
+
     def _update_stream_info(self):
         """Update stream info panel with current stream data"""
         info = self.player.get_stream_info()
