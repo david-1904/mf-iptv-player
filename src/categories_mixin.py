@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QFontMetrics, QColor
 
 from xtream_api import LiveStream, VodStream, Series
+from favorites_manager import Favorite
 
 
 class CategoriesMixin:
@@ -551,6 +552,8 @@ class CategoriesMixin:
                 url = data.stream_icon
             elif isinstance(data, Series):
                 url = data.cover
+            elif isinstance(data, Favorite):
+                url = data.icon
             if url:
                 items_to_load.append((i, url, data))
 
@@ -578,7 +581,11 @@ class CategoriesMixin:
 
     def _update_grid_size(self):
         """Berechnet Grid-Größe dynamisch basierend auf verfügbarer Breite."""
-        if self.current_mode not in ("vod", "series"):
+        is_fav_grid = (
+            self.current_mode == "favorites"
+            and getattr(self, "_current_fav_filter", None) in ("vod", "series")
+        )
+        if self.current_mode not in ("vod", "series") and not is_fav_grid:
             return
         available = self.channel_list.viewport().width()
         # Fallback wenn channel_list versteckt (Lade-Zustand): channel_area nutzen

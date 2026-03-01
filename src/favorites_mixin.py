@@ -23,15 +23,28 @@ class FavoritesMixin:
 
     def _load_favorites(self):
         """Laedt und zeigt Favoriten an, gefiltert nach aktuellem Typ-Filter."""
+        import asyncio
+        ftype = getattr(self, "_current_fav_filter", None)
+        is_grid = ftype in ("vod", "series")
+
         QScroller.ungrabGesture(self.channel_list.viewport())
-        self.channel_list.setViewMode(QListWidget.ListMode)
-        self.channel_list.setIconSize(QSize(0, 0))
-        self.channel_list.setGridSize(QSize())
-        self.channel_list.setResizeMode(QListWidget.Fixed)
-        self.channel_list.setWordWrap(False)
-        self.channel_list.setSpacing(0)
-        self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
-        self._apply_channel_list_style(grid_mode=False)
+        if is_grid:
+            self.channel_list.setViewMode(QListWidget.IconMode)
+            self.channel_list.setResizeMode(QListWidget.Adjust)
+            self.channel_list.setWordWrap(True)
+            self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+            self.channel_list.verticalScrollBar().setSingleStep(60)
+            self._update_grid_size()
+            QScroller.grabGesture(self.channel_list.viewport(), QScroller.LeftMouseButtonGesture)
+        else:
+            self.channel_list.setViewMode(QListWidget.ListMode)
+            self.channel_list.setIconSize(QSize(0, 0))
+            self.channel_list.setGridSize(QSize())
+            self.channel_list.setResizeMode(QListWidget.Fixed)
+            self.channel_list.setWordWrap(False)
+            self.channel_list.setSpacing(0)
+            self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
+        self._apply_channel_list_style(grid_mode=is_grid)
         self.epg_panel.setVisible(False)
         self.channel_list.clear()
 
@@ -39,22 +52,29 @@ class FavoritesMixin:
         if not account:
             return
 
-        ftype = getattr(self, "_current_fav_filter", None)
         if ftype:
             favorites = self.favorites_manager.get_by_type(ftype, account.name)
         else:
             favorites = self.favorites_manager.get_all(account.name)
 
         type_icons = {"live": "📺", "vod": "🎬", "series": "📖"}
+        cell_size = self.channel_list.gridSize()
         for fav in favorites:
-            icon = type_icons.get(fav.type, "★")
-            text = f"{icon} {fav.name}"
-            list_item = QListWidgetItem(text)
+            if is_grid:
+                list_item = QListWidgetItem(fav.name)
+                if cell_size.isValid():
+                    list_item.setSizeHint(cell_size)
+            else:
+                icon = type_icons.get(fav.type, "★")
+                list_item = QListWidgetItem(f"{icon} {fav.name}")
             list_item.setData(Qt.UserRole, fav)
             self.channel_list.addItem(list_item)
 
         label = {"live": "Live TV", "vod": "Filme", "series": "Serien"}.get(ftype, "Favoriten")
         self.status_bar.showMessage(f"{len(favorites)} {label}")
+
+        if is_grid:
+            asyncio.ensure_future(self._load_item_posters())
 
     def _is_item_favorite(self, data, account_name: str) -> bool:
         """Prueft ob ein Item ein Favorit ist"""
