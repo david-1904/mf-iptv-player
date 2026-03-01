@@ -55,7 +55,7 @@ class CategoriesMixin:
 
         # Player-Layout anpassen wenn Player laeuft
         if self.player_area.isVisible() and not self._player_maximized:
-            is_grid_mode = mode in ("vod", "series")
+            is_grid_mode = mode in ("vod", "series", "favorites", "history", "recordings")
             if is_grid_mode:
                 # Grid-Modus: Kanalliste voll breit, Player als PiP
                 self.channel_area.show()
