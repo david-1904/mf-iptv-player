@@ -456,7 +456,12 @@ class PlaybackMixin:
             self.player_controls.show()
             self.status_bar.show()
             self._player_maximized = False
-            self.showMaximized()
+            # showNormal() zuerst um Fullscreen-State sauber zu verlassen (Wayland-Fix),
+            # dann in vorherigen Zustand wechseln
+            was_maximized = getattr(self, '_was_maximized_before_fullscreen', True)
+            self.showNormal()
+            if was_maximized:
+                QTimer.singleShot(50, self.showMaximized)
         else:
             # Echtes OS-Fullscreen
             self._was_maximized_before_fullscreen = self.isMaximized()
