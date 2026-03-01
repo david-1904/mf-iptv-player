@@ -76,6 +76,11 @@ class CategoriesMixin:
                 if self._pip_mode:
                     self._exit_pip_mode()
 
+        # Bei Wechsel zu Live: Hover-Overlay einblenden wenn Stream laeuft
+        if mode == "live" and getattr(self, "_current_stream_type", None) == "live":
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(300, self._show_info_overlay_zap)
+
         if mode == "favorites":
             self._load_favorites()
         elif mode == "history":
