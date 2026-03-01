@@ -6,7 +6,7 @@ import aiohttp
 
 from PySide6.QtCore import Qt, Slot, QTimer, QSize
 from PySide6.QtWidgets import (
-    QListWidgetItem, QWidget, QHBoxLayout, QLabel, QSizePolicy
+    QListWidgetItem, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QSizePolicy
 )
 
 from xtream_api import Series
