@@ -82,7 +82,10 @@ class MpvPlayerWidget(QOpenGLWidget):
         if self._player_initialized:
             return
 
-        self.player = mpv.MPV(vo='libmpv', hwdec='auto-copy')
+        # Windows: Hardware-Decoding (auto-copy) verursacht auf manchen GPU-Treibern
+        # grüne Pixel → Software-Decoding verwenden (etwas mehr CPU, aber stabil)
+        hwdec = 'no' if sys.platform == 'win32' else 'auto-copy'
+        self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
         self.player['keep-open'] = True
         if sys.platform == 'win32':
             # WASAPI Exclusive Mode deaktivieren – verhindert Audio-Ausfall wenn
