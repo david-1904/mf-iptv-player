@@ -89,6 +89,9 @@ class MainWindow(
         self._detail_now_entry = None
         self._detail_next_entry = None
 
+        # Favoriten-Filter
+        self._current_fav_filter = None  # None = Alle, "live"/"vod"/"series" = gefiltert
+
         # Player-Zustand
         self._player_maximized = False
         self._was_maximized_before_fullscreen = False

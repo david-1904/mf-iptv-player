@@ -42,6 +42,11 @@ class CategoriesMixin:
         if mode not in ("live", "vod", "series"):
             self.category_list.hide()
 
+        # Favoriten-Filter nur im Favoriten-Modus
+        self.fav_filter_row.setVisible(mode == "favorites")
+        if mode == "favorites":
+            self._set_fav_filter(None)  # Filter zurücksetzen auf "Alle"
+
         # Sortierung nur bei VOD/Serien anzeigen
         self.sort_widget.setVisible(mode in ("vod", "series"))
 
