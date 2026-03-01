@@ -7,11 +7,11 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QStackedWidget, QListWidget, QListWidgetItem, QComboBox,
     QPushButton, QLineEdit, QLabel, QSlider,
-    QFrame, QToolBar, QStatusBar, QGroupBox, QScrollArea, QSplitter,
+    QFrame, QStatusBar, QGroupBox, QScrollArea, QSplitter,
     QProgressBar, QAbstractItemView, QScroller, QMenu
 )
 from PySide6.QtCore import Qt, QSize, Slot, QTimer
-from PySide6.QtGui import QAction, QPixmap, QFont
+from PySide6.QtGui import QPixmap, QFont
 
 from flow_layout import FlowLayout
 
@@ -2401,17 +2401,6 @@ class UiBuilderMixin:
         layout.addStretch()
 
         return panel
-
-    def _setup_toolbar(self):
-        toolbar = QToolBar("Hauptwerkzeugleiste")
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(24, 24))
-        self.addToolBar(toolbar)
-
-        # Refresh-Action
-        refresh_action = QAction("Aktualisieren", self)
-        refresh_action.triggered.connect(self._refresh_current)
-        toolbar.addAction(refresh_action)
 
     def _setup_statusbar(self):
         self.status_bar = QStatusBar()

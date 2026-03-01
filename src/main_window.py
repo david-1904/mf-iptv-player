@@ -126,7 +126,6 @@ class MainWindow(
         self.setMinimumSize(920, 600)
         self.resize(1400, 900)  # Vernuenftige Restore-Groesse fuer Fensterleisten-Doppelklick
         self._setup_ui()
-        self._setup_toolbar()
         self._setup_statusbar()
         self._load_initial_account()
         self.showMaximized()
