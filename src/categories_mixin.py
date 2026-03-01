@@ -196,6 +196,7 @@ class CategoriesMixin:
 
     def _on_sort_changed(self):
         """Sortierung geaendert - Kategorie neu laden"""
+        self.app_settings.set("vod_sort_index", self.sort_combo.currentIndex())
         if self.current_mode not in ("vod", "series"):
             return
         if self._current_category_index < 0:
