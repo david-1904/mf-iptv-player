@@ -384,9 +384,10 @@ class PlaybackMixin:
         # Zap-Buttons nur bei Live
         self.btn_zap_prev.setVisible(is_live)
         self.btn_zap_next.setVisible(is_live)
-        # EPG-Zeile: nur bei Live, nicht im Vollbild, nicht in PiP
-        self.live_epg_bar.setVisible(
-            is_live and not self._player_maximized and not self._pip_mode)
+        # EPG-Zeile: bei Vollbild/PiP/nicht-Live immer verstecken;
+        # beim Live-Modus steuert der EPG-Ticker die Sichtbarkeit (zeigt erst wenn Daten da)
+        if not is_live or self._player_maximized or self._pip_mode:
+            self.live_epg_bar.hide()
 
     def _update_player_controls(self):
         """Aktualisiert die Player-Steuerleiste"""
@@ -865,6 +866,7 @@ class PlaybackMixin:
                     self.live_epg_seek_slider.show()
                     self.live_epg_von_anfang_btn.show()
                     self.live_epg_progress.hide()
+                    self.live_epg_bar.show()
                     self._live_epg_current_entry = current_entry
                 else:
                     elapsed = now_ts - current_entry.start_timestamp
@@ -873,8 +875,11 @@ class PlaybackMixin:
                     self.live_epg_progress.show()
                     self.live_epg_seek_slider.hide()
                     self.live_epg_von_anfang_btn.hide()
+                    self.live_epg_bar.show()
                     self._live_epg_current_entry = None
                 return
+        # Kein EPG-Eintrag gefunden: Bar komplett verstecken statt nur Button anzuzeigen
+        self.live_epg_bar.hide()
         self.live_epg_seek_slider.hide()
         self.live_epg_progress.hide()
         self.live_epg_von_anfang_btn.hide()
