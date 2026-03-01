@@ -127,6 +127,7 @@ class EpgDialog(QDialog):
         """Erstellt eine Programmzeile"""
         is_current = entry.start_timestamp <= now <= entry.stop_timestamp
         is_past = entry.stop_timestamp < now
+        is_future = entry.start_timestamp > now
 
         row = QFrame()
         row.setObjectName("epgRow")
