@@ -448,6 +448,16 @@ class PlaybackMixin:
             self.player_controls.hide()
             self._player_maximized = True
             self.showFullScreen()
+            # Windows: showFullScreen() kann Relayout triggern der Widgets wieder einblendet
+            # → nochmals verstecken nach der Zustandsänderung
+            QTimer.singleShot(100, self._enforce_fullscreen_hidden)
+
+    def _enforce_fullscreen_hidden(self):
+        """Stellt sicher dass Controls im Vollbild versteckt bleiben (Windows-Fix)."""
+        if self._player_maximized:
+            self.player_header.hide()
+            self.player_controls.hide()
+            self.live_epg_bar.hide()
 
     def _on_player_escape(self):
         """Escape im Player druecken -> Fullscreen oder PiP verlassen"""
