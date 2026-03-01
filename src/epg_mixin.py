@@ -182,7 +182,11 @@ class EpgMixin:
     def _open_epg_dialog(self, epg_data: list[EpgEntry], has_catchup: bool):
         """Oeffnet den EPG-Dialog (non-blocking mit open())"""
         channel_name = self.epg_channel_name.text()
-        self._epg_dialog = EpgDialog(channel_name, epg_data, has_catchup=has_catchup, parent=self)
+        self._epg_dialog = EpgDialog(
+            channel_name, epg_data, has_catchup=has_catchup,
+            schedule_callback=self._schedule_from_epg,
+            parent=self,
+        )
         self._epg_dialog.finished.connect(self._on_epg_dialog_finished)
         self._epg_dialog.open()
 
