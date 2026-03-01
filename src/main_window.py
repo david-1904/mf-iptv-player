@@ -243,25 +243,9 @@ class MainWindow(
         if not info:
             return
         self._update_release_info = info
-        btn = QPushButton(f"\u2B07  Update v{info.version}")
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1a3a2a;
-                color: #6fcf97;
-                border: 1px solid #27ae60;
-                border-radius: 10px;
-                padding: 3px 14px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #27ae60;
-                color: #fff;
-            }
-        """)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(self._show_update_dialog)
-        self.status_bar.addPermanentWidget(btn)
+        self.btn_update.setText(f"\u2B07  Update v{info.version}")
+        self.btn_update.clicked.connect(self._show_update_dialog)
+        self.btn_update.show()
 
     def _show_update_dialog(self):
         info = self._update_release_info
