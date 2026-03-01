@@ -199,15 +199,9 @@ del "%~f0"
                         with open(bat_path, "w", encoding="utf-8") as f:
                             f.write(bat)
 
-                        # Batch-Script sichtbar und detached starten (CMD-Fenster als Fortschrittsanzeige)
-                        import subprocess
-                        CREATE_NEW_PROCESS_GROUP = 0x00000200
-                        DETACHED_PROCESS = 0x00000008
-                        subprocess.Popen(
-                            ["cmd.exe", "/c", bat_path],
-                            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
-                            close_fds=True,
-                        )
+                        # os.startfile = equivalent zum Doppelklick im Explorer:
+                        # oeffnet CMD-Fenster, laeuft voellig unabhaengig vom Elternprozess
+                        os.startfile(bat_path)
 
                         if progress_callback:
                             progress_callback("App wird neu gestartet...")
