@@ -176,14 +176,14 @@ chcp 65001 >nul
 :: Warten bis der App-Prozess beendet ist
 :wait
 timeout /t 1 /nobreak >nul
-tasklist /fi "PID eq {pid}" 2>nul | find "{pid}" >nul
+tasklist /fi "PID eq {pid}" 2>nul | find /i "{pid}" >nul 2>nul
 if not errorlevel 1 goto wait
 
 :: Dateien kopieren (robocopy: /E=Unterordner, /IS=gleiche Dateien, /IT=gedatete, /NP/NFL/NDL=kein Output)
-robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NP /NFL /NDL /NJH /NJS
+robocopy "{source_dir}" "{app_dir}" /E /IS /IT /NP /NFL /NDL /NJH /NJS >nul 2>nul
 
 :: Temp-Ordner aufräumen
-rd /s /q "{extract_dir}"
+rd /s /q "{extract_dir}" >nul 2>nul
 
 :: App neu starten
 start "" "{exe_path}"
@@ -192,11 +192,12 @@ del "%~f0"
                         with open(bat_path, "w", encoding="utf-8") as f:
                             f.write(bat)
 
-                        # Batch-Script detached starten (laeuft weiter nach App-Exit)
+                        # Batch-Script unsichtbar und detached starten
                         import subprocess
+                        CREATE_NO_WINDOW = 0x08000000
                         subprocess.Popen(
                             ["cmd.exe", "/c", bat_path],
-                            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                            creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
                             close_fds=True,
                         )
 
