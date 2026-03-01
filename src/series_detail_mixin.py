@@ -40,8 +40,11 @@ class SeriesDetailMixin:
         self._series_trailer_url = ""
         self.btn_series_trailer.hide()
 
-        # Volle Fensterbreite fuer Serien-Detail: Player voruebergehend ausblenden
+        # Volle Fensterbreite fuer Serien-Detail: Zustand speichern + Player ausblenden
         self._series_player_was_visible = self.player_area.isVisible()
+        self._series_channel_area_min = self.channel_area.minimumWidth()
+        self._series_channel_area_max = self.channel_area.maximumWidth()
+        self._series_channel_area_visible = self.channel_area.isVisible()
         if self._series_player_was_visible:
             self.player_area.hide()
         self.channel_area.show()
@@ -217,10 +220,14 @@ class SeriesDetailMixin:
     def _series_back(self):
         """Zurueck zur Kanalliste"""
         self.channel_stack.setCurrentIndex(0)
-        # Player-Zustand wiederherstellen
+        # Exakt gespeicherten Zustand wiederherstellen
+        min_w = getattr(self, "_series_channel_area_min", 0)
+        max_w = getattr(self, "_series_channel_area_max", 16777215)
+        self.channel_area.setMinimumWidth(min_w)
+        self.channel_area.setMaximumWidth(max_w)
+        if getattr(self, "_series_channel_area_visible", True):
+            self.channel_area.show()
+        else:
+            self.channel_area.hide()
         if getattr(self, "_series_player_was_visible", False):
             self.player_area.show()
-            if getattr(self, "_current_stream_type", None) == "live":
-                self.channel_area.setFixedWidth(360)
-            else:
-                self.channel_area.hide()
