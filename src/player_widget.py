@@ -98,7 +98,14 @@ class MpvPlayerWidget(QOpenGLWidget):
             # ICC-Profil-Verwaltung deaktivieren – verhindert systemweite Farb-
             # korruption wenn mpv das Monitor-ICC-Profil laedt aber nicht zuruecksetzt
             self.player['icc-profile-auto'] = 'no'
-            self.player['target-colorspace-hint'] = 'yes'
+            # target-colorspace-hint NICHT aktivieren: auf Windows kann das den
+            # Display-Farbraum global umschalten (z.B. HDR-Modus aktivieren) und
+            # bleibt auch nach Vollbild-Ende bestehen → systemweite Farbverschiebung
+            self.player['target-colorspace-hint'] = 'no'
+            # Explizit SDR-Zielfarbraum erzwingen – verhindert dass mpv
+            # Display-Primaries oder Gamma systemweit aendert
+            self.player['target-prim'] = 'bt.709'
+            self.player['target-trc'] = 'gamma2.2'
 
         def _get_proc_address(ctx, name):
             glctx = self.context()
