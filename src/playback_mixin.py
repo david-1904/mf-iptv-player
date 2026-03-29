@@ -3,6 +3,7 @@ Wiedergabe: Stream-Steuerung, Timeshift, Buffering, Player-Maximierung, Info-Ove
 """
 import asyncio
 import aiohttp
+import time
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Slot, QTimer
@@ -111,6 +112,8 @@ class PlaybackMixin:
         self._reconnect_attempt = 0
         self._reconnect_timer.stop()
         self._buffering_watchdog.stop()
+        self._buffering_accumulated = 0.0
+        self._buffering_since = None
         # Vorherige Position speichern
         self._save_current_position()
 
@@ -239,17 +242,28 @@ class PlaybackMixin:
             self.buffering_overlay.show()
             self._buffering_dots = 0
             self._buffering_timer.start(400)
-            # Watchdog: bei Live-Streams nach 10s Reconnect anstoßen
+            # Watchdog bei Live-Streams: Timer basiert auf akkumulierter Buffering-Zeit.
+            # Bei kurzen True/False-Oszillationen (z.B. langsame HLS-Segmente) feuert
+            # der Watchdog trotzdem nach insgesamt 10s Buffering – ohne einzelne
+            # Phasen zu ignorieren.
             if self._current_stream_type == "live":
-                self._buffering_watchdog.start(10000)
+                if self._buffering_since is None:
+                    self._buffering_since = time.monotonic()
+                elapsed = self._buffering_accumulated + (time.monotonic() - self._buffering_since)
+                remaining_ms = max(500, int((10.0 - elapsed) * 1000))
+                self._buffering_watchdog.start(remaining_ms)
         else:
             self._buffering_timer.stop()
             self.buffering_overlay.hide()
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
             self._stream_start_timer.stop()
+            # Buffering-Zeit aufaddieren
+            if self._buffering_since is not None:
+                self._buffering_accumulated += time.monotonic() - self._buffering_since
+                self._buffering_since = None
             if self._current_stream_type == "vod":
-                self._vod_has_played = True  # Stream hat tatsächlich gespielt
+                self._vod_has_played = True
             if self._reconnect_attempt > 0:
                 self.status_bar.showMessage(f"Verbunden: {self._current_stream_title}", 4000)
             self._reconnect_attempt = 0
@@ -512,7 +526,7 @@ class PlaybackMixin:
 
     def _show_info_overlay(self, force: bool = False):
         """Zeigt den Hover-Overlay mit Logo + JETZT/DANACH im Live-Modus."""
-        if self._player_maximized or self._current_stream_type != "live":
+        if self._player_maximized or self._pip_mode or self._current_stream_type != "live":
             return
         if not force and not self.player.is_playing:
             return
@@ -524,7 +538,10 @@ class PlaybackMixin:
         self.overlay_next_title.setText(nxt.title if nxt else "")
         parent = self.info_overlay.parentWidget()
         if parent:
-            h = 165
+            small = parent.height() < 160
+            self.overlay_logo.setVisible(not small)
+            self.info_overlay.layout().setContentsMargins(24, 6 if small else 18, 24, 6 if small else 18)
+            h = min(165, parent.height())
             self.info_overlay.setGeometry(0, parent.height() - h, parent.width(), h)
         self.info_overlay.raise_()
         self.info_overlay.show()

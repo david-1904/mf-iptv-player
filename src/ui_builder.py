@@ -1677,6 +1677,7 @@ class UiBuilderMixin:
         self._buffering_watchdog.setSingleShot(True)
         self._buffering_watchdog.timeout.connect(self._on_buffering_timeout)
 
+
         self._reconnect_timer = QTimer()
         self._reconnect_timer.setSingleShot(True)
         self._reconnect_timer.timeout.connect(self._do_reconnect)

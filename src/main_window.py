@@ -116,6 +116,8 @@ class MainWindow(
         self._reconnect_attempt = 0
         self._max_reconnect_attempts = 5
         self._stream_starting = False  # Schutzphase: end-file waehrend Start ignorieren
+        self._buffering_accumulated = 0.0   # akkumulierte Buffering-Sekunden (aktueller Stream)
+        self._buffering_since: float | None = None  # Timestamp seit wann aktiv gebuffert
 
         # EPG-Zustand
         self._initial_epg_loaded = False
@@ -186,8 +188,12 @@ class MainWindow(
             if obj is self.fullscreen_controls:
                 self._fs_controls_timer.stop()
             elif obj is self.player_container and self.player.is_playing:
-                self._info_overlay_timer.stop()
-                self._show_info_overlay()
+                if self.player_container.height() >= 200:
+                    self._info_overlay_timer.stop()
+                    self._show_info_overlay()
+        elif event.type() == QEvent.Resize:
+            if obj is self.player_container and self._pip_mode:
+                self._hide_info_overlay()
         elif event.type() == QEvent.Leave:
             if obj is self.fullscreen_controls:
                 self._fs_controls_timer.start(3000)

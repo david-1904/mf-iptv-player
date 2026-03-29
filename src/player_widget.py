@@ -89,6 +89,9 @@ class MpvPlayerWidget(QOpenGLWidget):
         else:
             hwdec = self._hwdec_setting
         self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
+        self.player['user-agent'] = 'okhttp/4.9.0'
+        self.player['stream-lavf-o'] = 'user_agent=okhttp/4.9.0,icy=0,seekable=0,multiple_requests=1'
+        self.player['http-header-fields'] = 'Connection: keep-alive'
         if sys.platform == 'win32':
             # WASAPI Exclusive Mode deaktivieren – verhindert Audio-Ausfall wenn
             # ein anderes Programm den Audio-Device belegt oder bei manchen Treibern
