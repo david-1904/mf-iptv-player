@@ -49,8 +49,6 @@ class SearchMixin:
                     continue
                 if query_lower in item.name.lower():
                     name = f"[Live] {item.name}"
-                    if item.tv_archive:
-                        name += "  \u25C2\u25C2"
                     list_item = QListWidgetItem(name)
                     list_item.setData(Qt.UserRole, item)
                     self.channel_list.addItem(list_item)

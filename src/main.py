@@ -5,13 +5,26 @@ Verwendet PySide6 und mpv
 """
 import sys
 import os
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette, QColor, QIcon
+from PySide6.QtWidgets import QApplication, QAbstractButton, QAbstractSlider, QComboBox, QAbstractItemView
+from PySide6.QtCore import Qt, QObject, QEvent
+from PySide6.QtGui import QPalette, QColor, QIcon, QFont
 import qasync
 import asyncio
 
 from main_window import MainWindow
+
+
+class _HandCursorFilter(QObject):
+    """Setzt den Zeigefinger-Cursor global auf alle interaktiven Widgets."""
+    _types = (QAbstractButton, QAbstractSlider, QComboBox, QAbstractItemView)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Enter and isinstance(obj, self._types):
+            obj.setCursor(
+                Qt.CursorShape.PointingHandCursor if obj.isEnabled()
+                else Qt.CursorShape.ArrowCursor
+            )
+        return False
 
 
 def _base_path() -> str:
@@ -170,6 +183,10 @@ def main():
     app.setOrganizationName("IPTVApp")
     app.setDesktopFileName("iptv-player")
 
+    font = QFont("Fira Sans", 10)
+    font.setWeight(QFont.Medium)
+    app.setFont(font)
+
     base = _base_path() if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     # Windows: .ico bevorzugen (bessere Taskbar-Qualitaet), sonst SVG
     if sys.platform == 'win32':
@@ -181,6 +198,9 @@ def main():
     app.setWindowIcon(QIcon(icon_path))
 
     setup_dark_theme(app)
+
+    _cursor_filter = _HandCursorFilter(app)
+    app.installEventFilter(_cursor_filter)
 
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)

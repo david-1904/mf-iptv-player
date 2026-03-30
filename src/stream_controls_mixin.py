@@ -104,9 +104,9 @@ class StreamControlsMixin:
             self.player.player["keepaspect"] = keepaspect
         except Exception:
             pass
-        self.btn_zoom.setText(name)
+        self.btn_zoom.setToolTip(f"Bildgröße: {name}  →  Normal / Fill / Stretch")
         if hasattr(self, "fs_btn_zoom"):
-            self.fs_btn_zoom.setText(name)
+            self.fs_btn_zoom.setToolTip(f"Bildgröße: {name}  →  Normal / Fill / Stretch")
         self.status_bar.showMessage(f"Bildgr\u00f6\u00dfe: {name}")
 
     def _update_stream_info(self):

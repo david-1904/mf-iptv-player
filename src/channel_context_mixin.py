@@ -110,10 +110,7 @@ class ChannelContextMixin:
     def _get_item_name(self, data) -> str:
         """Gibt den Anzeigenamen eines Items zurueck"""
         if isinstance(data, LiveStream):
-            name = data.name
-            if data.tv_archive:
-                name += " \u23EA"
-            return name
+            return data.name
         elif isinstance(data, VodStream):
             return data.name
         elif isinstance(data, Series):

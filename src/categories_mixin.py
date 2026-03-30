@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QScroller, QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QScrollArea, QWidget, QCheckBox
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QFontMetrics, QColor
 
 from xtream_api import LiveStream, VodStream, Series
@@ -117,6 +117,8 @@ class CategoriesMixin:
         # Falls Kategorie-Dropdown offen war, korrekt schliessen
         if self.category_list.isVisible():
             self.category_list.hide()
+            self._hidden_cat_sep.hide()
+            self.manage_hidden_btn.hide()
             self._epg_splitter.show()
 
         self._show_loading("Lade Kategorien...")
@@ -162,9 +164,11 @@ class CategoriesMixin:
                 self.category_list.addItem(cat.category_name)
             self.category_list.hide()
 
-            # "Ausgeblendete verwalten"-Button nur zeigen wenn es versteckte gibt
+            # Button nur im offenen Dropdown zeigen (has_hidden merken für _toggle)
             has_hidden = len(self.hidden_categories_manager.get_hidden(account_name, self.current_mode)) > 0
-            self.manage_hidden_btn.setVisible(has_hidden)
+            self._has_hidden_categories = has_hidden
+            self.manage_hidden_btn.hide()
+            self._hidden_cat_sep.hide()
 
             if visible_cats:
                 target_cat = visible_cats[target_cat_idx]
@@ -216,6 +220,8 @@ class CategoriesMixin:
         else:
             self.category_list.show()
             self._epg_splitter.hide()
+            self._hidden_cat_sep.show()
+            self.manage_hidden_btn.show()
             # Zur aktuellen Kategorie scrollen
             if 0 <= self._current_category_index < self.category_list.count():
                 self.category_list.setCurrentRow(self._current_category_index)
@@ -226,9 +232,10 @@ class CategoriesMixin:
     def _close_category_list(self):
         """Schliesst die Kategorie-Liste und zeigt Kanalliste wieder"""
         self.category_list.hide()
+        self._hidden_cat_sep.hide()
+        self.manage_hidden_btn.hide()
         self._epg_splitter.show()
         self.channel_list.show()
-        pass
         name = self._category_items[self._current_category_index][0] if self._current_category_index >= 0 else "Kategorie"
         self.category_btn.setText(f"{name}  \u25BE")
 
@@ -250,28 +257,51 @@ class CategoriesMixin:
 
     def _show_hide_categories_dialog(self):
         """Zeigt Dialog zum Ausblenden von Kategorien (mit Checkboxen)"""
+        self._show_manage_categories_dialog()
+
+    def _show_hidden_categories_dialog(self):
+        """Zeigt Dialog zum Verwalten ausgeblendeter Kategorien"""
+        self._show_manage_categories_dialog()
+
+    def _show_manage_categories_dialog(self):
+        """Kombinierter Dialog: alle Kategorien mit Checkboxen (aktiviert = sichtbar)."""
         account = self.account_manager.get_selected()
-        if not account or not self._category_items:
+        if not account:
+            return
+
+        hidden_entries = self.hidden_categories_manager.get_hidden(account.name, self.current_mode)
+        hidden_ids = {e.category_id for e in hidden_entries}
+
+        # Alle Kategorien: sichtbare + ausgeblendete
+        all_cats: list[tuple[str, str, bool]] = []  # (name, cat_id, visible)
+        for name, cat_id in self._category_items:
+            all_cats.append((name, cat_id, True))
+        for entry in hidden_entries:
+            all_cats.append((entry.category_name or entry.category_id, entry.category_id, False))
+
+        if not all_cats:
             return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Kategorien ausblenden")
-        dialog.setMinimumWidth(350)
+        dialog.setWindowTitle("Kategorien verwalten")
+        dialog.setMinimumSize(420, 480)
         layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
 
-        label = QLabel("Kategorien zum Ausblenden auswählen:")
+        label = QLabel("Aktivierte Kategorien werden in der Liste angezeigt.")
+        label.setStyleSheet("color: #999; font-size: 12px;")
         layout.addWidget(label)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMaximumHeight(400)
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setSpacing(4)
 
-        checkboxes: list[tuple[QCheckBox, str, str]] = []
-        for name, cat_id in self._category_items:
+        checkboxes: list[tuple[QCheckBox, str, str]] = []  # (cb, cat_id, name)
+        for name, cat_id, visible in all_cats:
             cb = QCheckBox(name)
-            cb.setChecked(False)
+            cb.setChecked(visible)
             scroll_layout.addWidget(cb)
             checkboxes.append((cb, cat_id, name))
 
@@ -280,83 +310,37 @@ class CategoriesMixin:
         layout.addWidget(scroll)
 
         btn_layout = QHBoxLayout()
-        hide_btn = QPushButton("Ausblenden")
+        apply_btn = QPushButton("Übernehmen")
         cancel_btn = QPushButton("Abbrechen")
-        btn_layout.addWidget(hide_btn)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255,255,255,8);
+                border: 1px solid rgba(255,255,255,12);
+                color: #ccc;
+            }
+            QPushButton:hover { background-color: rgba(255,255,255,14); }
+        """)
+        btn_layout.addWidget(apply_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
 
-        def do_hide():
-            any_hidden = False
+        def do_apply():
+            changed = False
             for cb, cat_id, name in checkboxes:
-                if cb.isChecked():
+                was_hidden = cat_id in hidden_ids
+                should_hide = not cb.isChecked()
+                if should_hide and not was_hidden:
                     self.hidden_categories_manager.hide(account.name, self.current_mode, cat_id, name)
-                    any_hidden = True
+                    changed = True
+                elif not should_hide and was_hidden:
+                    self.hidden_categories_manager.unhide(account.name, self.current_mode, cat_id)
+                    changed = True
             dialog.accept()
-            if any_hidden:
+            if changed:
                 asyncio.ensure_future(self._load_categories())
 
-        hide_btn.clicked.connect(do_hide)
+        apply_btn.clicked.connect(do_apply)
         cancel_btn.clicked.connect(dialog.reject)
-        dialog.exec()
-
-    def _show_hidden_categories_dialog(self):
-        """Zeigt Dialog zum Verwalten ausgeblendeter Kategorien"""
-        account = self.account_manager.get_selected()
-        if not account:
-            return
-
-        hidden = self.hidden_categories_manager.get_hidden(account.name, self.current_mode)
-        if not hidden:
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Ausgeblendete Kategorien")
-        dialog.setMinimumWidth(350)
-        layout = QVBoxLayout(dialog)
-
-        label = QLabel(f"{len(hidden)} ausgeblendete Kategorien:")
-        layout.addWidget(label)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setMaximumHeight(400)
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-
-        checkboxes: list[tuple[QCheckBox, str]] = []
-        for entry in hidden:
-            cb = QCheckBox(entry.category_name or entry.category_id)
-            cb.setChecked(False)
-            scroll_layout.addWidget(cb)
-            checkboxes.append((cb, entry.category_id))
-
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll)
-
-        btn_layout = QHBoxLayout()
-        unhide_selected_btn = QPushButton("Ausgewaehlte einblenden")
-        unhide_all_btn = QPushButton("Alle einblenden")
-        btn_layout.addWidget(unhide_selected_btn)
-        btn_layout.addWidget(unhide_all_btn)
-        layout.addLayout(btn_layout)
-
-        def unhide_selected():
-            for cb, cat_id in checkboxes:
-                if cb.isChecked():
-                    self.hidden_categories_manager.unhide(account.name, self.current_mode, cat_id)
-            dialog.accept()
-            asyncio.ensure_future(self._load_categories())
-
-        def unhide_all():
-            self.hidden_categories_manager.unhide_all(account.name, self.current_mode)
-            dialog.accept()
-            asyncio.ensure_future(self._load_categories())
-
-        unhide_selected_btn.clicked.connect(unhide_selected)
-        unhide_all_btn.clicked.connect(unhide_all)
-
         dialog.exec()
 
     def _restore_session_item(self, session: dict):
@@ -484,12 +468,12 @@ class CategoriesMixin:
             if self.current_mode == "live":
                 items = await self.api.get_live_streams(category_id)
                 for item in items:
-                    name = item.name
-                    if item.tv_archive:
-                        name += "  \u21BA"
-                    list_item = QListWidgetItem(name)
+                    list_item = QListWidgetItem(item.name)
                     list_item.setData(Qt.UserRole, item)
                     self.channel_list.addItem(list_item)
+                # Spaltenbreite an laengsten Namen anpassen
+                if items:
+                    QTimer.singleShot(0, self._fit_live_channel_width)
 
             elif self.current_mode == "vod":
                 items = await self.api.get_vod_streams(category_id)
@@ -585,6 +569,23 @@ class CategoriesMixin:
                 return_exceptions=True
             )
 
+    def _fit_live_channel_width(self):
+        """Passt channel_area-Breite nach dem Rendern an den laengsten Sendernamen an."""
+        if self.current_mode != "live":
+            return
+        fm = self.channel_list.fontMetrics()
+        max_w = 0
+        for i in range(self.channel_list.count()):
+            item = self.channel_list.item(i)
+            if item:
+                max_w = max(max_w, fm.horizontalAdvance(item.text()))
+        if max_w == 0:
+            return
+        # 1.15x Sicherheitsfaktor fuer CSS/Qt Font-Abweichung
+        # + 12px links + 14px Abstand + 16px Icon + 16px rechts + 6px Scrollbar
+        self._live_channel_area_w = max(220, min(560, int(max_w * 1.15) + 74))
+        self.channel_area.setFixedWidth(self._live_channel_area_w)
+
     def _update_grid_size(self):
         """Berechnet Grid-Größe dynamisch basierend auf verfügbarer Breite."""
         is_fav_grid = (
@@ -593,7 +594,9 @@ class CategoriesMixin:
         )
         if self.current_mode not in ("vod", "series") and not is_fav_grid:
             return
-        available = self.channel_list.viewport().width()
+        vscroll = self.channel_list.verticalScrollBar()
+        sb_w = vscroll.width() if vscroll.isVisible() else 0
+        available = self.channel_list.viewport().width() - sb_w
         # Fallback wenn channel_list versteckt (Lade-Zustand): channel_area nutzen
         if available < 100:
             available = self.channel_area.width()

@@ -163,7 +163,7 @@ class PlaybackMixin:
         self._update_seek_controls_visibility()
         self._hide_channel_detail()
         self.player.play(url)
-        self.btn_play_pause.setText("\u2759\u2759")
+        self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         self.player_info_label.setText("")
         self.controls_timer.start(1000)
         self.status_bar.showMessage(f"Spiele: {title}")
@@ -284,18 +284,18 @@ class PlaybackMixin:
                 # Pause bei Live mit Catchup: Timestamp merken
                 self._timeshift_paused_at = datetime.now().timestamp()
                 self.player.pause()
-                self.btn_play_pause.setText("\u25B6\uFE0E")
+                self.btn_play_pause.setIcon(getattr(self, '_icon_play', self.btn_play_pause.icon()))
             else:
                 # Resume nach Pause: in Timeshift wechseln
                 self._enter_timeshift(self._timeshift_paused_at)
-                self.btn_play_pause.setText("\u2759\u2759")
+                self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
             return
 
         self.player.pause()
         if self.player.is_playing:
-            self.btn_play_pause.setText("\u2759\u2759")
+            self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         else:
-            self.btn_play_pause.setText("\u25B6\uFE0E")
+            self.btn_play_pause.setIcon(getattr(self, '_icon_play', self.btn_play_pause.icon()))
 
     def _enter_timeshift(self, start_timestamp: float):
         """Wechselt vom Live-Stream in den Timeshift-Modus"""
@@ -329,7 +329,7 @@ class PlaybackMixin:
         self._timeshift_paused_at = 0
         self._timeshift_start_ts = 0.0
         self.player.play(url)
-        self.btn_play_pause.setText("\u2759\u2759")
+        self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         self._update_seek_controls_visibility()
         self._update_go_live_style()
 
@@ -361,7 +361,7 @@ class PlaybackMixin:
             # Zurueckspulen bei Live → Timeshift starten
             start = datetime.now().timestamp() + seconds
             self._enter_timeshift(start)
-            self.btn_play_pause.setText("\u2759\u2759")
+            self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         else:
             self.player.seek(seconds)
 
@@ -478,12 +478,10 @@ class PlaybackMixin:
             self.player_controls.show()
             self.status_bar.show()
             self._player_maximized = False
-            # showNormal() zuerst um Fullscreen-State sauber zu verlassen (Wayland-Fix),
-            # dann in vorherigen Zustand wechseln
             was_maximized = getattr(self, '_was_maximized_before_fullscreen', True)
             self.showNormal()
             if was_maximized:
-                QTimer.singleShot(50, self.showMaximized)
+                QTimer.singleShot(0, self.showMaximized)
         else:
             # Echtes OS-Fullscreen
             self._was_maximized_before_fullscreen = self.isMaximized()
@@ -730,7 +728,9 @@ class PlaybackMixin:
         timeshift = self._timeshift_active
 
         # Play/Pause
-        self.fs_btn_play_pause.setText("\u2759\u2759" if self.player.is_playing else "\u25B6\uFE0E")
+        _fs_icon = getattr(self, '_icon_pause_fs' if self.player.is_playing else '_icon_play_fs', None)
+        if _fs_icon:
+            self.fs_btn_play_pause.setIcon(_fs_icon)
 
         # Skip zurück: VOD, Timeshift oder Live+Catchup
         self.fs_btn_skip_back.setVisible(is_vod or timeshift or (is_live and has_catchup))

@@ -37,8 +37,6 @@ from updater import UpdateChecker
 from app_settings import AppSettings
 from schedule_manager import ScheduleManager
 from schedule_mixin import ScheduleMixin
-
-
 class MainWindow(
     UiBuilderMixin,
     PlaybackMixin,
@@ -175,7 +173,7 @@ class MainWindow(
             if obj is self.main_page and self._pip_mode:
                 self._update_pip_position()
             if obj is self.channel_list.viewport() and self.current_mode in ("vod", "series"):
-                self._update_grid_size()
+                QTimer.singleShot(0, self._update_grid_size)
         elif event.type() == QEvent.MouseMove:
             if (obj is self.player_container or obj is self.player) and self.player.is_playing:
                 if self._player_maximized:
@@ -233,8 +231,12 @@ class MainWindow(
         available = self.main_page.width()
         if available <= 0:
             return
-        # Breite proportional anpassen: 30% fuer Kanalliste, min 300, max 440
-        w = max(300, min(440, int(available * 0.30)))
+        # Im Live-Modus: gespeicherte Content-Breite bevorzugen
+        if self.current_mode == "live" and getattr(self, '_live_channel_area_w', 0) > 0:
+            w = max(220, min(500, self._live_channel_area_w))
+        else:
+            # Breite proportional anpassen: 30% fuer Kanalliste, min 300, max 440
+            w = max(300, min(440, int(available * 0.30)))
         self.channel_area.setFixedWidth(w)
 
     def closeEvent(self, event):
@@ -256,7 +258,7 @@ class MainWindow(
         if not info:
             return
         self._update_release_info = info
-        self.btn_update.setText(f"\u2B07  Update v{info.version}")
+        self.btn_update.setText(f"Update v{info.version}")
         self.btn_update.clicked.connect(self._show_update_dialog)
         self.btn_update.show()
 
