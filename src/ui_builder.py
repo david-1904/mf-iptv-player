@@ -149,12 +149,6 @@ class UiBuilderMixin:
         self.btn_recordings.clicked.connect(lambda: self._switch_mode("recordings"))
         layout.addWidget(self.btn_recordings)
 
-        # Live-Events-Button
-        self.btn_live_events = QPushButton("\U0001F3C6  Live-Events")
-        self.btn_live_events.setCheckable(True)
-        self.btn_live_events.clicked.connect(lambda: self._switch_mode("live_events"))
-        layout.addWidget(self.btn_live_events)
-
         # Trennlinie
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
@@ -746,10 +740,6 @@ class UiBuilderMixin:
         # Seite 2: VOD-Detailansicht
         self.vod_detail_page = self._create_vod_detail_page()
         self.channel_stack.addWidget(self.vod_detail_page)
-
-        # Seite 3: Live-Events
-        self.live_events_page = self._create_live_events_page()
-        self.channel_stack.addWidget(self.live_events_page)
 
         return self.channel_stack
 
@@ -2548,130 +2538,3 @@ class UiBuilderMixin:
         """)
         self.loading_bar.hide()
         self.status_bar.addPermanentWidget(self.loading_bar)
-
-    def _create_live_events_page(self) -> QWidget:
-        """Erstellt die Live-Events Seite mit Zeitfilter, Sport-Filter und Karten-Container."""
-        from PySide6.QtWidgets import QScrollArea, QSizePolicy
-
-        page = QWidget()
-        page.setStyleSheet("background: #0a0a12;")
-        main_layout = QVBoxLayout(page)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # ── Header ────────────────────────────────────────────────────────────
-        header = QWidget()
-        header.setStyleSheet("background: #0d0d1a; border-bottom: 1px solid #1a1a2a;")
-        header.setFixedHeight(44)
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(16, 0, 16, 0)
-        title_lbl = QLabel("🏆  Live-Events")
-        title_lbl.setStyleSheet("color: #e8691a; font-size: 14px; font-weight: bold; background: transparent;")
-        header_layout.addWidget(title_lbl)
-        header_layout.addStretch()
-        main_layout.addWidget(header)
-
-        # ── Zeitfilter-Tabs ───────────────────────────────────────────────────
-        time_bar = QWidget()
-        time_bar.setStyleSheet("background: #0d0d1a; border-bottom: 1px solid #1a1a2a;")
-        time_bar.setFixedHeight(42)
-        time_layout = QHBoxLayout(time_bar)
-        time_layout.setContentsMargins(12, 6, 12, 6)
-        time_layout.setSpacing(6)
-
-        time_btn_style = """
-            QPushButton {
-                background: transparent; color: #666;
-                border: 1px solid #1e1e2e; border-radius: 14px;
-                font-size: 12px; padding: 3px 14px;
-            }
-            QPushButton:checked {
-                background: #e8691a; color: white; border-color: #e8691a;
-            }
-            QPushButton:hover:!checked { color: #aaa; border-color: #2a2a4a; }
-        """
-
-        self.live_events_time_btns: dict = {}
-        for name, label in [("now", "🔴 Jetzt"), ("today", "Heute"), ("tomorrow", "Morgen"), ("weekend", "Wochenende")]:
-            btn = QPushButton(label)
-            btn.setCheckable(True)
-            btn.setChecked(name == "now")
-            btn.setStyleSheet(time_btn_style)
-            btn.clicked.connect(lambda checked=False, n=name: self._on_live_events_time_filter(n))
-            time_layout.addWidget(btn)
-            self.live_events_time_btns[name] = btn
-
-        time_layout.addStretch()
-        main_layout.addWidget(time_bar)
-
-        # ── Sport-Filter Pills ────────────────────────────────────────────────
-        sport_bar = QWidget()
-        sport_bar.setStyleSheet("background: #0a0a12; border-bottom: 1px solid #1a1a2a;")
-        sport_bar.setFixedHeight(40)
-        sport_layout = QHBoxLayout(sport_bar)
-        sport_layout.setContentsMargins(12, 5, 12, 5)
-        sport_layout.setSpacing(5)
-
-        sport_btn_style = """
-            QPushButton {
-                background: transparent; color: #555;
-                border: 1px solid #1e1e2e; border-radius: 12px;
-                font-size: 11px; padding: 2px 12px;
-            }
-            QPushButton:checked { background: #1a1a2e; color: #aaa; border-color: #2a2a4a; }
-            QPushButton:hover:!checked { color: #888; }
-        """
-
-        self.live_events_sport_btns: dict = {}
-        sports = [
-            ("all", "Alle"),
-            ("football", "⚽ Fußball"),
-            ("formula1", "🏎 Formel 1"),
-            ("tennis", "🎾 Tennis"),
-            ("basketball", "🏀 Basketball"),
-            ("motorsport", "🏍 Motorsport"),
-            ("hockey", "🏒 Eishockey"),
-            ("boxing", "🥊 Boxen"),
-        ]
-        for key, label in sports:
-            btn = QPushButton(label)
-            btn.setCheckable(True)
-            btn.setChecked(key == "all")
-            btn.setStyleSheet(sport_btn_style)
-            btn.clicked.connect(lambda checked=False, k=key: self._on_live_events_sport_filter(None if k == "all" else k))
-            sport_layout.addWidget(btn)
-            self.live_events_sport_btns[key] = btn
-
-        sport_layout.addStretch()
-        main_layout.addWidget(sport_bar)
-
-        # ── Loading-Overlay ───────────────────────────────────────────────────
-        self.live_events_loading_widget = QWidget()
-        self.live_events_loading_widget.setStyleSheet("background: transparent;")
-        loading_layout = QVBoxLayout(self.live_events_loading_widget)
-        loading_layout.setAlignment(Qt.AlignCenter)
-        self.live_events_loading_label = QLabel("Sport-Events werden geladen…")
-        self.live_events_loading_label.setAlignment(Qt.AlignCenter)
-        self.live_events_loading_label.setStyleSheet("color: #555; font-size: 14px;")
-        loading_lbl = self.live_events_loading_label
-        loading_layout.addWidget(loading_lbl)
-        self.live_events_loading_widget.hide()
-        main_layout.addWidget(self.live_events_loading_widget)
-
-        # ── Karten-Scroll-Bereich ─────────────────────────────────────────────
-        self.live_events_scroll = QScrollArea()
-        self.live_events_scroll.setWidgetResizable(True)
-        self.live_events_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        self.live_events_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        self.live_events_cards_widget = QWidget()
-        self.live_events_cards_widget.setStyleSheet("background: transparent;")
-        self.live_events_cards_layout = QVBoxLayout(self.live_events_cards_widget)
-        self.live_events_cards_layout.setContentsMargins(12, 12, 12, 12)
-        self.live_events_cards_layout.setSpacing(10)
-        self.live_events_cards_layout.addStretch()
-
-        self.live_events_scroll.setWidget(self.live_events_cards_widget)
-        main_layout.addWidget(self.live_events_scroll)
-
-        return page
