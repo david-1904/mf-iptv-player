@@ -352,6 +352,11 @@ class AccountMixin:
         if self.current_mode == "recordings":
             self._load_recordings()
             return
+        if self.current_mode == "live_events":
+            self.invalidate_live_events_cache()
+            import asyncio
+            asyncio.ensure_future(self._load_live_events())
+            return
 
         # EPG-Cache leeren → beim naechsten Kanalklick frisch laden
         self._epg_cache = {}

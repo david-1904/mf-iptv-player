@@ -49,6 +49,11 @@ class XtreamCredentials:
         start_str = start.strftime("%Y-%m-%d:%H-%M")
         return f"{server}/timeshift/{self.username}/{self.password}/{duration_min}/{start_str}/{stream_id}.{extension}"
 
+    @property
+    def xmltv_url(self) -> str:
+        server = self.server.rstrip('/')
+        return f"{server}/xmltv.php?username={self.username}&password={self.password}"
+
 
 @dataclass
 class Category:
@@ -298,3 +303,11 @@ class XtreamAPI:
             )
             for e in listings
         ]
+
+    async def fetch_xmltv(self) -> str:
+        """Lädt den kompletten XMLTV-Feed als XML-String (ein Request für alle Kanäle)."""
+        timeout = aiohttp.ClientTimeout(total=60)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(self.creds.xmltv_url) as resp:
+                resp.raise_for_status()
+                return await resp.text(errors="replace")

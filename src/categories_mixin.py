@@ -37,9 +37,16 @@ class CategoriesMixin:
         self.btn_favorites.setChecked(mode == "favorites")
         self.btn_history.setChecked(mode == "history")
         self.btn_recordings.setChecked(mode == "recordings")
+        self.btn_live_events.setChecked(mode == "live_events")
 
         # Kategorie nur bei Live/VOD/Serien anzeigen
         self.category_row.setVisible(mode in ("live", "vod", "series"))
+        # Live-Events Seite anzeigen
+        if mode == "live_events":
+            self.channel_stack.setCurrentIndex(3)
+            import asyncio
+            asyncio.ensure_future(self._load_live_events())
+            return
         if mode not in ("live", "vod", "series"):
             self.category_list.hide()
 
@@ -56,7 +63,7 @@ class CategoriesMixin:
 
         # Player-Layout anpassen wenn Player laeuft
         if self.player_area.isVisible() and not self._player_maximized:
-            is_grid_mode = mode in ("vod", "series", "favorites", "history", "recordings")
+            is_grid_mode = mode in ("vod", "series", "favorites", "history", "recordings", "live_events")
             if is_grid_mode:
                 # Grid-Modus: Kanalliste voll breit, Player als PiP
                 self.channel_area.show()

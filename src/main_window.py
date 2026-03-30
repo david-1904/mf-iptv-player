@@ -37,6 +37,7 @@ from updater import UpdateChecker
 from app_settings import AppSettings
 from schedule_manager import ScheduleManager
 from schedule_mixin import ScheduleMixin
+from live_events_mixin import LiveEventsMixin
 
 
 class MainWindow(
@@ -54,6 +55,7 @@ class MainWindow(
     PipMixin,
     ChannelContextMixin,
     ScheduleMixin,
+    LiveEventsMixin,
     QMainWindow,
 ):
     def __init__(self):
@@ -84,6 +86,9 @@ class MainWindow(
         self._search_cache_vod = []
         self._search_cache_series = []
         self._search_cache_loaded = False
+
+        # Live-Events State
+        self._init_live_events_state()
 
         # EPG Cache
         self._epg_cache: dict = {}
