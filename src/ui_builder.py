@@ -11,10 +11,53 @@ from PySide6.QtWidgets import (
     QProgressBar, QAbstractItemView, QScroller, QMenu, QTextEdit,
     QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize, Slot, QTimer
-from PySide6.QtGui import QPixmap, QFont
+from PySide6.QtCore import Qt, QSize, Slot, QTimer, QVariantAnimation, QEasingCurve
+from PySide6.QtGui import QPixmap, QFont, QPainter, QPainterPath, QColor
 
 from flow_layout import FlowLayout
+
+
+class AnimatedButton(QPushButton):
+    """QPushButton mit sanftem Hover-Fade via QVariantAnimation."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hover_progress = 0.0
+        self._anim = QVariantAnimation(self)
+        self._anim.setDuration(180)
+        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim.valueChanged.connect(self._on_anim)
+
+    def _on_anim(self, value):
+        self._hover_progress = value
+        self.update()
+
+    def enterEvent(self, event):
+        if not self.isChecked():
+            self._anim.stop()
+            self._anim.setStartValue(self._hover_progress)
+            self._anim.setEndValue(1.0)
+            self._anim.start()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        if not self.isChecked():
+            self._anim.stop()
+            self._anim.setStartValue(self._hover_progress)
+            self._anim.setEndValue(0.0)
+            self._anim.start()
+        super().leaveEvent(event)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._hover_progress > 0.0 and not self.isChecked():
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+            path = QPainterPath()
+            path.addRoundedRect(self.rect().adjusted(1, 1, -1, -1), 7, 7)
+            painter.setClipPath(path)
+            alpha = int(self._hover_progress * 14)
+            painter.fillRect(self.rect(), QColor(255, 255, 255, alpha))
 
 
 class UiBuilderMixin:
@@ -24,25 +67,24 @@ class UiBuilderMixin:
         sidebar.setObjectName("sidebar")
         sidebar.setStyleSheet("""
             #sidebar {
-                background-color: #0d0d14;
-                border-right: 1px solid #1a1a2a;
+                background-color: rgba(8, 8, 20, 210);
+                border-right: 1px solid rgba(255, 255, 255, 7);
             }
             QPushButton {
                 text-align: left;
                 padding: 10px 16px;
                 margin: 2px 8px;
-                border: none;
+                border: 1px solid transparent;
                 border-radius: 8px;
                 background: transparent;
-                color: #aaa;
+                color: #777;
                 font-size: 15px;
             }
-            QPushButton:hover {
-                background-color: #1a1a2a;
-                color: #ddd;
-            }
             QPushButton:checked {
-                background-color: #0078d4;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(0, 120, 212, 50), stop:1 rgba(80, 40, 200, 25));
+                border: 1px solid rgba(0, 120, 212, 75);
+                border-left: 3px solid #0078d4;
                 border-radius: 8px;
                 color: white;
                 font-weight: bold;
@@ -50,25 +92,37 @@ class UiBuilderMixin:
             QComboBox {
                 padding: 6px 8px;
                 margin: 6px 10px;
-                background: #1e1e2e;
-                border: 1px solid #2a2a3a;
-                border-radius: 6px;
+                background: rgba(255, 255, 255, 5);
+                border: 1px solid rgba(255, 255, 255, 10);
+                border-radius: 8px;
                 color: white;
                 font-size: 12px;
             }
-            QComboBox:hover { border-color: #0078d4; }
+            QComboBox:hover { border-color: rgba(0, 120, 212, 150); }
             QComboBox::drop-down { border: none; }
             QComboBox QAbstractItemView {
-                background: #1e1e2e;
+                background: #10101e;
                 color: white;
-                selection-background-color: #0078d4;
-                border: 1px solid #2a2a3a;
+                selection-background-color: rgba(0, 120, 212, 180);
+                border: 1px solid rgba(255, 255, 255, 10);
             }
         """)
 
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+
+        # Gradient-Akzentlinie oben
+        _accent = QFrame()
+        _accent.setFixedHeight(3)
+        _accent.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0078d4, stop:0.5 #7b40e8, stop:1 transparent);
+                border: none;
+            }
+        """)
+        layout.addWidget(_accent)
 
         # Account-Auswahl
         self.account_combo = QComboBox()
@@ -83,13 +137,16 @@ class UiBuilderMixin:
         self.search_input.setStyleSheet("""
             QLineEdit {
                 padding: 7px 10px;
-                background: #1e1e2e;
-                border: 1px solid #2a2a3a;
+                background: rgba(255, 255, 255, 5);
+                border: 1px solid rgba(255, 255, 255, 10);
                 border-radius: 8px;
                 color: white;
                 font-size: 12px;
             }
-            QLineEdit:focus { border-color: #0078d4; background: #252535; }
+            QLineEdit:focus {
+                border-color: rgba(0, 120, 212, 180);
+                background: rgba(0, 120, 212, 8);
+            }
         """)
         self.search_input.returnPressed.connect(self._execute_search)
         self.search_input.textChanged.connect(self._on_search_text_changed)
@@ -104,20 +161,20 @@ class UiBuilderMixin:
         # Trennlinie
         line0 = QFrame()
         line0.setFrameShape(QFrame.HLine)
-        line0.setStyleSheet("background-color: #1a1a2a; margin: 4px 10px;")
+        line0.setStyleSheet("background-color: rgba(255, 255, 255, 6); margin: 4px 10px;")
         layout.addWidget(line0)
 
         # Modus-Buttons
-        self.btn_live = QPushButton("\U0001F4FA  Live TV")
+        self.btn_live = AnimatedButton("\U0001F4FA  Live TV")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(True)
         self.btn_live.clicked.connect(lambda: self._switch_mode("live"))
 
-        self.btn_vod = QPushButton("\U0001F3AC  Filme")
+        self.btn_vod = AnimatedButton("\U0001F3AC  Filme")
         self.btn_vod.setCheckable(True)
         self.btn_vod.clicked.connect(lambda: self._switch_mode("vod"))
 
-        self.btn_series = QPushButton("\U0001F4D6  Serien")
+        self.btn_series = AnimatedButton("\U0001F4D6  Serien")
         self.btn_series.setCheckable(True)
         self.btn_series.clicked.connect(lambda: self._switch_mode("series"))
 
@@ -128,23 +185,23 @@ class UiBuilderMixin:
         # Trennlinie
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("background-color: #1a1a2a; margin: 4px 10px;")
+        line.setStyleSheet("background-color: rgba(255, 255, 255, 6); margin: 4px 10px;")
         layout.addWidget(line)
 
         # Favoriten-Button
-        self.btn_favorites = QPushButton("\u2605  Favoriten")
+        self.btn_favorites = AnimatedButton("\u2605  Favoriten")
         self.btn_favorites.setCheckable(True)
         self.btn_favorites.clicked.connect(lambda: self._switch_mode("favorites"))
         layout.addWidget(self.btn_favorites)
 
         # Verlauf-Button
-        self.btn_history = QPushButton("\U0001F552  Verlauf")
+        self.btn_history = AnimatedButton("\U0001F552  Verlauf")
         self.btn_history.setCheckable(True)
         self.btn_history.clicked.connect(lambda: self._switch_mode("history"))
         layout.addWidget(self.btn_history)
 
         # Aufnahmen-Button
-        self.btn_recordings = QPushButton("\u23FA  Aufnahmen")
+        self.btn_recordings = AnimatedButton("\u23FA  Aufnahmen")
         self.btn_recordings.setCheckable(True)
         self.btn_recordings.clicked.connect(lambda: self._switch_mode("recordings"))
         layout.addWidget(self.btn_recordings)
@@ -152,11 +209,11 @@ class UiBuilderMixin:
         # Trennlinie
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
-        line2.setStyleSheet("background-color: #1a1a2a; margin: 4px 10px;")
+        line2.setStyleSheet("background-color: rgba(255, 255, 255, 6); margin: 4px 10px;")
         layout.addWidget(line2)
 
         # Aktualisieren-Button
-        self.btn_refresh = QPushButton("\u21BB  Aktualisieren")
+        self.btn_refresh = AnimatedButton("\u21BB  Aktualisieren")
         self.btn_refresh.clicked.connect(self._refresh_current)
         layout.addWidget(self.btn_refresh)
 
@@ -193,15 +250,16 @@ class UiBuilderMixin:
                 text-align: left;
                 padding: 10px 16px;
                 margin: 2px 8px;
-                border: none;
+                border: 1px solid transparent;
                 border-radius: 8px;
                 background: transparent;
-                color: #888;
+                color: #666;
                 font-size: 15px;
             }
             QPushButton:hover {
-                background-color: #1a1a2a;
-                color: #bbb;
+                background-color: rgba(255, 255, 255, 6);
+                border-color: rgba(255, 255, 255, 8);
+                color: #aaa;
             }
         """)
         self.btn_settings.clicked.connect(self._show_settings)
@@ -405,30 +463,33 @@ class UiBuilderMixin:
         if grid_mode:
             self.channel_list.setStyleSheet("""
                 QListWidget {
-                    background-color: #1a1a2a;
+                    background-color: transparent;
                     border: none;
                     color: #ddd;
                     font-size: 13px;
-                    padding: 0;
+                    padding: 4px;
                 }
                 QListWidget::item {
-                    border-radius: 6px;
-                    background-color: #1e1e2e;
+                    border-radius: 10px;
+                    background-color: rgba(20, 20, 42, 160);
+                    border: 1px solid rgba(255, 255, 255, 7);
                 }
                 QListWidget::item:hover {
-                    border: 1px solid #0078d4;
+                    background-color: rgba(30, 30, 60, 180);
+                    border: 1px solid rgba(255, 255, 255, 18);
                 }
                 QListWidget::item:selected {
-                    border: 2px solid #0078d4;
+                    background-color: rgba(0, 120, 212, 40);
+                    border: 1px solid rgba(0, 120, 212, 110);
                     color: white;
                 }
                 QScrollBar:vertical {
-                    background: #1a1a2a;
-                    width: 8px;
+                    background: transparent;
+                    width: 6px;
                 }
                 QScrollBar::handle:vertical {
-                    background: #444;
-                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 18);
+                    border-radius: 3px;
                     min-height: 20px;
                 }
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
@@ -436,30 +497,31 @@ class UiBuilderMixin:
         else:
             self.channel_list.setStyleSheet("""
                 QListWidget {
-                    background-color: #121212;
+                    background-color: transparent;
                     border: none;
                     color: #ddd;
                     font-size: 15px;
                 }
                 QListWidget::item {
                     padding: 9px 12px;
-                    border-bottom: 1px solid #1a1a2a;
+                    border-bottom: 1px solid rgba(255, 255, 255, 4);
                 }
                 QListWidget::item:hover {
-                    background-color: #1a1a2a;
+                    background-color: rgba(255, 255, 255, 6);
+                    color: #fff;
                 }
                 QListWidget::item:selected {
-                    background-color: #0a2a4a;
+                    background-color: rgba(0, 120, 212, 22);
                     border-left: 3px solid #0078d4;
                     color: white;
                 }
                 QScrollBar:vertical {
-                    background: #121212;
-                    width: 8px;
+                    background: transparent;
+                    width: 6px;
                 }
                 QScrollBar::handle:vertical {
-                    background: #444;
-                    border-radius: 4px;
+                    background: rgba(255, 255, 255, 18);
+                    border-radius: 3px;
                     min-height: 20px;
                 }
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
@@ -484,7 +546,7 @@ class UiBuilderMixin:
 
         # Kategorie-Zeile (Label + Button, analog zur Sortierungs-Zeile)
         self.category_row = QWidget()
-        self.category_row.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        self.category_row.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
         _cat_row_layout = QHBoxLayout(self.category_row)
         _cat_row_layout.setContentsMargins(12, 0, 0, 0)
         _cat_row_layout.setSpacing(8)
@@ -515,7 +577,7 @@ class UiBuilderMixin:
 
         # Favoriten-Filter-Leiste (nur im Favoriten-Modus sichtbar)
         self.fav_filter_row = QWidget()
-        self.fav_filter_row.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        self.fav_filter_row.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
         _fav_layout = QHBoxLayout(self.fav_filter_row)
         _fav_layout.setContentsMargins(8, 4, 8, 4)
         _fav_layout.setSpacing(6)
@@ -547,9 +609,9 @@ class UiBuilderMixin:
         self.category_list = QListWidget()
         self.category_list.setStyleSheet("""
             QListWidget {
-                background: #161622;
+                background: rgba(8, 8, 20, 220);
                 border: none;
-                border-bottom: 1px solid #1a1a2a;
+                border-bottom: 1px solid rgba(255, 255, 255, 6);
                 color: #ccc;
                 font-size: 12px;
             }
@@ -557,19 +619,19 @@ class UiBuilderMixin:
                 padding: 6px 14px;
             }
             QListWidget::item:hover {
-                background: #1c1c2c;
+                background: rgba(255, 255, 255, 6);
                 color: white;
             }
             QListWidget::item:selected {
-                background: #0a2a4a;
+                background: rgba(0, 120, 212, 25);
                 color: white;
             }
             QScrollBar:vertical {
-                background: #161622;
+                background: transparent;
                 width: 6px;
             }
             QScrollBar::handle:vertical {
-                background: #444;
+                background: rgba(255, 255, 255, 18);
                 border-radius: 3px;
                 min-height: 20px;
             }
@@ -588,15 +650,15 @@ class UiBuilderMixin:
             QPushButton {
                 padding: 6px 12px;
                 margin: 0;
-                background: #1a1a2a;
+                background: rgba(255, 255, 255, 4);
                 border: none;
-                border-bottom: 1px solid #1a1a2a;
+                border-bottom: 1px solid rgba(255, 255, 255, 6);
                 border-radius: 0;
-                color: #888;
+                color: #666;
                 font-size: 11px;
                 text-align: left;
             }
-            QPushButton:hover { background: #1c1c2c; color: #ccc; }
+            QPushButton:hover { background: rgba(255, 255, 255, 8); color: #ccc; }
         """)
         self.manage_hidden_btn.clicked.connect(self._show_hidden_categories_dialog)
         self.manage_hidden_btn.hide()
@@ -604,7 +666,7 @@ class UiBuilderMixin:
 
         # Sortierung (nur bei VOD/Serien sichtbar)
         self.sort_widget = QWidget()
-        self.sort_widget.setStyleSheet("background: #161622; border-bottom: 1px solid #1a1a2a;")
+        self.sort_widget.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
         sort_layout = QHBoxLayout(self.sort_widget)
         sort_layout.setContentsMargins(12, 4, 10, 4)
         sort_layout.setSpacing(8)
@@ -711,11 +773,11 @@ class UiBuilderMixin:
         self._epg_splitter.setChildrenCollapsible(False)
         self._epg_splitter.setStyleSheet("""
             QSplitter::handle:vertical {
-                background: #1a1a2a;
-                height: 4px;
+                background: rgba(255, 255, 255, 8);
+                height: 3px;
             }
             QSplitter::handle:vertical:hover {
-                background: #e8691a;
+                background: rgba(232, 105, 26, 200);
             }
         """)
         self._epg_splitter.addWidget(self.channel_list)
@@ -749,8 +811,8 @@ class UiBuilderMixin:
         panel.setObjectName("channelDetailPanel")
         panel.setStyleSheet("""
             #channelDetailPanel {
-                background-color: #0a0a12;
-                border-left: 1px solid #1a1a2a;
+                background-color: rgba(7, 7, 18, 220);
+                border-left: 1px solid rgba(255, 255, 255, 7);
             }
         """)
 
@@ -761,7 +823,7 @@ class UiBuilderMixin:
         # Zurück-Leiste
         back_bar = QWidget()
         back_bar.setFixedHeight(36)
-        back_bar.setStyleSheet("background: #0d0d1a; border-bottom: 1px solid #1a1a2a;")
+        back_bar.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
         back_bar_layout = QHBoxLayout(back_bar)
         back_bar_layout.setContentsMargins(8, 0, 8, 0)
         self.detail_back_btn = QPushButton("‹  Senderliste")
@@ -841,7 +903,7 @@ class UiBuilderMixin:
         # ── Trennlinie ────────────────────────────────────────────
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: #1a1a2a; margin: 0;")
+        sep.setStyleSheet("background-color: rgba(255,255,255,6); margin: 0;")
         lay.addWidget(sep)
 
         # ── DAVOR-Bereich ─────────────────────────────────────────
@@ -1000,8 +1062,8 @@ class UiBuilderMixin:
         panel.setObjectName("epgPanel")
         panel.setStyleSheet("""
             #epgPanel {
-                background-color: #0d0d14;
-                border-top: 1px solid #1a1a2a;
+                background-color: rgba(8, 8, 20, 210);
+                border-top: 1px solid rgba(255, 255, 255, 7);
             }
         """)
 
@@ -1017,12 +1079,12 @@ class UiBuilderMixin:
         scroll.setStyleSheet("""
             QScrollArea { border: none; background: transparent; }
             QScrollBar:vertical {
-                background: #0d0d14;
+                background: transparent;
                 width: 4px;
                 border-radius: 2px;
             }
             QScrollBar::handle:vertical {
-                background: #333;
+                background: rgba(255, 255, 255, 15);
                 border-radius: 2px;
                 min-height: 20px;
             }
@@ -1050,7 +1112,7 @@ class UiBuilderMixin:
         # (Qt-Bug: background-color im QLabel-Stylesheet überdeckt setPixmap)
         _epg_logo_frame = QFrame()
         _epg_logo_frame.setFixedSize(64, 64)
-        _epg_logo_frame.setStyleSheet("QFrame { background-color: #1e1e2e; border-radius: 10px; }")
+        _epg_logo_frame.setStyleSheet("QFrame { background-color: rgba(255,255,255,6); border: 1px solid rgba(255,255,255,8); border-radius: 10px; }")
         _epg_logo_inner = QHBoxLayout(_epg_logo_frame)
         _epg_logo_inner.setContentsMargins(2, 2, 2, 2)
         _epg_logo_inner.setSpacing(0)
@@ -1084,7 +1146,7 @@ class UiBuilderMixin:
         self.epg_progress.setFixedHeight(3)
         self.epg_progress.setTextVisible(False)
         self.epg_progress.setStyleSheet("""
-            QProgressBar { background: #1a1a2a; border: none; border-radius: 1px; }
+            QProgressBar { background: rgba(255,255,255,8); border: none; border-radius: 1px; }
             QProgressBar::chunk { background: #e8691a; border-radius: 1px; }
         """)
         right_col.addWidget(self.epg_progress)
@@ -1143,14 +1205,14 @@ class UiBuilderMixin:
     def _create_series_detail_page(self) -> QWidget:
         """Erstellt die Serien-Detailansicht mit Staffeln und Episoden"""
         page = QWidget()
-        page.setStyleSheet("background-color: #0a0a12;")
+        page.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # Header: Zurueck-Button
         header = QFrame()
-        header.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
+        header.setStyleSheet("background-color: rgba(8, 8, 20, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
         header.setFixedHeight(40)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 0, 8, 0)
@@ -1169,7 +1231,7 @@ class UiBuilderMixin:
 
         # Hero: Cover links + Info rechts (volle Fensterbreite)
         hero = QFrame()
-        hero.setStyleSheet("background-color: #0f0f1a; border-bottom: 1px solid #1a1a2a;")
+        hero.setStyleSheet("background-color: rgba(10, 10, 22, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
         hero_layout = QHBoxLayout(hero)
         hero_layout.setContentsMargins(28, 28, 28, 28)
         hero_layout.setSpacing(28)
@@ -1237,7 +1299,7 @@ class UiBuilderMixin:
         # Season-Bar: Dropdown + Trailer-Button ganz links unter dem Hero
         season_bar = QFrame()
         season_bar.setFixedHeight(48)
-        season_bar.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
+        season_bar.setStyleSheet("background-color: rgba(8, 8, 20, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
         season_layout = QHBoxLayout(season_bar)
         season_layout.setContentsMargins(20, 0, 20, 0)
         season_layout.setSpacing(12)
@@ -1279,7 +1341,7 @@ class UiBuilderMixin:
         self.episode_list = QListWidget()
         self.episode_list.setStyleSheet("""
             QListWidget {
-                background-color: #0a0a12; border: none; outline: none;
+                background-color: transparent; border: none; outline: none;
             }
             QListWidget::item {
                 border-bottom: 1px solid #111120;
@@ -1287,7 +1349,7 @@ class UiBuilderMixin:
             }
             QListWidget::item:hover { background-color: #111120; }
             QListWidget::item:selected { background-color: #0a1e33; }
-            QScrollBar:vertical { background: #0a0a12; width: 6px; }
+            QScrollBar:vertical { background: transparent; width: 6px; }
             QScrollBar::handle:vertical { background: #2a2a3a; border-radius: 3px; min-height: 20px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
@@ -1304,14 +1366,14 @@ class UiBuilderMixin:
     def _create_vod_detail_page(self) -> QWidget:
         """Erstellt die VOD-Detailansicht im Streaming-App-Style"""
         page = QWidget()
-        page.setStyleSheet("background-color: #0a0a12;")
+        page.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         # Header: Zurueck-Button
         header = QFrame()
-        header.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
+        header.setStyleSheet("background-color: rgba(8, 8, 20, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
         header.setFixedHeight(40)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 0, 8, 0)
@@ -1338,7 +1400,7 @@ class UiBuilderMixin:
         self.vod_loading_bar.setFixedHeight(3)
         self.vod_loading_bar.setTextVisible(False)
         self.vod_loading_bar.setStyleSheet("""
-            QProgressBar { background: #1a1a2a; border: none; }
+            QProgressBar { background: rgba(255,255,255,8); border: none; }
             QProgressBar::chunk { background: #0078d4; }
         """)
         self.vod_loading_bar.hide()
@@ -1348,21 +1410,21 @@ class UiBuilderMixin:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("""
-            QScrollArea { border: none; background-color: #0a0a12; }
-            QScrollBar:vertical { background: #0a0a12; width: 8px; }
+            QScrollArea { border: none; background-color: transparent; }
+            QScrollBar:vertical { background: transparent; width: 8px; }
             QScrollBar::handle:vertical { background: #333; border-radius: 4px; min-height: 20px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
 
         content = QWidget()
-        content.setStyleSheet("background-color: #0a0a12;")
+        content.setStyleSheet("background-color: transparent;")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
         # === Hero-Bereich: Poster + Infos nebeneinander ===
         hero = QFrame()
-        hero.setStyleSheet("background-color: #10101a;")
+        hero.setStyleSheet("background-color: rgba(255, 255, 255, 3);")
         hero_layout = QHBoxLayout(hero)
         hero_layout.setContentsMargins(24, 20, 24, 20)
         hero_layout.setSpacing(24)
@@ -1371,9 +1433,9 @@ class UiBuilderMixin:
         self.vod_cover_label = QLabel()
         self.vod_cover_label.setFixedSize(220, 330)
         self.vod_cover_label.setStyleSheet("""
-            background-color: #1a1a2a;
-            border-radius: 8px;
-            border: 1px solid #2a2a3a;
+            background-color: rgba(255, 255, 255, 6);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 10);
             color: #333;
             font-size: 48px;
         """)
@@ -1440,12 +1502,12 @@ class UiBuilderMixin:
         # === Trennlinie ===
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: #1a1a2a;")
+        sep.setStyleSheet("background-color: rgba(255,255,255,6);")
         content_layout.addWidget(sep)
 
         # === Details-Bereich ===
         details = QWidget()
-        details.setStyleSheet("background-color: #0a0a12;")
+        details.setStyleSheet("background-color: transparent;")
         details_layout = QVBoxLayout(details)
         details_layout.setContentsMargins(24, 20, 24, 20)
         details_layout.setSpacing(20)
@@ -1529,7 +1591,7 @@ class UiBuilderMixin:
 
         # Player-Header (Titel + Close)
         self.player_header = QWidget()
-        self.player_header.setStyleSheet("background-color: #0d0d14; border-bottom: 1px solid #1a1a2a;")
+        self.player_header.setStyleSheet("background-color: rgba(8, 8, 20, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
         self.player_header.setFixedHeight(32)
         header_layout = QHBoxLayout(self.player_header)
         header_layout.setContentsMargins(10, 0, 6, 0)
@@ -1781,7 +1843,7 @@ class UiBuilderMixin:
         """EPG-Fortschrittszeile fuer Live-Streams (zwischen Video und Controls)"""
         bar = QWidget()
         bar.setFixedHeight(34)
-        bar.setStyleSheet("background: #0a0a12; border-top: 1px solid #1a1a2a;")
+        bar.setStyleSheet("background: rgba(8, 8, 20, 215); border-top: 1px solid rgba(255, 255, 255, 7);")
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(8)
@@ -1849,7 +1911,7 @@ class UiBuilderMixin:
         self.live_epg_progress.setFixedHeight(4)
         self.live_epg_progress.setTextVisible(False)
         self.live_epg_progress.setStyleSheet("""
-            QProgressBar { background: #1e1e2e; border: none; border-radius: 2px; }
+            QProgressBar { background: rgba(255,255,255,8); border: none; border-radius: 2px; }
             QProgressBar::chunk { background: #e8691a; border-radius: 2px; }
         """)
         self.live_epg_progress.hide()
@@ -1864,8 +1926,8 @@ class UiBuilderMixin:
         bar.setFixedHeight(48)
         bar.setStyleSheet("""
             QFrame#controlBar {
-                background-color: #0d0d14;
-                border-top: 1px solid #1a1a2a;
+                background-color: rgba(8, 8, 20, 215);
+                border-top: 1px solid rgba(255, 255, 255, 7);
             }
             QPushButton {
                 background: transparent;
@@ -1875,7 +1937,7 @@ class UiBuilderMixin:
                 padding: 4px 8px;
                 border-radius: 6px;
             }
-            QPushButton:hover { background-color: #1a1a2a; color: white; }
+            QPushButton:hover { background-color: rgba(255, 255, 255, 8); color: white; }
             QPushButton:checked { color: #e8691a; }
             QPushButton#recordBtn { color: #ccc; }
             QPushButton#recordBtn:checked { color: #ff4444; background: rgba(255, 68, 68, 30); }
@@ -2452,8 +2514,8 @@ class UiBuilderMixin:
         panel.setObjectName("streamInfoPanel")
         panel.setStyleSheet("""
             #streamInfoPanel {
-                background-color: #0d0d14;
-                border-left: 1px solid #1a1a2a;
+                background-color: rgba(8, 8, 20, 215);
+                border-left: 1px solid rgba(255, 255, 255, 7);
             }
             QLabel {
                 color: #ccc;

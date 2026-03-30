@@ -46,10 +46,11 @@ def setup_dark_theme(app: QApplication):
 
     app.setStyleSheet("""
         QMainWindow {
-            background-color: #121212;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #07071a, stop:0.5 #0b0b1f, stop:1 #0d081e);
         }
         QToolBar {
-            background-color: #0d0d14;
+            background-color: rgba(8, 8, 20, 220);
             border: none;
             padding: 4px;
         }
@@ -61,46 +62,53 @@ def setup_dark_theme(app: QApplication):
             color: #ccc;
         }
         QToolBar QToolButton:hover {
-            background-color: #1a1a2a;
+            background-color: rgba(255, 255, 255, 8);
         }
         QStatusBar {
-            background-color: #0d0d14;
-            color: #999;
+            background-color: rgba(7, 7, 18, 230);
+            color: #777;
+            border-top: 1px solid rgba(255, 255, 255, 5);
         }
         QLineEdit {
-            padding: 8px;
-            border: 1px solid #2a2a3a;
-            border-radius: 6px;
-            background-color: #1e1e2e;
+            padding: 9px 12px;
+            border: 1px solid rgba(255, 255, 255, 12);
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 5);
             color: white;
             margin: 4px 0;
         }
         QLineEdit:focus {
-            border-color: #0078d4;
+            border-color: rgba(0, 120, 212, 200);
+            background-color: rgba(0, 120, 212, 8);
         }
         QPushButton {
             padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 10);
+            border-radius: 8px;
             background-color: #0078d4;
             color: white;
         }
         QPushButton:hover {
             background-color: #1a8ae8;
+            border-color: rgba(255, 255, 255, 18);
         }
         QPushButton:pressed {
             background-color: #006cc1;
         }
         QPushButton:disabled {
-            background-color: #2a2a3a;
-            color: #666;
+            background-color: rgba(255, 255, 255, 5);
+            border-color: rgba(255, 255, 255, 5);
+            color: rgba(255, 255, 255, 30);
         }
         QComboBox {
-            padding: 8px;
-            border: 1px solid #2a2a3a;
-            border-radius: 6px;
-            background-color: #1e1e2e;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 10);
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 5);
             color: white;
+        }
+        QComboBox:hover {
+            border-color: rgba(0, 120, 212, 160);
         }
         QComboBox::drop-down {
             border: none;
@@ -113,21 +121,25 @@ def setup_dark_theme(app: QApplication):
             height: 7px;
         }
         QComboBox QAbstractItemView {
-            background-color: #1e1e2e;
+            background-color: #10101e;
             color: white;
-            selection-background-color: #0078d4;
+            selection-background-color: rgba(0, 120, 212, 180);
+            border: 1px solid rgba(255, 255, 255, 10);
+            border-radius: 8px;
+            outline: none;
         }
         QScrollBar:vertical {
-            background-color: #121212;
-            width: 12px;
+            background-color: transparent;
+            width: 6px;
+            margin: 2px;
         }
         QScrollBar::handle:vertical {
-            background-color: #444;
-            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 18);
+            border-radius: 3px;
             min-height: 20px;
         }
         QScrollBar::handle:vertical:hover {
-            background-color: #555;
+            background-color: rgba(255, 255, 255, 32);
         }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
             height: 0;
@@ -136,15 +148,15 @@ def setup_dark_theme(app: QApplication):
             height: 0;
         }
         QToolTip {
-            background-color: #1e1e2e;
+            background-color: rgba(14, 14, 28, 245);
             color: #ddd;
-            border: 1px solid #2a2a3a;
-            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 14);
+            border-radius: 8px;
             padding: 6px 10px;
             font-size: 12px;
         }
         QMessageBox {
-            background-color: #1e1e2e;
+            background-color: #12121e;
         }
         QMessageBox QLabel {
             color: white;
