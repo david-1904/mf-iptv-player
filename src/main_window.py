@@ -170,6 +170,8 @@ class MainWindow(
                 if self.info_overlay.isVisible():
                     h = 165
                     self.info_overlay.setGeometry(0, obj.height() - h, obj.width(), h)
+                if self.stream_info_panel.isVisible():
+                    self._position_stream_info_panel()
             if obj is self.main_page and self._pip_mode:
                 self._update_pip_position()
             if obj is self.channel_list.viewport() and self.current_mode in ("vod", "series"):

@@ -71,6 +71,15 @@ class StreamControlsMixin:
         btn = self.sender() or self.btn_subtitle
         menu.exec(btn.mapToGlobal(btn.rect().topLeft()))
 
+    def _position_stream_info_panel(self):
+        """Positioniert das Stream-Info-HUD oben-rechts im player_container."""
+        panel = self.stream_info_panel
+        panel.adjustSize()
+        pc = self.player_container
+        margin = 12
+        panel.move(pc.width() - panel.width() - margin, margin)
+        panel.raise_()
+
     def _toggle_stream_info(self):
         """Toggle stream info panel visibility"""
         # Sender kann btn_stream_info oder fs_btn_stream_info sein — beide sync halten
@@ -81,12 +90,23 @@ class StreamControlsMixin:
         if fs_btn:
             fs_btn.setChecked(checked)
         if checked:
-            self.stream_info_panel.show()
             self._update_stream_info()
+            self._position_stream_info_panel()
+            self.stream_info_panel.show()
             self.stream_info_timer.start(2000)
+            self._stream_info_hide_timer.start(5000)
         else:
             self.stream_info_panel.hide()
             self.stream_info_timer.stop()
+            self._stream_info_hide_timer.stop()
+
+    def _auto_hide_stream_info(self):
+        self.stream_info_panel.hide()
+        self.stream_info_timer.stop()
+        self.btn_stream_info.setChecked(False)
+        fs_btn = getattr(self, 'fs_btn_stream_info', None)
+        if fs_btn:
+            fs_btn.setChecked(False)
 
     def _cycle_zoom_mode(self):
         """Wechselt zwischen Normal / Fill / Stretch"""
@@ -115,28 +135,28 @@ class StreamControlsMixin:
 
         # Video info
         if info["video_width"] and info["video_height"]:
-            self.info_resolution.setText(f"Aufloesung: {info['video_width']}x{info['video_height']}")
+            self.info_resolution.setText(f"{info['video_width']} × {info['video_height']}")
         else:
-            self.info_resolution.setText("Aufloesung: -")
+            self.info_resolution.setText("–")
 
         if info["fps"]:
-            self.info_fps.setText(f"FPS: {info['fps']:.2f}")
+            self.info_fps.setText(f"{info['fps']:.2f} fps")
         else:
-            self.info_fps.setText("FPS: -")
+            self.info_fps.setText("–")
 
         if info["video_codec"]:
-            self.info_video_codec.setText(f"Codec: {info['video_codec']}")
+            self.info_video_codec.setText(info["video_codec"])
         else:
-            self.info_video_codec.setText("Codec: -")
+            self.info_video_codec.setText("–")
 
         # Audio info
         if info["audio_codec"]:
-            self.info_audio_codec.setText(f"Codec: {info['audio_codec']}")
+            self.info_audio_codec.setText(info["audio_codec"])
         else:
-            self.info_audio_codec.setText("Codec: -")
+            self.info_audio_codec.setText("–")
 
         num_tracks = len(info["audio_tracks"])
         if num_tracks > 0:
-            self.info_audio_tracks.setText(f"Tonspuren: {num_tracks}")
+            self.info_audio_tracks.setText(f"{num_tracks} Spur{'en' if num_tracks > 1 else ''}")
         else:
-            self.info_audio_tracks.setText("Tonspuren: -")
+            self.info_audio_tracks.setText("–")

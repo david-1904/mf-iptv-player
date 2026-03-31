@@ -22,11 +22,12 @@ _ICONS_DIR = os.path.join(os.path.dirname(__file__), "assets", "icons")
 
 
 def _svg_icon(name: str, size: int = 17, bright: bool = False,
-              active_color: str = "#ffffff") -> QIcon:
+              active_color: str = "#ffffff", right_pad: int = 0) -> QIcon:
     """Load a Lucide SVG and return a QIcon with dim (Off) and bright (On/Active) states.
 
     bright=True  → off-state is #c0c0c8 instead of #707080 (for player controls on black bg)
     active_color → color for the On/checked state (default white; use #ff4444 for record, etc.)
+    right_pad    → transparent pixels added to the right of the icon (icon-text spacing hack)
     """
     path = os.path.join(_ICONS_DIR, name)
     try:
@@ -50,13 +51,26 @@ def _svg_icon(name: str, size: int = 17, bright: bool = False,
         p.setRenderHint(QPainter.SmoothPixmapTransform)
         renderer.render(p)
         p.end()
-        return big.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        px = big.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        if right_pad > 0:
+            padded = QPixmap(size + right_pad, size)
+            padded.fill(Qt.transparent)
+            pp = QPainter(padded)
+            pp.drawPixmap(0, 0, px)
+            pp.end()
+            return padded
+        return px
 
     icon = QIcon()
-    icon.addPixmap(_render(off_color),   QIcon.Normal, QIcon.Off)
-    icon.addPixmap(_render(hover_color), QIcon.Active, QIcon.Off)
+    icon.addPixmap(_render(off_color),    QIcon.Normal, QIcon.Off)
+    icon.addPixmap(_render(hover_color),  QIcon.Active, QIcon.Off)
     icon.addPixmap(_render(active_color), QIcon.Normal, QIcon.On)
     return icon
+
+
+def _si(name: str) -> QIcon:
+    """Shorthand: sidebar icon (16px, with 6px right padding for icon-text spacing)."""
+    return _svg_icon(name, size=16, right_pad=6)
 
 
 def _pi(name: str, size: int = 20) -> QIcon:
@@ -283,25 +297,25 @@ class UiBuilderMixin:
         layout.addWidget(_section_label("INHALTE"))
         layout.addSpacing(4)
 
-        _icon_size = QSize(16, 16)
+        _icon_size = QSize(22, 16)  # 16px icon + 6px right padding via _si()
 
         # Modus-Buttons
         self.btn_live = AnimatedButton("Live TV")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(True)
-        self.btn_live.setIcon(_svg_icon("tv.svg"))
+        self.btn_live.setIcon(_si("tv.svg"))
         self.btn_live.setIconSize(_icon_size)
         self.btn_live.clicked.connect(lambda: self._switch_mode("live"))
 
         self.btn_vod = AnimatedButton("Filme")
         self.btn_vod.setCheckable(True)
-        self.btn_vod.setIcon(_svg_icon("film.svg"))
+        self.btn_vod.setIcon(_si("film.svg"))
         self.btn_vod.setIconSize(_icon_size)
         self.btn_vod.clicked.connect(lambda: self._switch_mode("vod"))
 
         self.btn_series = AnimatedButton("Serien")
         self.btn_series.setCheckable(True)
-        self.btn_series.setIcon(_svg_icon("layers.svg"))
+        self.btn_series.setIcon(_si("layers.svg"))
         self.btn_series.setIconSize(_icon_size)
         self.btn_series.clicked.connect(lambda: self._switch_mode("series"))
 
@@ -316,7 +330,7 @@ class UiBuilderMixin:
         # Favoriten-Button
         self.btn_favorites = AnimatedButton("Favoriten")
         self.btn_favorites.setCheckable(True)
-        self.btn_favorites.setIcon(_svg_icon("star.svg"))
+        self.btn_favorites.setIcon(_si("star.svg"))
         self.btn_favorites.setIconSize(_icon_size)
         self.btn_favorites.clicked.connect(lambda: self._switch_mode("favorites"))
         layout.addWidget(self.btn_favorites)
@@ -324,7 +338,7 @@ class UiBuilderMixin:
         # Verlauf-Button
         self.btn_history = AnimatedButton("Verlauf")
         self.btn_history.setCheckable(True)
-        self.btn_history.setIcon(_svg_icon("clock.svg"))
+        self.btn_history.setIcon(_si("clock.svg"))
         self.btn_history.setIconSize(_icon_size)
         self.btn_history.clicked.connect(lambda: self._switch_mode("history"))
         layout.addWidget(self.btn_history)
@@ -332,7 +346,7 @@ class UiBuilderMixin:
         # Aufnahmen-Button
         self.btn_recordings = AnimatedButton("Aufnahmen")
         self.btn_recordings.setCheckable(True)
-        self.btn_recordings.setIcon(_svg_icon("record.svg"))
+        self.btn_recordings.setIcon(_si("record.svg"))
         self.btn_recordings.setIconSize(_icon_size)
         self.btn_recordings.clicked.connect(lambda: self._switch_mode("recordings"))
         layout.addWidget(self.btn_recordings)
@@ -343,7 +357,7 @@ class UiBuilderMixin:
 
         # Aktualisieren-Button
         self.btn_refresh = AnimatedButton("Aktualisieren")
-        self.btn_refresh.setIcon(_svg_icon("refresh.svg"))
+        self.btn_refresh.setIcon(_si("refresh.svg"))
         self.btn_refresh.setIconSize(_icon_size)
         self.btn_refresh.clicked.connect(self._refresh_current)
         layout.addWidget(self.btn_refresh)
@@ -367,7 +381,7 @@ class UiBuilderMixin:
                 color: #aaa;
             }
         """)
-        self.btn_settings.setIcon(_svg_icon("settings.svg"))
+        self.btn_settings.setIcon(_si("settings.svg"))
         self.btn_settings.setIconSize(_icon_size)
         self.btn_settings.clicked.connect(self._show_settings)
         layout.addWidget(self.btn_settings)
@@ -1758,16 +1772,6 @@ class UiBuilderMixin:
         header_layout.addWidget(self.player_title)
         header_layout.addStretch()
 
-        self.btn_stop = QPushButton()
-        self.btn_stop.setIcon(_svg_icon("x.svg", 14, bright=False, active_color="#ff4444"))
-        self.btn_stop.setIconSize(QSize(14, 14))
-        self.btn_stop.setFixedSize(24, 24)
-        self.btn_stop.setStyleSheet("""
-            QPushButton { background: transparent; border: none; border-radius: 4px; padding: 2px; }
-            QPushButton:hover { background: rgba(255,68,68,20); }
-        """)
-        self.btn_stop.clicked.connect(self._stop_playback)
-        header_layout.addWidget(self.btn_stop)
         layout.addWidget(self.player_header)
 
         # Video + Info-Panel
@@ -1910,9 +1914,8 @@ class UiBuilderMixin:
         player_layout.addWidget(player_container, stretch=1)
 
         self.stream_info_panel = self._create_stream_info_panel()
-        self.stream_info_panel.setFixedWidth(200)
+        self.stream_info_panel.setParent(self.player_container)
         self.stream_info_panel.hide()
-        player_layout.addWidget(self.stream_info_panel)
 
         layout.addLayout(player_layout, stretch=1)
 
@@ -1927,6 +1930,10 @@ class UiBuilderMixin:
         # Timer fuer Controls und Stream-Info
         self.stream_info_timer = QTimer()
         self.stream_info_timer.timeout.connect(self._update_stream_info)
+
+        self._stream_info_hide_timer = QTimer()
+        self._stream_info_hide_timer.setSingleShot(True)
+        self._stream_info_hide_timer.timeout.connect(self._auto_hide_stream_info)
 
         self.controls_timer = QTimer()
         self.controls_timer.timeout.connect(self._update_player_controls)
@@ -2019,10 +2026,10 @@ class UiBuilderMixin:
                     stop:0 rgba(0, 120, 212, 80), stop:1 rgba(80, 40, 200, 50));
             }
         """
-        _epg_icon_size = QSize(15, 15)
+        _epg_icon_size = QSize(16, 16)
 
         self.live_epg_von_anfang_btn = QPushButton(" Anfang")
-        self.live_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 15))
+        self.live_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 16))
         self.live_epg_von_anfang_btn.setIconSize(_epg_icon_size)
         self.live_epg_von_anfang_btn.setFixedHeight(28)
         self.live_epg_von_anfang_btn.setStyleSheet(_epg_btn_style)
@@ -2031,7 +2038,7 @@ class UiBuilderMixin:
         layout.addWidget(self.live_epg_von_anfang_btn)
 
         self.live_epg_catchup_btn = QPushButton(" Catchup")
-        self.live_epg_catchup_btn.setIcon(_pi("catchup.svg", 15))
+        self.live_epg_catchup_btn.setIcon(_pi("catchup.svg", 16))
         self.live_epg_catchup_btn.setIconSize(_epg_icon_size)
         self.live_epg_catchup_btn.setFixedHeight(28)
         self.live_epg_catchup_btn.setStyleSheet(_epg_btn_style)
@@ -2040,7 +2047,7 @@ class UiBuilderMixin:
         layout.addWidget(self.live_epg_catchup_btn)
 
         self.live_epg_epg_btn = QPushButton(" EPG")
-        self.live_epg_epg_btn.setIcon(_pi("clock.svg", 15))
+        self.live_epg_epg_btn.setIcon(_pi("clock.svg", 16))
         self.live_epg_epg_btn.setIconSize(_epg_icon_size)
         self.live_epg_epg_btn.setFixedHeight(28)
         self.live_epg_epg_btn.setStyleSheet(_epg_btn_style)
@@ -2669,66 +2676,57 @@ class UiBuilderMixin:
         return overlay
 
     def _create_stream_info_panel(self) -> QWidget:
-        """Creates the stream info panel"""
+        """Creates the stream info HUD overlay (floating over the video, top-right)."""
         panel = QFrame()
         panel.setObjectName("streamInfoPanel")
         panel.setStyleSheet("""
             #streamInfoPanel {
-                background-color: rgba(8, 8, 20, 215);
-                border-left: 1px solid rgba(255, 255, 255, 7);
+                background-color: rgba(8, 8, 22, 185);
+                border: 1px solid rgba(255, 255, 255, 12);
+                border-radius: 12px;
+            }
+            QLabel[role="header"] {
+                color: #556;
+                font-size: 9px;
+                font-weight: bold;
+                letter-spacing: 1.5px;
+                background: transparent;
             }
             QLabel {
-                color: #ccc;
-            }
-            QGroupBox {
-                color: white;
-                font-weight: bold;
-                border: 1px solid #1a1a2a;
-                border-radius: 6px;
-                margin-top: 12px;
-                padding-top: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 8px;
-                padding: 0 4px;
+                color: #ddd;
+                background: transparent;
+                font-size: 12px;
             }
         """)
-        panel.setMinimumWidth(180)
-        panel.setMaximumWidth(250)
+        panel.setFixedWidth(180)
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(4)
 
-        # Video Info
-        video_group = QGroupBox("Video")
-        video_layout = QVBoxLayout(video_group)
+        def _header(text):
+            lbl = QLabel(text)
+            lbl.setProperty("role", "header")
+            lbl.setStyleSheet("color: #556; font-size: 9px; font-weight: bold; "
+                              "letter-spacing: 1.5px; background: transparent;")
+            return lbl
 
-        self.info_resolution = QLabel("Aufloesung: -")
-        video_layout.addWidget(self.info_resolution)
+        # Video
+        layout.addWidget(_header("VIDEO"))
+        self.info_resolution = QLabel("–")
+        self.info_fps = QLabel("–")
+        self.info_video_codec = QLabel("–")
+        for lbl in (self.info_resolution, self.info_fps, self.info_video_codec):
+            layout.addWidget(lbl)
 
-        self.info_fps = QLabel("FPS: -")
-        video_layout.addWidget(self.info_fps)
+        layout.addSpacing(6)
 
-        self.info_video_codec = QLabel("Codec: -")
-        video_layout.addWidget(self.info_video_codec)
-
-        layout.addWidget(video_group)
-
-        # Audio Info
-        audio_group = QGroupBox("Audio")
-        audio_layout = QVBoxLayout(audio_group)
-
-        self.info_audio_codec = QLabel("Codec: -")
-        audio_layout.addWidget(self.info_audio_codec)
-
-        self.info_audio_tracks = QLabel("Tonspuren: -")
-        audio_layout.addWidget(self.info_audio_tracks)
-
-        layout.addWidget(audio_group)
-
-        layout.addStretch()
+        # Audio
+        layout.addWidget(_header("AUDIO"))
+        self.info_audio_codec = QLabel("–")
+        self.info_audio_tracks = QLabel("–")
+        for lbl in (self.info_audio_codec, self.info_audio_tracks):
+            layout.addWidget(lbl)
 
         return panel
 

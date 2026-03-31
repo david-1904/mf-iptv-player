@@ -7,7 +7,7 @@ import sys
 import os
 from PySide6.QtWidgets import QApplication, QAbstractButton, QAbstractSlider, QComboBox, QAbstractItemView
 from PySide6.QtCore import Qt, QObject, QEvent
-from PySide6.QtGui import QPalette, QColor, QIcon, QFont
+from PySide6.QtGui import QPalette, QColor, QIcon, QFont, QFontDatabase
 import qasync
 import asyncio
 
@@ -182,6 +182,11 @@ def main():
     app.setApplicationName("MF IPTV Player")
     app.setOrganizationName("IPTVApp")
     app.setDesktopFileName("iptv-player")
+
+    _fonts_dir = os.path.join(_base_path(), "assets", "fonts")
+    for _fname in ("FiraSans-Regular.ttf", "FiraSans-Medium.ttf",
+                   "FiraSans-SemiBold.ttf", "FiraSans-Bold.ttf"):
+        QFontDatabase.addApplicationFont(os.path.join(_fonts_dir, _fname))
 
     font = QFont("Fira Sans", 10)
     font.setWeight(QFont.Medium)
