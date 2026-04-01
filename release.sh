@@ -26,5 +26,4 @@ echo "__version__ = \"$VERSION\"" > src/version.py
 git add src/version.py
 git commit -m "Bump version to $VERSION"
 git tag "v$VERSION"
-git push
-git push --tags
+git push --follow-tags
