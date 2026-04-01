@@ -2189,14 +2189,16 @@ class UiBuilderMixin:
         sep1.setFixedHeight(20); sep1.setStyleSheet("QFrame{color:rgba(255,255,255,12);}")
         layout.addWidget(sep1)
 
-        # Lautstärke-Icon + Slider
-        vol_btn = QLabel()
-        vol_px = _pi("volume-2.svg", 16)
-        # grab the off-state pixmap for static display
-        vol_btn.setPixmap(vol_px.pixmap(QSize(16, 16)))
-        vol_btn.setFixedSize(20, 20)
-        vol_btn.setStyleSheet("background: transparent;")
-        layout.addWidget(vol_btn)
+        # Lautstärke-Icon + Slider (klickbar zum Muten)
+        self._px_vol        = _pi("volume-2.svg", 16).pixmap(QSize(16, 16))
+        self._px_vol_muted  = _pi("volume-x.svg", 16).pixmap(QSize(16, 16))
+        self.vol_mute_btn = QLabel()
+        self.vol_mute_btn.setPixmap(self._px_vol)
+        self.vol_mute_btn.setFixedSize(20, 20)
+        self.vol_mute_btn.setStyleSheet("background: transparent;")
+        self.vol_mute_btn.setCursor(Qt.PointingHandCursor)
+        self.vol_mute_btn.mousePressEvent = lambda e: self._toggle_mute()
+        layout.addWidget(self.vol_mute_btn)
 
         self.volume_slider = QSlider(Qt.Horizontal)
         self.volume_slider.setRange(0, 100)
@@ -2637,11 +2639,15 @@ class UiBuilderMixin:
 
         btn_row.addSpacing(10)
 
-        fs_vol_lbl = QLabel()
-        fs_vol_lbl.setPixmap(_pi("volume-2.svg", 18).pixmap(QSize(18, 18)))
-        fs_vol_lbl.setFixedSize(22, 22)
-        fs_vol_lbl.setStyleSheet("background: transparent;")
-        btn_row.addWidget(fs_vol_lbl)
+        self._px_vol_fs       = _pi("volume-2.svg", 18).pixmap(QSize(18, 18))
+        self._px_vol_muted_fs = _pi("volume-x.svg", 18).pixmap(QSize(18, 18))
+        self.fs_vol_mute_btn = QLabel()
+        self.fs_vol_mute_btn.setPixmap(self._px_vol_fs)
+        self.fs_vol_mute_btn.setFixedSize(22, 22)
+        self.fs_vol_mute_btn.setStyleSheet("background: transparent;")
+        self.fs_vol_mute_btn.setCursor(Qt.PointingHandCursor)
+        self.fs_vol_mute_btn.mousePressEvent = lambda e: self._toggle_mute()
+        btn_row.addWidget(self.fs_vol_mute_btn)
 
         self.fs_volume_slider = QSlider(Qt.Horizontal)
         self.fs_volume_slider.setRange(0, 100)

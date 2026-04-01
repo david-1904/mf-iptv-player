@@ -419,6 +419,11 @@ class MpvPlayerWidget(QOpenGLWidget):
         if self.player:
             self.player.volume = max(0, min(100, volume))
 
+    def set_mute(self, muted: bool):
+        """Stummschalten ein/aus"""
+        if self.player:
+            self.player.mute = muted
+
     def seek(self, seconds: float, relative: bool = True):
         """Spult vor/zurueck"""
         if self.player:

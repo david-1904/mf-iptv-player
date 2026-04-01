@@ -376,6 +376,29 @@ class PlaybackMixin:
             fs_vol.blockSignals(True)
             fs_vol.setValue(value)
             fs_vol.blockSignals(False)
+        # Wenn Slider bewegt wird → automatisch entmuten
+        if getattr(self, '_muted', False) and value > 0:
+            self._muted = False
+            self.player.set_mute(False)
+            self._update_mute_icons()
+
+    def _toggle_mute(self):
+        """Stummschalten umschalten"""
+        self._muted = not getattr(self, '_muted', False)
+        self.player.set_mute(self._muted)
+        self._update_mute_icons()
+
+    def _update_mute_icons(self):
+        """Lautsprecher-Icon in Controls-Bar und Fullscreen aktualisieren"""
+        muted = getattr(self, '_muted', False)
+        vol_btn = getattr(self, 'vol_mute_btn', None)
+        if vol_btn is not None:
+            px = self._px_vol_muted if muted else self._px_vol
+            vol_btn.setPixmap(px)
+        fs_vol_btn = getattr(self, 'fs_vol_mute_btn', None)
+        if fs_vol_btn is not None:
+            px_fs = self._px_vol_muted_fs if muted else self._px_vol_fs
+            fs_vol_btn.setPixmap(px_fs)
 
     def _on_seek_pressed(self):
         self._seeking = True
