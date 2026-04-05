@@ -94,6 +94,13 @@ class EpgDialog(QDialog):
         scroll_target = None
         last_date = None
 
+        # Bei überlappenden Einträgen nur den mit dem spätesten Start als "aktuell" markieren
+        current_ts = None
+        for entry in epg_data:
+            if entry.start_timestamp <= now < entry.stop_timestamp:
+                if current_ts is None or entry.start_timestamp > current_ts:
+                    current_ts = entry.start_timestamp
+
         if not epg_data:
             empty = QLabel("Keine Programmdaten verfügbar")
             empty.setStyleSheet("color: #555; padding: 48px; font-size: 14px;")
@@ -101,7 +108,7 @@ class EpgDialog(QDialog):
             content_layout.addWidget(empty)
         else:
             for entry in epg_data:
-                is_current = entry.start_timestamp <= now < entry.stop_timestamp
+                is_current = (current_ts is not None and entry.start_timestamp == current_ts)
                 is_future = entry.start_timestamp > now
 
                 # Datums-Trennzeile wenn Tag wechselt
@@ -120,7 +127,7 @@ class EpgDialog(QDialog):
                     sep = self._create_date_separator(day_str)
                     content_layout.addWidget(sep)
 
-                row = self._create_program_row(entry, now)
+                row = self._create_program_row(entry, now, is_current)
                 content_layout.addWidget(row)
 
                 if is_current:
@@ -160,10 +167,9 @@ class EpgDialog(QDialog):
         lay.addWidget(line_r, stretch=3)
         return w
 
-    def _create_program_row(self, entry: EpgEntry, now: float) -> QFrame:
+    def _create_program_row(self, entry: EpgEntry, now: float, is_current: bool = False) -> QFrame:
         """Erstellt eine Programmzeile"""
-        is_current = entry.start_timestamp <= now < entry.stop_timestamp
-        is_past    = entry.stop_timestamp <= now
+        is_past = entry.stop_timestamp <= now
 
         row = QFrame()
         row.setObjectName("epgRow")
@@ -240,17 +246,17 @@ class EpgDialog(QDialog):
         # Catchup-Button
         if self._has_catchup and (is_past or is_current):
             btn_play = QPushButton()
-            btn_play.setIcon(_pi("play.svg", 13))
-            btn_play.setIconSize(QSize(13, 13))
-            btn_play.setText("  " + ("Von Anfang" if is_current else "Abspielen"))
-            btn_play.setFixedHeight(28)
+            btn_play.setIcon(_pi("play.svg", 14))
+            btn_play.setIconSize(QSize(14, 14))
+            btn_play.setFixedSize(28, 28)
+            btn_play.setToolTip("Von Anfang abspielen" if is_current else "Abspielen")
             btn_play.setStyleSheet("""
                 QPushButton {
-                    background: transparent; color: #0078d4;
+                    background: transparent;
                     border: 1px solid rgba(0,120,212,0.4); border-radius: 6px;
-                    font-size: 11px; padding: 2px 10px;
+                    padding: 0;
                 }
-                QPushButton:hover { background-color: #0078d4; color: white; border-color: #0078d4; }
+                QPushButton:hover { background-color: #0078d4; border-color: #0078d4; }
             """)
             btn_play.clicked.connect(lambda checked=False, e=entry: self._on_catchup_clicked(e))
             title_line.addWidget(btn_play)
