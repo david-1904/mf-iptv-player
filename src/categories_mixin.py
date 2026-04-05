@@ -45,6 +45,9 @@ class CategoriesMixin:
 
         # Favoriten-Filter nur im Favoriten-Modus
         self.fav_filter_row.setVisible(mode == "favorites")
+
+        # Such-Filter nur im Suchmodus
+        self.search_filter_row.setVisible(mode == "search")
         if mode == "favorites":
             self._set_fav_filter(None)  # Filter zurücksetzen auf "Alle"
 
@@ -94,13 +97,19 @@ class CategoriesMixin:
             self.channel_list.setIconSize(QSize(0, 0))
             self.channel_list.setGridSize(QSize())
             self.channel_list.setResizeMode(QListWidget.Fixed)
-            self.channel_list.setWordWrap(False)
+            self.channel_list.setWordWrap(True)
             self.channel_list.setSpacing(0)
             self.channel_list.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
             self._apply_channel_list_style(grid_mode=False)
             self.epg_panel.setVisible(False)
             self.channel_list.clear()
             self.status_bar.showMessage("Enter druecken zum Suchen")
+            # Aktiven Filter-Chip visuell korrekt rendern (ohne Suche neu zu triggern)
+            fkey = getattr(self, "_search_filter", "all")
+            for k, btn in getattr(self, "_search_filter_buttons", {}).items():
+                btn.setProperty("active", "true" if k == fkey else "false")
+                btn.style().unpolish(btn)
+                btn.style().polish(btn)
         else:
             # Sofort Loading-Zustand zeigen (nicht auf async warten)
             self.channel_list.clear()

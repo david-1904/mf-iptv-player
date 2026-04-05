@@ -4,11 +4,20 @@ Suche: Text-Eingabe, Ausfuehrung, Ergebnis-Anzeige
 import asyncio
 
 from PySide6.QtWidgets import QListWidgetItem
-
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 
 class SearchMixin:
+
+    def _set_search_filter(self, fkey: str):
+        """Setzt den Such-Filter und wiederholt die Suche falls aktiv."""
+        self._search_filter = fkey
+        for k, btn in self._search_filter_buttons.items():
+            btn.setProperty("active", "true" if k == fkey else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+        if self.search_input.text().strip():
+            self._execute_search()
 
     def _on_search_text_changed(self, text: str):
         """Wechselt bei Texteingabe in den Suchmodus, bei leerem Feld zurueck"""
@@ -16,6 +25,15 @@ class SearchMixin:
             self._switch_mode("search")
         elif not text.strip() and self.current_mode == "search":
             self._switch_mode(self._last_mode_before_search or "live")
+
+        if not hasattr(self, "_search_debounce_timer"):
+            self._search_debounce_timer = QTimer()
+            self._search_debounce_timer.setSingleShot(True)
+            self._search_debounce_timer.timeout.connect(self._execute_search)
+        if text.strip():
+            self._search_debounce_timer.start(400)
+        else:
+            self._search_debounce_timer.stop()
 
     def _execute_search(self):
         """Startet die Suche basierend auf dem Suchfeld-Text"""
@@ -43,33 +61,40 @@ class SearchMixin:
                     self._search_cache_series = []
                 self._search_cache_loaded = True
 
+            sf = getattr(self, "_search_filter", "all")
+
             # Live-Streams filtern
-            for item in self._search_cache_live:
-                if not item.name:
-                    continue
-                if query_lower in item.name.lower():
-                    name = f"[Live] {item.name}"
-                    list_item = QListWidgetItem(name)
-                    list_item.setData(Qt.UserRole, item)
-                    self.channel_list.addItem(list_item)
+            if sf in ("all", "live"):
+                for item in self._search_cache_live:
+                    if not item.name:
+                        continue
+                    if query_lower in item.name.lower():
+                        prefix = "" if sf == "live" else "[Live] "
+                        list_item = QListWidgetItem(f"{prefix}{item.name}")
+                        list_item.setData(Qt.UserRole, item)
+                        self.channel_list.addItem(list_item)
 
             # VOD filtern
-            for item in self._search_cache_vod:
-                if not item.name:
-                    continue
-                if query_lower in item.name.lower():
-                    list_item = QListWidgetItem(f"[Film] {item.name}")
-                    list_item.setData(Qt.UserRole, item)
-                    self.channel_list.addItem(list_item)
+            if sf in ("all", "vod"):
+                for item in self._search_cache_vod:
+                    if not item.name:
+                        continue
+                    if query_lower in item.name.lower():
+                        prefix = "" if sf == "vod" else "[Film] "
+                        list_item = QListWidgetItem(f"{prefix}{item.name}")
+                        list_item.setData(Qt.UserRole, item)
+                        self.channel_list.addItem(list_item)
 
             # Serien filtern
-            for item in self._search_cache_series:
-                if not item.name:
-                    continue
-                if query_lower in item.name.lower():
-                    list_item = QListWidgetItem(f"[Serie] {item.name}")
-                    list_item.setData(Qt.UserRole, item)
-                    self.channel_list.addItem(list_item)
+            if sf in ("all", "series"):
+                for item in self._search_cache_series:
+                    if not item.name:
+                        continue
+                    if query_lower in item.name.lower():
+                        prefix = "" if sf == "series" else "[Serie] "
+                        list_item = QListWidgetItem(f"{prefix}{item.name}")
+                        list_item.setData(Qt.UserRole, item)
+                        self.channel_list.addItem(list_item)
 
             count = self.channel_list.count()
             self._hide_loading(f"{count} Treffer fuer \"{query}\"")

@@ -82,6 +82,7 @@ class MainWindow(
         self._search_cache_vod = []
         self._search_cache_series = []
         self._search_cache_loaded = False
+        self._search_filter = "all"  # "all", "live", "vod", "series"
 
         # EPG Cache
         self._epg_cache: dict = {}

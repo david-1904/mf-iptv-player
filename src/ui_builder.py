@@ -272,6 +272,47 @@ class UiBuilderMixin:
         _sw_layout.addWidget(self.search_input)
         layout.addWidget(_search_wrapper)
 
+        # Such-Filter-Chips (nur im Suchmodus sichtbar)
+        self.search_filter_row = QWidget()
+        self.search_filter_row.setObjectName("searchFilterRow")
+        self.search_filter_row.setStyleSheet("""
+            #searchFilterRow {
+                background: rgba(255,255,255,3);
+                border-bottom: 1px solid rgba(255,255,255,6);
+            }
+            #searchFilterRow QLabel {
+                font-size: 11px; color: #555;
+            }
+            #searchFilterRow QPushButton {
+                text-align: center; margin: 0;
+                padding: 2px 8px; border-radius: 10px; font-size: 11px;
+                background: transparent; border: 1px solid #2a2a3a; color: #888;
+            }
+            #searchFilterRow QPushButton:hover { border-color: #0078d4; color: #ccc; }
+            #searchFilterRow QPushButton[active="true"] {
+                background: #0078d4; border-color: #0078d4; color: white; font-weight: bold;
+            }
+        """)
+        _sf_layout = QHBoxLayout(self.search_filter_row)
+        _sf_layout.setContentsMargins(8, 3, 8, 3)
+        _sf_layout.setSpacing(4)
+
+        _sf_label = QLabel("in:")
+        _sf_layout.addWidget(_sf_label)
+
+        self._search_filter_buttons = {}
+        for label, fkey in [("Alle", "all"), ("TV", "live"), ("Film", "vod"), ("Serie", "series")]:
+            btn = QPushButton(label)
+            btn.setProperty("active", "false")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda checked, k=fkey: self._set_search_filter(k))
+            _sf_layout.addWidget(btn)
+            self._search_filter_buttons[fkey] = btn
+        self._search_filter_buttons["all"].setProperty("active", "true")
+        _sf_layout.addStretch()
+        self.search_filter_row.hide()
+        layout.addWidget(self.search_filter_row)
+
         def _sep():
             line = QFrame()
             line.setFrameShape(QFrame.HLine)
@@ -740,12 +781,12 @@ class UiBuilderMixin:
 
         self._fav_filter_buttons = {}
         _fav_btn_style = """
-            QPushButton {{
+            QPushButton {
                 padding: 4px 12px; border-radius: 12px; font-size: 12px;
                 background: transparent; border: 1px solid #2a2a3a; color: #888;
-            }}
-            QPushButton:hover {{ border-color: #0078d4; color: #ccc; }}
-            QPushButton[active="true"] {{ background: #0078d4; border-color: #0078d4; color: white; font-weight: bold; }}
+            }
+            QPushButton:hover { border-color: #0078d4; color: #ccc; }
+            QPushButton[active="true"] { background: #0078d4; border-color: #0078d4; color: white; font-weight: bold; }
         """
         for label, ftype in [("Alle", None), ("📺 Live", "live"), ("🎬 Filme", "vod"), ("📖 Serien", "series")]:
             btn = QPushButton(label)
