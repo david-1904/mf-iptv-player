@@ -422,7 +422,9 @@ class MpvPlayerWidget(QOpenGLWidget):
     def set_mute(self, muted: bool):
         """Stummschalten ein/aus"""
         if self.player:
-            self.player.mute = muted
+            # Property-Zuweisung (self.player.mute = ...) funktioniert auf Windows
+            # mit manchen MPV-DLL-Versionen nicht — command() ist zuverlässiger
+            self.player.command('set', 'mute', 'yes' if muted else 'no')
 
     def seek(self, seconds: float, relative: bool = True):
         """Spult vor/zurueck"""
