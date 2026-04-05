@@ -134,6 +134,9 @@ class PlaybackMixin:
         self._current_stream_type = stream_type
         self._current_playing_stream_id = stream_id
 
+        # EPG-Bar sofort leeren damit kein altes EPG bleibt, wenn neuer Sender kein EPG hat
+        self.live_epg_bar.hide()
+
         # Logo sofort laden (oder aus Cache anzeigen) — kein Hover noetig
         if self._current_stream_icon:
             asyncio.ensure_future(self._load_overlay_logo(self._current_stream_icon))
@@ -452,7 +455,7 @@ class PlaybackMixin:
             epg = self._epg_cache.get(self._current_playing_stream_id, [])
             now = datetime.now().timestamp()
             for entry in epg:
-                if entry.start_timestamp <= now <= entry.stop_timestamp:
+                if entry.start_timestamp <= now < entry.stop_timestamp:
                     start = datetime.fromtimestamp(entry.start_timestamp).strftime("%H:%M")
                     end = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
                     self.player_info_label.setText(f"{start}-{end}  {entry.title}")
@@ -606,7 +609,7 @@ class PlaybackMixin:
         if self._current_playing_stream_id and self._current_stream_type == "live":
             epg = self._epg_cache.get(self._current_playing_stream_id, [])
             for entry in epg:
-                if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+                if entry.start_timestamp <= now_ts < entry.stop_timestamp:
                     current_entry = entry
                 elif entry.start_timestamp > now_ts and next_entry is None:
                     next_entry = entry
@@ -801,7 +804,7 @@ class PlaybackMixin:
             return
         now_ts = datetime.now().timestamp()
         for entry in self._epg_cache.get(self._current_playing_stream_id, []):
-            if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+            if entry.start_timestamp <= now_ts < entry.stop_timestamp:
                 self._play_catchup(entry)
                 return
 
@@ -811,7 +814,7 @@ class PlaybackMixin:
             return
         now_ts = datetime.now().timestamp()
         for entry in self._epg_cache.get(self._current_playing_stream_id, []):
-            if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+            if entry.start_timestamp <= now_ts < entry.stop_timestamp:
                 self._play_catchup(entry)
                 return
 
@@ -887,7 +890,7 @@ class PlaybackMixin:
         current_entry = None
         if self._current_playing_stream_id:
             for entry in self._epg_cache.get(self._current_playing_stream_id, []):
-                if entry.start_timestamp <= now_ts <= entry.stop_timestamp:
+                if entry.start_timestamp <= now_ts < entry.stop_timestamp:
                     current_entry = entry
                     break
         has_catchup = self._current_epg_has_catchup

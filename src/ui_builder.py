@@ -1131,16 +1131,18 @@ class UiBuilderMixin:
         self.detail_now_time = QLabel("")
         self.detail_now_time.setStyleSheet("font-size: 14px; color: #666;")
         now_time_row.addWidget(self.detail_now_time, stretch=1)
-        self.detail_now_rec_btn = QPushButton("\U0001F4F9")
+        self.detail_now_rec_btn = QPushButton()
+        self.detail_now_rec_btn.setIcon(_pi("record.svg", 16))
+        self.detail_now_rec_btn.setIconSize(QSize(16, 16))
         self.detail_now_rec_btn.setToolTip("Aufnahme planen")
-        self.detail_now_rec_btn.setFixedHeight(30)
+        self.detail_now_rec_btn.setFixedSize(30, 30)
         self.detail_now_rec_btn.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #888;
                 border: 1px solid #444; border-radius: 4px;
-                font-size: 17px; padding: 0 6px;
+                padding: 0;
             }
-            QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
+            QPushButton:hover { background: #c0392b; border-color: #c0392b; }
         """)
         self.detail_now_rec_btn.hide()
         now_time_row.addWidget(self.detail_now_rec_btn, alignment=Qt.AlignVCenter)

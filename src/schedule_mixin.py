@@ -58,8 +58,14 @@ class ScheduleMixin:
                 self._load_recordings()
 
     def _open_schedule_dialog(self, channel_name: str, stream_url: str,
-                               start_ts: float, end_ts: float, epg_title: str = ""):
-        """Oeffnet den Dialog zum Planen einer Aufnahme."""
+                               start_ts: float, end_ts: float, epg_title: str = "",
+                               fixed_time: bool = False):
+        """Oeffnet den Dialog zum Planen einer Aufnahme.
+
+        fixed_time=True: Zeiten aus EPG, nicht editierbar (z.B. via Kamera-Button im EPG-Panel).
+        fixed_time=False: Zeiten frei waehlbar (z.B. via Rechtsklick-Menue ohne EPG).
+        """
+        import time as _time_mod
         dialog = QDialog(self)
         dialog.setWindowTitle("Aufnahme planen")
         dialog.setModal(True)
@@ -69,6 +75,7 @@ class ScheduleMixin:
             QLabel { color: #ccc; font-size: 13px; }
             QLabel#lbl_channel { color: white; font-size: 15px; font-weight: bold; }
             QLabel#lbl_epg { color: #aaa; font-size: 13px; }
+            QLabel#lbl_time { color: #888; font-size: 13px; }
             QPushButton {
                 padding: 8px 16px; border-radius: 6px;
                 background: #2a2a3a; color: white; border: none; font-size: 13px;
@@ -101,25 +108,38 @@ class ScheduleMixin:
 
         layout.addSpacing(4)
 
-        # Start
-        start_row = QHBoxLayout()
-        start_row.addWidget(QLabel("Start:"))
-        start_dt = QDateTimeEdit()
-        start_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
-        start_dt.setCalendarPopup(True)
-        start_dt.setDateTime(QDateTime.fromSecsSinceEpoch(int(start_ts)))
-        start_row.addWidget(start_dt)
-        layout.addLayout(start_row)
+        from datetime import datetime as _dt
+        fmt = "%d.%m.%Y  %H:%M"
 
-        # Ende
-        end_row = QHBoxLayout()
-        end_row.addWidget(QLabel("Ende:  "))
-        end_dt = QDateTimeEdit()
-        end_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
-        end_dt.setCalendarPopup(True)
-        end_dt.setDateTime(QDateTime.fromSecsSinceEpoch(int(end_ts)))
-        end_row.addWidget(end_dt)
-        layout.addLayout(end_row)
+        if fixed_time:
+            # Zeiten aus EPG — nur anzeigen, nicht editierbar
+            start_str = _dt.fromtimestamp(start_ts).strftime(fmt)
+            end_str   = _dt.fromtimestamp(end_ts).strftime(fmt)
+            lbl_time = QLabel(f"{start_str}  \u2013  {end_str}")
+            lbl_time.setObjectName("lbl_time")
+            layout.addWidget(lbl_time)
+            # Feste Werte für on_confirm
+            s_ts_final = start_ts
+            e_ts_final = end_ts
+        else:
+            # Zeiten frei wählbar
+            start_row = QHBoxLayout()
+            start_row.addWidget(QLabel("Start:"))
+            start_dt = QDateTimeEdit()
+            start_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
+            start_dt.setCalendarPopup(True)
+            start_dt.setDateTime(QDateTime.fromSecsSinceEpoch(int(start_ts)))
+            start_row.addWidget(start_dt)
+            layout.addLayout(start_row)
+
+            end_row = QHBoxLayout()
+            end_row.addWidget(QLabel("Ende:  "))
+            end_dt = QDateTimeEdit()
+            end_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
+            end_dt.setCalendarPopup(True)
+            end_dt.setDateTime(QDateTime.fromSecsSinceEpoch(int(end_ts)))
+            end_row.addWidget(end_dt)
+            layout.addLayout(end_row)
 
         layout.addSpacing(8)
 
@@ -131,13 +151,16 @@ class ScheduleMixin:
         btn_confirm.setObjectName("btn_confirm")
 
         def on_confirm():
-            import time
-            s_ts = float(start_dt.dateTime().toSecsSinceEpoch())
-            e_ts = float(end_dt.dateTime().toSecsSinceEpoch())
+            if fixed_time:
+                s_ts = start_ts
+                e_ts = end_ts
+            else:
+                s_ts = float(start_dt.dateTime().toSecsSinceEpoch())
+                e_ts = float(end_dt.dateTime().toSecsSinceEpoch())
             if e_ts <= s_ts:
                 return
             account = self.account_manager.get_selected()
-            now = time.time()
+            now = _time_mod.time()
 
             if s_ts <= now < e_ts:
                 # Sofort starten – keine Verzögerung durch Checker
@@ -170,9 +193,10 @@ class ScheduleMixin:
                     status="pending",
                 )
                 self.schedule_manager.add(rec)
-                start_str = start_dt.dateTime().toString("HH:mm")
+                from datetime import datetime as _dt2
+                start_disp = _dt2.fromtimestamp(s_ts).strftime("%H:%M")
                 self.status_bar.showMessage(
-                    f"Aufnahme geplant: {channel_name} um {start_str}"
+                    f"Aufnahme geplant: {channel_name} um {start_disp}"
                 )
             dialog.accept()
 

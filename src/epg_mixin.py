@@ -5,9 +5,10 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve, QSize
 from PySide6.QtWidgets import QListWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtGui import QPixmap
+from ui_builder import _pi
 
 from xtream_api import LiveStream, EpgEntry
 from favorites_manager import Favorite
@@ -87,7 +88,7 @@ class EpgMixin:
         next_entry = None
 
         for entry in epg_data:
-            if entry.start_timestamp <= now <= entry.stop_timestamp:
+            if entry.start_timestamp <= now < entry.stop_timestamp:
                 current_entry = entry
             elif entry.start_timestamp > now and next_entry is None:
                 next_entry = entry
@@ -341,7 +342,7 @@ class EpgMixin:
         for entry in sorted(epg_data, key=lambda e: e.start_timestamp):
             if entry.stop_timestamp <= now:
                 prev = entry  # letzten vergangenen Eintrag merken
-            elif entry.start_timestamp <= now <= entry.stop_timestamp:
+            elif entry.start_timestamp <= now < entry.stop_timestamp:
                 current = entry
             elif entry.start_timestamp > now:
                 future.append(entry)
@@ -420,16 +421,18 @@ class EpgMixin:
                 time_lbl = QLabel(f"{s} \u2013 {e_time}")
                 time_lbl.setStyleSheet("font-size: 12px; color: #555;")
                 time_row.addWidget(time_lbl, stretch=1)
-                rec_btn = QPushButton("\U0001F4F9")
+                rec_btn = QPushButton()
+                rec_btn.setIcon(_pi("record.svg", 14))
+                rec_btn.setIconSize(QSize(14, 14))
                 rec_btn.setToolTip("Aufnahme planen")
-                rec_btn.setFixedHeight(26)
+                rec_btn.setFixedSize(26, 26)
                 rec_btn.setStyleSheet("""
                     QPushButton {
-                        background: transparent; color: #666;
+                        background: transparent;
                         border: 1px solid #333; border-radius: 3px;
-                        font-size: 15px; padding: 0 5px;
+                        padding: 0;
                     }
-                    QPushButton:hover { background: #c0392b; color: white; border-color: #c0392b; }
+                    QPushButton:hover { background: #c0392b; border-color: #c0392b; }
                 """)
                 rec_btn.clicked.connect(
                     lambda checked=False, e=entry: self._schedule_from_epg(e)
@@ -484,6 +487,7 @@ class EpgMixin:
             start_ts=entry.start_timestamp,
             end_ts=entry.stop_timestamp,
             epg_title=entry.title,
+            fixed_time=True,
         )
 
     def _play_detail_stream(self):
