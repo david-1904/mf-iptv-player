@@ -37,6 +37,7 @@ class CategoriesMixin:
         self.btn_favorites.setChecked(mode == "favorites")
         self.btn_history.setChecked(mode == "history")
         self.btn_recordings.setChecked(mode == "recordings")
+        self.btn_epg_search.setChecked(mode == "epg_search")
 
         # Kategorie nur bei Live/VOD/Serien anzeigen
         self.category_row.setVisible(mode in ("live", "vod", "series"))
@@ -54,8 +55,9 @@ class CategoriesMixin:
         # Sortierung nur bei VOD/Serien anzeigen
         self.sort_widget.setVisible(mode in ("vod", "series"))
 
-        # Detail-Ansichten zuruecksetzen
-        self.channel_stack.setCurrentIndex(0)
+        # Detail-Ansichten zuruecksetzen (außer im EPG-Suche-Modus)
+        if mode != "epg_search":
+            self.channel_stack.setCurrentIndex(0)
 
         # Player-Layout anpassen wenn Player laeuft
         if self.player_area.isVisible() and not self._player_maximized:
@@ -84,7 +86,11 @@ class CategoriesMixin:
             from PySide6.QtCore import QTimer
             QTimer.singleShot(300, self._show_info_overlay_zap)
 
-        if mode == "favorites":
+        if mode == "epg_search":
+            self.channel_stack.setCurrentIndex(3)
+            self.epg_panel.setVisible(False)
+            self._epg_search_open()
+        elif mode == "favorites":
             self._load_favorites()
         elif mode == "history":
             self._load_history()

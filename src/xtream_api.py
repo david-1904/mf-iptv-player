@@ -123,15 +123,21 @@ class XtreamAPI:
         params.update(extra)
         return params
 
-    async def _get(self, action: str, retries: int = 3, **params) -> dict | list:
+    async def _get(self, action: str, retries: int = 3,
+                   _session: "aiohttp.ClientSession | None" = None, **params) -> dict | list:
         timeout = aiohttp.ClientTimeout(total=15)
         all_params = self._params(action=action, **params)
         for attempt in range(retries):
             try:
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(self.creds.base_url, params=all_params) as resp:
+                if _session is not None:
+                    async with _session.get(self.creds.base_url, params=all_params) as resp:
                         resp.raise_for_status()
                         return await resp.json()
+                else:
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
+                        async with session.get(self.creds.base_url, params=all_params) as resp:
+                            resp.raise_for_status()
+                            return await resp.json()
             except (aiohttp.ClientError, asyncio.TimeoutError):
                 if attempt == retries - 1:
                     raise
@@ -271,9 +277,10 @@ class XtreamAPI:
 
         return {"info": info, "seasons": seasons, "episodes": episodes}
 
-    async def get_short_epg(self, stream_id: int, limit: int = 2) -> list[EpgEntry]:
+    async def get_short_epg(self, stream_id: int, limit: int = 2,
+                            session: "aiohttp.ClientSession | None" = None) -> list[EpgEntry]:
         """Holt EPG-Daten fuer einen Stream (aktuell + kommend)"""
-        data = await self._get("get_short_epg", stream_id=stream_id, limit=limit)
+        data = await self._get("get_short_epg", stream_id=stream_id, limit=limit, _session=session)
         listings = data.get("epg_listings", []) if isinstance(data, dict) else []
         return [
             EpgEntry(

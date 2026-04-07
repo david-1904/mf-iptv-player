@@ -281,21 +281,27 @@ class UiBuilderMixin:
                 border-bottom: 1px solid rgba(255,255,255,6);
             }
             #searchFilterRow QLabel {
-                font-size: 11px; color: #555;
+                font-size: 11px; color: #666;
             }
             #searchFilterRow QPushButton {
                 text-align: center; margin: 0;
-                padding: 2px 8px; border-radius: 10px; font-size: 11px;
-                background: transparent; border: 1px solid #2a2a3a; color: #888;
+                padding: 4px 11px; border-radius: 10px; font-size: 12px;
+                background: transparent; border: 1px solid #3a3a50; color: #888;
             }
             #searchFilterRow QPushButton:hover { border-color: #0078d4; color: #ccc; }
             #searchFilterRow QPushButton[active="true"] {
                 background: #0078d4; border-color: #0078d4; color: white; font-weight: bold;
             }
+            #searchFilterRow QPushButton#btnFilterAll {
+                border-color: #505068; color: #aaa;
+            }
+            #searchFilterRow QPushButton#btnFilterAll[active="true"] {
+                background: #0078d4; border-color: #0078d4; color: white;
+            }
         """)
         _sf_layout = QHBoxLayout(self.search_filter_row)
-        _sf_layout.setContentsMargins(8, 3, 8, 3)
-        _sf_layout.setSpacing(4)
+        _sf_layout.setContentsMargins(8, 5, 8, 5)
+        _sf_layout.setSpacing(5)
 
         _sf_label = QLabel("in:")
         _sf_layout.addWidget(_sf_label)
@@ -306,7 +312,17 @@ class UiBuilderMixin:
             btn.setProperty("active", "false")
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(lambda checked, k=fkey: self._set_search_filter(k))
-            _sf_layout.addWidget(btn)
+            if fkey == "all":
+                btn.setObjectName("btnFilterAll")
+                _sf_layout.addWidget(btn)
+                # Visueller Trenner zwischen "Alle" und Typ-Filtern
+                sep = QFrame()
+                sep.setFrameShape(QFrame.VLine)
+                sep.setStyleSheet("background: #333; max-width: 1px; margin: 3px 2px;")
+                sep.setFixedWidth(1)
+                _sf_layout.addWidget(sep)
+            else:
+                _sf_layout.addWidget(btn)
             self._search_filter_buttons[fkey] = btn
         self._search_filter_buttons["all"].setProperty("active", "true")
         _sf_layout.addStretch()
@@ -395,6 +411,14 @@ class UiBuilderMixin:
         layout.addSpacing(10)
         layout.addWidget(_section_label("TOOLS"))
         layout.addSpacing(4)
+
+        # Programm-Suche
+        self.btn_epg_search = AnimatedButton("Programm-Suche")
+        self.btn_epg_search.setCheckable(True)
+        self.btn_epg_search.setIcon(_si("calendar.svg"))
+        self.btn_epg_search.setIconSize(_icon_size)
+        self.btn_epg_search.clicked.connect(lambda: self._switch_mode("epg_search"))
+        layout.addWidget(self.btn_epg_search)
 
         # Aktualisieren-Button
         self.btn_refresh = AnimatedButton("Aktualisieren")
@@ -1007,7 +1031,142 @@ class UiBuilderMixin:
         self.vod_detail_page = self._create_vod_detail_page()
         self.channel_stack.addWidget(self.vod_detail_page)
 
+        # Seite 3: EPG-Programmsuche
+        self.epg_search_page = self._create_epg_search_page()
+        self.channel_stack.addWidget(self.epg_search_page)
+
         return self.channel_stack
+
+    def _create_epg_search_page(self) -> QWidget:
+        """EPG-Programmsuche: Was läuft gerade / bald auf allen Sendern."""
+        from PySide6.QtWidgets import QLineEdit
+        page = QWidget()
+        page.setObjectName("epgSearchPage")
+        page.setStyleSheet("#epgSearchPage { background-color: #0a0a14; }")
+
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # ── Header ───────────────────────────────────────────────────────────
+        header = QWidget()
+        header.setStyleSheet(
+            "background: rgba(255,255,255,3); border-bottom: 1px solid rgba(255,255,255,6);"
+        )
+        h_lay = QVBoxLayout(header)
+        h_lay.setContentsMargins(14, 12, 14, 10)
+        h_lay.setSpacing(8)
+
+        title_row = QHBoxLayout()
+        title_lbl = QLabel("Programm-Suche")
+        title_lbl.setStyleSheet("color: white; font-size: 15px; font-weight: bold;")
+        title_row.addWidget(title_lbl, stretch=1)
+        reload_btn = QPushButton()
+        reload_btn.setIcon(_si("refresh.svg"))
+        reload_btn.setIconSize(QSize(15, 15))
+        reload_btn.setFixedSize(28, 28)
+        reload_btn.setToolTip("EPG neu laden")
+        reload_btn.setStyleSheet("""
+            QPushButton { background: transparent; border: none; }
+            QPushButton:hover { background: rgba(255,255,255,10); border-radius: 5px; }
+        """)
+        reload_btn.clicked.connect(self._epg_search_force_reload)
+        title_row.addWidget(reload_btn)
+        h_lay.addLayout(title_row)
+
+        self.epg_search_input = QLineEdit()
+        self.epg_search_input.setPlaceholderText("Sendung suchen…")
+        self.epg_search_input.setClearButtonEnabled(True)
+        self.epg_search_input.setStyleSheet("""
+            QLineEdit {
+                padding: 7px 10px; background: rgba(255,255,255,5);
+                border: 1px solid rgba(255,255,255,10); border-radius: 8px;
+                color: white; font-size: 13px;
+            }
+            QLineEdit:focus { border-color: rgba(0,120,212,180); background: rgba(0,120,212,8); }
+        """)
+        self.epg_search_input.textChanged.connect(self._epg_search_query_changed)
+        h_lay.addWidget(self.epg_search_input)
+
+        outer.addWidget(header)
+
+        # ── Filter-Chips ─────────────────────────────────────────────────────
+        filter_row = QWidget()
+        filter_row.setObjectName("epgFilterRow")
+        filter_row.setStyleSheet("""
+            #epgFilterRow {
+                background: rgba(255,255,255,3);
+                border-bottom: 1px solid rgba(255,255,255,6);
+            }
+            #epgFilterRow QPushButton {
+                text-align: center; margin: 0;
+                padding: 4px 14px; border-radius: 10px; font-size: 12px;
+                background: transparent; border: 1px solid #3a3a50; color: #888;
+            }
+            #epgFilterRow QPushButton:hover { border-color: #0078d4; color: #ccc; }
+            #epgFilterRow QPushButton[active="true"] {
+                background: #0078d4; border-color: #0078d4; color: white; font-weight: bold;
+            }
+        """)
+        f_lay = QHBoxLayout(filter_row)
+        f_lay.setContentsMargins(10, 6, 10, 6)
+        f_lay.setSpacing(6)
+
+        self._epg_filter_buttons = {}
+        for label, fkey in [("Alle", "all"), ("Jetzt", "now"), ("Bald", "soon")]:
+            btn = QPushButton(label)
+            btn.setProperty("active", "true" if fkey == "all" else "false")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda checked=False, k=fkey: self._epg_search_filter_changed(k))
+            f_lay.addWidget(btn)
+            self._epg_filter_buttons[fkey] = btn
+        f_lay.addStretch()
+
+        outer.addWidget(filter_row)
+
+        # ── Lade-Bereich ─────────────────────────────────────────────────────
+        self.epg_search_loading_widget = QWidget()
+        loading_lay = QVBoxLayout(self.epg_search_loading_widget)
+        loading_lay.setContentsMargins(14, 8, 14, 6)
+        loading_lay.setSpacing(4)
+
+        self.epg_search_status_lbl = QLabel("")
+        self.epg_search_status_lbl.setStyleSheet("color: #666; font-size: 11px;")
+        loading_lay.addWidget(self.epg_search_status_lbl)
+
+        self.epg_search_progress = QProgressBar()
+        self.epg_search_progress.setTextVisible(False)
+        self.epg_search_progress.setFixedHeight(3)
+        self.epg_search_progress.setStyleSheet("""
+            QProgressBar { background: rgba(255,255,255,8); border: none; border-radius: 1px; }
+            QProgressBar::chunk { background: #0078d4; border-radius: 1px; }
+        """)
+        loading_lay.addWidget(self.epg_search_progress)
+        self.epg_search_loading_widget.hide()
+
+        outer.addWidget(self.epg_search_loading_widget)
+
+        # ── Ergebnis-ScrollArea ───────────────────────────────────────────────
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical { background: transparent; width: 4px; }
+            QScrollBar::handle:vertical { background: #2a2a3a; border-radius: 2px; min-height: 20px; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        """)
+
+        results_container = QWidget()
+        results_container.setStyleSheet("background: transparent;")
+        self.epg_search_results_layout = QVBoxLayout(results_container)
+        self.epg_search_results_layout.setContentsMargins(0, 0, 0, 0)
+        self.epg_search_results_layout.setSpacing(0)
+        self.epg_search_results_layout.addStretch()
+
+        scroll.setWidget(results_container)
+        outer.addWidget(scroll, stretch=1)
+
+        return page
 
     def _create_channel_detail_panel(self) -> QWidget:
         """Modernes Kanal-Detailpanel: Hero-Bild, Logo, Name, EPG mit Fortschrittsbalken."""

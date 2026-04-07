@@ -37,6 +37,8 @@ from updater import UpdateChecker
 from app_settings import AppSettings
 from schedule_manager import ScheduleManager
 from schedule_mixin import ScheduleMixin
+from epg_search_mixin import EpgSearchMixin
+
 class MainWindow(
     UiBuilderMixin,
     PlaybackMixin,
@@ -52,6 +54,7 @@ class MainWindow(
     PipMixin,
     ChannelContextMixin,
     ScheduleMixin,
+    EpgSearchMixin,
     QMainWindow,
 ):
     def __init__(self):
