@@ -4,6 +4,7 @@ Kontextmenue fuer Kanalliste
 import time
 
 from PySide6.QtWidgets import QMenu, QMessageBox
+from i18n import _tr
 
 from xtream_api import LiveStream, VodStream, Series
 from favorites_manager import Favorite
@@ -25,26 +26,26 @@ class ChannelContextMixin:
         if isinstance(data, tuple) and len(data) == 2 and data[0] == "recording":
             filepath = data[1]
             menu = QMenu(self)
-            action_play = menu.addAction("\u25B6  Abspielen")
+            action_play = menu.addAction(_tr("\u25B6  Abspielen"))
             menu.addSeparator()
-            action_delete = menu.addAction("\U0001F5D1  L\u00f6schen")
+            action_delete = menu.addAction(_tr("\U0001F5D1  L\u00f6schen"))
             action = menu.exec(self.channel_list.mapToGlobal(position))
             if action == action_play:
                 name = filepath.stem.replace("_", " ")
                 self._play_stream(str(filepath), name, "vod")
             elif action == action_delete:
                 reply = QMessageBox.question(
-                    self, "Aufnahme l\u00f6schen",
-                    f"Aufnahme wirklich l\u00f6schen?\n{filepath.name}",
+                    self, _tr("Aufnahme l\u00f6schen"),
+                    _tr("Aufnahme wirklich l\u00f6schen?\n{}").format(filepath.name),
                     QMessageBox.Yes | QMessageBox.No,
                 )
                 if reply == QMessageBox.Yes:
                     try:
                         filepath.unlink()
                         self._load_recordings()
-                        self.status_bar.showMessage(f"Gel\u00f6scht: {filepath.name}")
+                        self.status_bar.showMessage(_tr("Gel\u00f6scht: {}").format(filepath.name))
                     except Exception as e:
-                        self.status_bar.showMessage(f"Fehler beim L\u00f6schen: {e}")
+                        self.status_bar.showMessage(_tr("Fehler beim L\u00f6schen: {}").format(e))
             return
 
         account = self.account_manager.get_selected()
@@ -58,11 +59,11 @@ class ChannelContextMixin:
 
         if self.current_mode == "favorites":
             # Im Favoriten-Modus: Nur Entfernen anzeigen
-            action_remove = menu.addAction("Aus Favoriten entfernen")
+            action_remove = menu.addAction(_tr("Aus Favoriten entfernen"))
             action_rec = None
             if is_live and self.api:
                 menu.addSeparator()
-                action_rec = menu.addAction("\U0001F4F9  Aufnahme planen")
+                action_rec = menu.addAction(_tr("\U0001F4F9  Aufnahme planen"))
             action = menu.exec(self.channel_list.mapToGlobal(position))
             if action == action_remove:
                 self._remove_from_favorites(data)
@@ -72,14 +73,14 @@ class ChannelContextMixin:
             # In anderen Modi: Hinzufuegen/Entfernen je nach Status
             is_fav = self._is_item_favorite(data, account.name)
             if is_fav:
-                action_toggle = menu.addAction("Aus Favoriten entfernen")
+                action_toggle = menu.addAction(_tr("Aus Favoriten entfernen"))
             else:
-                action_toggle = menu.addAction("Zu Favoriten hinzuf\u00fcgen")
+                action_toggle = menu.addAction(_tr("Zu Favoriten hinzuf\u00fcgen"))
 
             action_rec = None
             if is_live and self.api:
                 menu.addSeparator()
-                action_rec = menu.addAction("\U0001F4F9  Aufnahme planen")
+                action_rec = menu.addAction(_tr("\U0001F4F9  Aufnahme planen"))
 
             action = menu.exec(self.channel_list.mapToGlobal(position))
             if action == action_toggle:

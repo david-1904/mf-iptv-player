@@ -13,6 +13,7 @@ from ui_builder import _pi
 from xtream_api import LiveStream, EpgEntry
 from favorites_manager import Favorite
 from epg_dialog import EpgDialog
+from i18n import _tr
 
 
 class EpgMixin:
@@ -75,7 +76,7 @@ class EpgMixin:
         """Update EPG panel with data"""
         if not epg_data:
             self.epg_now_label.hide()
-            self.epg_now_title.setText("Keine EPG-Daten")
+            self.epg_now_title.setText(_tr("Keine EPG-Daten"))
             self.epg_now_desc.setText("")
             self.epg_progress.hide()
             self.epg_next_label.hide()
@@ -140,7 +141,7 @@ class EpgMixin:
         self.epg_channel_name.setText("")
         self.epg_channel_logo.clear()
         self.epg_now_label.hide()
-        self.epg_now_title.setText("Waehle einen Kanal")
+        self.epg_now_title.setText(_tr("Wähle einen Kanal"))
         self.epg_now_desc.hide()
         self.epg_progress.hide()
         self.epg_next_label.hide()
@@ -167,7 +168,7 @@ class EpgMixin:
         if stream_id is None or not self.api:
             return
 
-        self._show_loading("Lade vollstaendiges Programm...")
+        self._show_loading(_tr("Lade vollständiges Programm…"))
         try:
             epg_data = await self.api.get_full_epg(stream_id)
             if not epg_data:
@@ -246,7 +247,7 @@ class EpgMixin:
 
         # EPG-Platzhalter
         self.detail_prev_widget.hide()
-        self.detail_now_title.setText("Lade Programm\u2026")
+        self.detail_now_title.setText(_tr("Lade Programm…"))
         self.detail_now_time.setText("")
         self.detail_now_progress.hide()
         self.detail_now_desc.hide()
@@ -390,7 +391,7 @@ class EpgMixin:
             )
             self.detail_now_rec_btn.show()
         else:
-            self.detail_now_title.setText("Keine EPG-Daten")
+            self.detail_now_title.setText(_tr("Keine EPG-Daten"))
             self.detail_now_time.setText("")
             self.detail_now_progress.hide()
             self.detail_now_desc.hide()
@@ -424,7 +425,7 @@ class EpgMixin:
                 rec_btn = QPushButton()
                 rec_btn.setIcon(_pi("record.svg", 14))
                 rec_btn.setIconSize(QSize(14, 14))
-                rec_btn.setToolTip("Aufnahme planen")
+                rec_btn.setToolTip(_tr("Aufnahme planen"))
                 rec_btn.setFixedSize(26, 26)
                 rec_btn.setStyleSheet("""
                     QPushButton {

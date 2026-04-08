@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from schedule_manager import ScheduledRecording
+from i18n import _tr
 
 
 class ScheduleMixin:
@@ -34,10 +35,10 @@ class ScheduleMixin:
                         display += f" \u2013 {rec.epg_title}"
                     self.recorder.start(rec.stream_url, display)
                     self._sync_record_buttons(True)
-                    self.status_bar.showMessage(f"\u23FA Geplante Aufnahme gestartet: {display}")
+                    self.status_bar.showMessage(_tr("⏺ Geplante Aufnahme gestartet: {}").format(display))
                 else:
                     self.status_bar.showMessage(
-                        f"Geplante Aufnahme konnte nicht starten (andere Aufnahme laeuft): {rec.channel_name}"
+                        _tr("Geplante Aufnahme konnte nicht starten (andere Aufnahme läuft): {}").format(rec.channel_name)
                     )
                     rec.status = "failed"
                     changed = True
@@ -50,7 +51,7 @@ class ScheduleMixin:
                 self._sync_record_buttons(False)
                 rec.status = "done"
                 changed = True
-                self.status_bar.showMessage(f"Geplante Aufnahme beendet: {rec.channel_name}")
+                self.status_bar.showMessage(_tr("Geplante Aufnahme beendet: {}").format(rec.channel_name))
 
         if changed:
             self.schedule_manager.save()
@@ -67,7 +68,7 @@ class ScheduleMixin:
         """
         import time as _time_mod
         dialog = QDialog(self)
-        dialog.setWindowTitle("Aufnahme planen")
+        dialog.setWindowTitle(_tr("Aufnahme planen"))
         dialog.setModal(True)
         dialog.setMinimumWidth(380)
         dialog.setStyleSheet("""
@@ -124,7 +125,7 @@ class ScheduleMixin:
         else:
             # Zeiten frei wählbar
             start_row = QHBoxLayout()
-            start_row.addWidget(QLabel("Start:"))
+            start_row.addWidget(QLabel(_tr("Start:")))
             start_dt = QDateTimeEdit()
             start_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
             start_dt.setCalendarPopup(True)
@@ -133,7 +134,7 @@ class ScheduleMixin:
             layout.addLayout(start_row)
 
             end_row = QHBoxLayout()
-            end_row.addWidget(QLabel("Ende:  "))
+            end_row.addWidget(QLabel(_tr("Ende:  ")))
             end_dt = QDateTimeEdit()
             end_dt.setDisplayFormat("dd.MM.yyyy  HH:mm")
             end_dt.setCalendarPopup(True)
@@ -145,9 +146,9 @@ class ScheduleMixin:
 
         # Buttons
         btn_row = QHBoxLayout()
-        btn_cancel = QPushButton("Abbrechen")
+        btn_cancel = QPushButton(_tr("Abbrechen"))
         btn_cancel.clicked.connect(dialog.reject)
-        btn_confirm = QPushButton("\u23FA  Aufnahme planen")
+        btn_confirm = QPushButton(_tr("\u23FA  Aufnahme planen"))
         btn_confirm.setObjectName("btn_confirm")
 
         def on_confirm():
@@ -180,7 +181,7 @@ class ScheduleMixin:
                     display += f" \u2013 {epg_title}"
                 self.recorder.start(stream_url, display)
                 self._sync_record_buttons(True)
-                self.status_bar.showMessage(f"\u23FA Aufnahme gestartet: {display}")
+                self.status_bar.showMessage(_tr("\u23FA Aufnahme gestartet: {}").format(display))
             else:
                 rec = ScheduledRecording(
                     id=str(uuid.uuid4()),
@@ -196,7 +197,7 @@ class ScheduleMixin:
                 from datetime import datetime as _dt2
                 start_disp = _dt2.fromtimestamp(s_ts).strftime("%H:%M")
                 self.status_bar.showMessage(
-                    f"Aufnahme geplant: {channel_name} um {start_disp}"
+                    _tr("Aufnahme geplant: {} um {}").format(channel_name, start_disp)
                 )
             dialog.accept()
 

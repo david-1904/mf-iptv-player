@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QMessageBox
 from xtream_api import XtreamAPI, XtreamCredentials
 from m3u_provider import M3uProvider
 from account_manager import AccountEntry
+from i18n import _tr
 
 
 class AccountMixin:
@@ -57,7 +58,7 @@ class AccountMixin:
 
     async def _load_m3u_and_categories(self):
         """Laedt M3U-Playlist und dann die Kategorien"""
-        self._show_loading("Lade M3U-Playlist...")
+        self._show_loading(_tr("Lade M3U-Playlist..."))
         try:
             await self.api.load()
             await self._load_categories()
@@ -106,7 +107,7 @@ class AccountMixin:
                 self._epg_cache = {}
                 self._initial_epg_loaded = False
 
-                self._show_loading("Lade Kategorien…")
+                self._show_loading(_tr("Lade Kategorien…"))
                 if account.type == "m3u":
                     self.api = M3uProvider(account.name, account.url)
                     asyncio.ensure_future(self._load_m3u_and_categories())
@@ -137,19 +138,19 @@ class AccountMixin:
 
     async def _refresh_line_info(self):
         if not self.api or not isinstance(self.api, XtreamAPI):
-            self.lbl_line_info.setText("Kein aktiver Xtream-Account")
+            self.lbl_line_info.setText(_tr("Kein aktiver Xtream-Account"))
             return
 
-        self.lbl_line_info.setText("Wird geladen…")
+        self.lbl_line_info.setText(_tr("Wird geladen…"))
         try:
             data = await self.api.get_account_info()
         except Exception as e:
-            self.lbl_line_info.setText(f"Fehler beim Laden: {e}")
+            self.lbl_line_info.setText(_tr("Fehler beim Laden: {}").format(e))
             return
 
         user_info = data.get("user_info", {}) if isinstance(data, dict) else {}
         if not user_info:
-            self.lbl_line_info.setText("Keine Account-Informationen verfügbar")
+            self.lbl_line_info.setText(_tr("Keine Account-Informationen verfügbar"))
             return
 
         status = user_info.get("status", "–")
@@ -167,23 +168,23 @@ class AccountMixin:
                 exp_str = exp_dt.strftime("%d.%m.%Y")
                 days_left = (exp_dt - datetime.now()).days
                 if days_left > 0:
-                    days_str = f"  ·  Noch {days_left} Tage"
+                    days_str = _tr("  ·  Noch {} Tage").format(days_left)
                 elif days_left == 0:
-                    days_str = "  ·  Läuft heute ab"
+                    days_str = _tr("  ·  Läuft heute ab")
                 else:
-                    days_str = f"  ·  Abgelaufen vor {abs(days_left)} Tagen"
+                    days_str = _tr("  ·  Abgelaufen vor {} Tagen").format(abs(days_left))
             except (ValueError, OSError):
                 pass
 
         account_name = getattr(self.api.creds, "name", "") or self.api.creds.username
-        trial_hint = "  (Test-Account)" if is_trial else ""
+        trial_hint = _tr("  (Test-Account)") if is_trial else ""
 
         color = "#6fcf97" if status.lower() == "active" else "#f44336"
         text = (
             f"<b>{account_name}</b>{trial_hint}<br>"
-            f"Status: <span style='color:{color}'>{status}</span><br>"
-            f"Gültig bis: {exp_str}{days_str}<br>"
-            f"Verbindungen: {active_conn} / {max_conn}"
+            f"{_tr('Status:')} <span style='color:{color}'>{status}</span><br>"
+            f"{_tr('Gültig bis:')} {exp_str}{days_str}<br>"
+            f"{_tr('Verbindungen:')} {active_conn} / {max_conn}"
         )
         self.lbl_line_info.setText(text)
 
@@ -208,8 +209,8 @@ class AccountMixin:
             self.input_password.setText(acc.password)
 
         self._editing_account_index = row
-        self.settings_title.setText("Account bearbeiten")
-        self.btn_add_account.setText("\u00c4nderungen speichern")
+        self.settings_title.setText(_tr("Account bearbeiten"))
+        self.btn_add_account.setText(_tr("\u00c4nderungen speichern"))
         self.btn_cancel_edit.show()
 
     def _cancel_edit(self):
@@ -221,8 +222,8 @@ class AccountMixin:
         self.input_password.clear()
         self.input_m3u_url.clear()
         self.account_list.clearSelection()
-        self.settings_title.setText("Account hinzuf\u00fcgen")
-        self.btn_add_account.setText("Account speichern")
+        self.settings_title.setText(_tr("Account hinzuf\u00fcgen"))
+        self.btn_add_account.setText(_tr("Account speichern"))
         self.btn_cancel_edit.hide()
 
     def _add_account(self):
@@ -232,7 +233,7 @@ class AccountMixin:
         if account_type == "m3u":
             m3u_url = self.input_m3u_url.text().strip()
             if not name or not m3u_url:
-                QMessageBox.warning(self, "Fehler", "Bitte Name und URL ausfuellen")
+                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte Name und URL ausfuellen"))
                 return
             entry = AccountEntry(name=name, type="m3u", url=m3u_url)
         else:
@@ -240,7 +241,7 @@ class AccountMixin:
             username = self.input_username.text().strip()
             password = self.input_password.text().strip()
             if not all([name, server, username, password]):
-                QMessageBox.warning(self, "Fehler", "Bitte alle Felder ausfuellen")
+                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte alle Felder ausfuellen"))
                 return
             entry = AccountEntry(
                 name=name, type="xtream",
@@ -254,7 +255,7 @@ class AccountMixin:
 
     async def _test_and_update_account(self, index: int, entry: AccountEntry):
         """Verbindung testen und bestehenden Account aktualisieren"""
-        self._show_loading("Teste Verbindung...")
+        self._show_loading(_tr("Teste Verbindung..."))
         self.btn_add_account.setEnabled(False)
         try:
             if entry.type == "m3u":
@@ -275,7 +276,7 @@ class AccountMixin:
 
             self._cancel_edit()
             self._update_account_combo()
-            self._hide_loading("Account gespeichert")
+            self._hide_loading(_tr("Account gespeichert"))
 
             if was_selected:
                 self.live_categories = []
@@ -284,13 +285,13 @@ class AccountMixin:
                 self._search_cache_loaded = False
                 asyncio.ensure_future(self._load_categories())
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Verbindung fehlgeschlagen:\n{e}")
-            self._hide_loading("Verbindung fehlgeschlagen")
+            QMessageBox.critical(self, _tr("Fehler"), _tr("Verbindung fehlgeschlagen:\n{}").format(e))
+            self._hide_loading(_tr("Verbindung fehlgeschlagen"))
         finally:
             self.btn_add_account.setEnabled(True)
 
     async def _test_and_add_account(self, entry: AccountEntry):
-        self._show_loading("Teste Verbindung...")
+        self._show_loading(_tr("Teste Verbindung..."))
         self.btn_add_account.setEnabled(False)
 
         try:
@@ -320,10 +321,10 @@ class AccountMixin:
             self.content_stack.setCurrentWidget(self.main_page)
             await self._load_categories()
 
-            self._hide_loading("Account erfolgreich hinzugefuegt")
+            self._hide_loading(_tr("Account erfolgreich hinzugefuegt"))
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", f"Verbindung fehlgeschlagen:\n{e}")
-            self._hide_loading("Verbindung fehlgeschlagen")
+            QMessageBox.critical(self, _tr("Fehler"), _tr("Verbindung fehlgeschlagen:\n{}").format(e))
+            self._hide_loading(_tr("Verbindung fehlgeschlagen"))
         finally:
             self.btn_add_account.setEnabled(True)
 
@@ -331,8 +332,8 @@ class AccountMixin:
         row = self.account_list.currentRow()
         if row >= 0:
             reply = QMessageBox.question(
-                self, "Account loeschen",
-                "Account wirklich loeschen?",
+                self, _tr("Account loeschen"),
+                _tr("Account wirklich loeschen?"),
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:

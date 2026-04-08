@@ -3,6 +3,8 @@ PiP-Modus & Loading-Overlay
 """
 import asyncio
 
+from i18n import _tr
+
 
 class PipMixin:
 
@@ -111,10 +113,10 @@ class PipMixin:
     def _show_loading_error(self, error: str):
         """Zeigt Fehler im Loading-Overlay mit Retry-Button"""
         self.loading_bar.hide()
-        self.status_bar.showMessage(f"Fehler: {error}")
+        self.status_bar.showMessage(_tr("Fehler: {}").format(error))
         if self.channel_stack.currentIndex() == 0:
             self._loading_spinner.hide()
-            self._loading_text.setText(f"Verbindungsfehler\n{error}")
+            self._loading_text.setText(_tr("Verbindungsfehler\n{}").format(error))
             self._loading_retry_btn.show()
             self.channel_loading.show()
             self.channel_list.hide()

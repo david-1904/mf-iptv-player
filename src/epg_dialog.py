@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QTimer, QSize
 
 from xtream_api import EpgEntry
 from ui_builder import _pi
+from i18n import _tr
 
 
 class EpgDialog(QDialog):
@@ -18,7 +19,7 @@ class EpgDialog(QDialog):
     def __init__(self, channel_name: str, epg_data: list[EpgEntry], has_catchup: bool = False,
                  schedule_callback=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Programm – {channel_name}")
+        self.setWindowTitle(_tr("Programm \u2013 {}").format(channel_name))
         self.setMinimumSize(540, 520)
         self.resize(620, 720)
         self.setStyleSheet("""
@@ -49,7 +50,7 @@ class EpgDialog(QDialog):
         header_layout.addWidget(title)
 
         if self._has_catchup:
-            catchup_badge = QLabel("◀◀  Catchup")
+            catchup_badge = QLabel(_tr("◀◀  Catchup"))
             catchup_badge.setStyleSheet("""
                 font-size: 10px; font-weight: bold; color: #0078d4;
                 background-color: rgba(0,120,212,0.12); padding: 3px 10px;
@@ -63,7 +64,7 @@ class EpgDialog(QDialog):
         btn_close.setIcon(_pi("x.svg", 16))
         btn_close.setIconSize(QSize(16, 16))
         btn_close.setFixedSize(32, 32)
-        btn_close.setToolTip("Schließen")
+        btn_close.setToolTip(_tr("Schließen"))
         btn_close.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; }
             QPushButton:hover { background-color: #2a2a3a; }
@@ -102,7 +103,7 @@ class EpgDialog(QDialog):
                     current_ts = entry.start_timestamp
 
         if not epg_data:
-            empty = QLabel("Keine Programmdaten verfügbar")
+            empty = QLabel(_tr("Keine Programmdaten verfügbar"))
             empty.setStyleSheet("color: #555; padding: 48px; font-size: 14px;")
             empty.setAlignment(Qt.AlignCenter)
             content_layout.addWidget(empty)
@@ -117,11 +118,11 @@ class EpgDialog(QDialog):
                     last_date = entry_date
                     today = datetime.now().date()
                     if entry_date == today:
-                        day_str = "Heute"
+                        day_str = _tr("Heute")
                     elif (entry_date - today).days == 1:
-                        day_str = "Morgen"
+                        day_str = _tr("Morgen")
                     elif (entry_date - today).days == -1:
-                        day_str = "Gestern"
+                        day_str = _tr("Gestern")
                     else:
                         day_str = entry_date.strftime("%A, %d. %B")
                     sep = self._create_date_separator(day_str)
@@ -235,7 +236,7 @@ class EpgDialog(QDialog):
 
         # JETZT-Badge
         if is_current:
-            badge = QLabel("JETZT")
+            badge = QLabel(_tr("JETZT"))
             badge.setStyleSheet("""
                 font-size: 9px; font-weight: bold; color: white;
                 background-color: #e8691a; padding: 2px 8px; border-radius: 3px;
@@ -249,7 +250,7 @@ class EpgDialog(QDialog):
             btn_play.setIcon(_pi("play.svg", 14))
             btn_play.setIconSize(QSize(14, 14))
             btn_play.setFixedSize(28, 28)
-            btn_play.setToolTip("Von Anfang abspielen" if is_current else "Abspielen")
+            btn_play.setToolTip(_tr("Von Anfang abspielen") if is_current else _tr("Abspielen"))
             btn_play.setStyleSheet("""
                 QPushButton {
                     background: transparent;
@@ -266,7 +267,7 @@ class EpgDialog(QDialog):
             btn_rec = QPushButton()
             btn_rec.setIcon(_pi("record.svg", 14))
             btn_rec.setIconSize(QSize(14, 14))
-            btn_rec.setToolTip("Aufnahme planen")
+            btn_rec.setToolTip(_tr("Aufnahme planen"))
             btn_rec.setFixedSize(28, 28)
             btn_rec.setStyleSheet("""
                 QPushButton {

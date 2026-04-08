@@ -17,6 +17,7 @@ from PySide6.QtGui import QPixmap, QFont, QPainter, QPainterPath, QColor, QIcon
 from PySide6.QtSvg import QSvgRenderer
 
 from flow_layout import FlowLayout
+from i18n import _tr
 
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "assets", "icons")
 
@@ -247,7 +248,7 @@ class UiBuilderMixin:
 
         # Suchfeld (immer sichtbar, oben)
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("\U0001F50D Suche...")
+        self.search_input.setPlaceholderText(_tr("🔍 Suche…"))
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setStyleSheet("""
             QLineEdit {
@@ -307,7 +308,7 @@ class UiBuilderMixin:
         _sf_layout.addWidget(_sf_label)
 
         self._search_filter_buttons = {}
-        for label, fkey in [("Alle", "all"), ("TV", "live"), ("Film", "vod"), ("Serie", "series")]:
+        for label, fkey in [(_tr("Alle"), "all"), (_tr("TV"), "live"), (_tr("Film"), "vod"), (_tr("Serie"), "series")]:
             btn = QPushButton(label)
             btn.setProperty("active", "false")
             btn.setCursor(Qt.PointingHandCursor)
@@ -351,26 +352,26 @@ class UiBuilderMixin:
 
         layout.addWidget(_sep())
         layout.addSpacing(10)
-        layout.addWidget(_section_label("INHALTE"))
+        layout.addWidget(_section_label(_tr("INHALTE")))
         layout.addSpacing(4)
 
         _icon_size = QSize(22, 16)  # 16px icon + 6px right padding via _si()
 
         # Modus-Buttons
-        self.btn_live = AnimatedButton("Live TV")
+        self.btn_live = AnimatedButton(_tr("Live TV"))
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(True)
         self.btn_live.setIcon(_si("tv.svg"))
         self.btn_live.setIconSize(_icon_size)
         self.btn_live.clicked.connect(lambda: self._switch_mode("live"))
 
-        self.btn_vod = AnimatedButton("Filme")
+        self.btn_vod = AnimatedButton(_tr("Filme"))
         self.btn_vod.setCheckable(True)
         self.btn_vod.setIcon(_si("film.svg"))
         self.btn_vod.setIconSize(_icon_size)
         self.btn_vod.clicked.connect(lambda: self._switch_mode("vod"))
 
-        self.btn_series = AnimatedButton("Serien")
+        self.btn_series = AnimatedButton(_tr("Serien"))
         self.btn_series.setCheckable(True)
         self.btn_series.setIcon(_si("layers.svg"))
         self.btn_series.setIconSize(_icon_size)
@@ -381,11 +382,11 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_series)
 
         layout.addSpacing(10)
-        layout.addWidget(_section_label("MEINE BIBLIOTHEK"))
+        layout.addWidget(_section_label(_tr("MEINE BIBLIOTHEK")))
         layout.addSpacing(4)
 
         # Favoriten-Button
-        self.btn_favorites = AnimatedButton("Favoriten")
+        self.btn_favorites = AnimatedButton(_tr("Favoriten"))
         self.btn_favorites.setCheckable(True)
         self.btn_favorites.setIcon(_si("star.svg"))
         self.btn_favorites.setIconSize(_icon_size)
@@ -393,7 +394,7 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_favorites)
 
         # Verlauf-Button
-        self.btn_history = AnimatedButton("Verlauf")
+        self.btn_history = AnimatedButton(_tr("Verlauf"))
         self.btn_history.setCheckable(True)
         self.btn_history.setIcon(_si("clock.svg"))
         self.btn_history.setIconSize(_icon_size)
@@ -401,7 +402,7 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_history)
 
         # Aufnahmen-Button
-        self.btn_recordings = AnimatedButton("Aufnahmen")
+        self.btn_recordings = AnimatedButton(_tr("Aufnahmen"))
         self.btn_recordings.setCheckable(True)
         self.btn_recordings.setIcon(_si("record.svg"))
         self.btn_recordings.setIconSize(_icon_size)
@@ -409,11 +410,11 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_recordings)
 
         layout.addSpacing(10)
-        layout.addWidget(_section_label("TOOLS"))
+        layout.addWidget(_section_label(_tr("TOOLS")))
         layout.addSpacing(4)
 
         # Programm-Suche
-        self.btn_epg_search = AnimatedButton("Programm-Suche")
+        self.btn_epg_search = AnimatedButton(_tr("Programm-Suche"))
         self.btn_epg_search.setCheckable(True)
         self.btn_epg_search.setIcon(_si("calendar.svg"))
         self.btn_epg_search.setIconSize(_icon_size)
@@ -421,14 +422,14 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_epg_search)
 
         # Aktualisieren-Button
-        self.btn_refresh = AnimatedButton("Aktualisieren")
+        self.btn_refresh = AnimatedButton(_tr("Aktualisieren"))
         self.btn_refresh.setIcon(_si("refresh.svg"))
         self.btn_refresh.setIconSize(_icon_size)
         self.btn_refresh.clicked.connect(self._refresh_current)
         layout.addWidget(self.btn_refresh)
 
         # Einstellungen direkt unter Aktualisieren
-        self.btn_settings = QPushButton("Einstellungen")
+        self.btn_settings = QPushButton(_tr("Einstellungen"))
         self.btn_settings.setStyleSheet("""
             QPushButton {
                 text-align: left;
@@ -455,7 +456,7 @@ class UiBuilderMixin:
         layout.addStretch()
 
         # Update-Button (initially hidden, shown by _check_for_updates)
-        self.btn_update = QPushButton("Update verfügbar")
+        self.btn_update = QPushButton(_tr("Update verfügbar"))
         self.btn_update.setStyleSheet("""
             QPushButton {
                 text-align: left;
@@ -500,11 +501,11 @@ class UiBuilderMixin:
 
         # Titelzeile mit Schliessen-Button
         title_row = QHBoxLayout()
-        self.settings_title = QLabel("Account hinzuf\u00fcgen")
+        self.settings_title = QLabel(_tr("Account hinzufügen"))
         self.settings_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 16px;")
         title_row.addWidget(self.settings_title)
         title_row.addStretch()
-        self.btn_close_settings = QPushButton("Schliessen")
+        self.btn_close_settings = QPushButton(_tr("Schließen"))
         self.btn_close_settings.setStyleSheet("""
             QPushButton {
                 padding: 6px 14px; border-radius: 6px;
@@ -519,17 +520,17 @@ class UiBuilderMixin:
 
         # Eingabefelder
         self.input_name = QLineEdit()
-        self.input_name.setPlaceholderText("Account-Name")
+        self.input_name.setPlaceholderText(_tr("Account-Name"))
         layout.addWidget(self.input_name)
 
         # Account-Typ Auswahl
         type_layout = QHBoxLayout()
-        type_label = QLabel("Typ:")
+        type_label = QLabel(_tr("Typ:"))
         type_label.setStyleSheet("font-size: 13px; color: #ccc;")
         type_layout.addWidget(type_label)
         self.account_type_combo = QComboBox()
-        self.account_type_combo.addItem("Xtream Codes", "xtream")
-        self.account_type_combo.addItem("M3U Playlist", "m3u")
+        self.account_type_combo.addItem(_tr("Xtream Codes"), "xtream")
+        self.account_type_combo.addItem(_tr("M3U Playlist"), "m3u")
         self.account_type_combo.currentIndexChanged.connect(self._on_account_type_changed)
         type_layout.addWidget(self.account_type_combo, stretch=1)
         layout.addLayout(type_layout)
@@ -540,15 +541,15 @@ class UiBuilderMixin:
         xtream_layout.setContentsMargins(0, 0, 0, 0)
 
         self.input_server = QLineEdit()
-        self.input_server.setPlaceholderText("Server URL (http://...)")
+        self.input_server.setPlaceholderText(_tr("Server URL (http://...)"))
         xtream_layout.addWidget(self.input_server)
 
         self.input_username = QLineEdit()
-        self.input_username.setPlaceholderText("Benutzername")
+        self.input_username.setPlaceholderText(_tr("Benutzername"))
         xtream_layout.addWidget(self.input_username)
 
         self.input_password = QLineEdit()
-        self.input_password.setPlaceholderText("Passwort")
+        self.input_password.setPlaceholderText(_tr("Passwort"))
         self.input_password.setEchoMode(QLineEdit.Password)
         xtream_layout.addWidget(self.input_password)
 
@@ -560,7 +561,7 @@ class UiBuilderMixin:
         m3u_layout.setContentsMargins(0, 0, 0, 0)
 
         self.input_m3u_url = QLineEdit()
-        self.input_m3u_url.setPlaceholderText("M3U Playlist URL (http://...)")
+        self.input_m3u_url.setPlaceholderText(_tr("M3U Playlist URL (http://...)"))
         m3u_layout.addWidget(self.input_m3u_url)
 
         layout.addWidget(self.m3u_fields)
@@ -568,11 +569,11 @@ class UiBuilderMixin:
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.btn_add_account = QPushButton("Account speichern")
+        self.btn_add_account = QPushButton(_tr("Account speichern"))
         self.btn_add_account.clicked.connect(self._add_account)
         btn_layout.addWidget(self.btn_add_account)
 
-        self.btn_cancel_edit = QPushButton("Abbrechen")
+        self.btn_cancel_edit = QPushButton(_tr("Abbrechen"))
         self.btn_cancel_edit.clicked.connect(self._cancel_edit)
         self.btn_cancel_edit.hide()
         btn_layout.addWidget(self.btn_cancel_edit)
@@ -581,7 +582,7 @@ class UiBuilderMixin:
 
         # Account-Liste
         layout.addSpacing(24)
-        list_title = QLabel("Gespeicherte Accounts")
+        list_title = QLabel(_tr("Gespeicherte Accounts"))
         list_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(list_title)
 
@@ -590,23 +591,23 @@ class UiBuilderMixin:
         self.account_list.itemClicked.connect(self._on_account_list_clicked)
         layout.addWidget(self.account_list)
 
-        acc_hint = QLabel("Auf einen Account klicken, um ihn zu bearbeiten")
+        acc_hint = QLabel(_tr("Auf einen Account klicken, um ihn zu bearbeiten"))
         acc_hint.setStyleSheet("color: #555; font-size: 11px; margin: 2px 0;")
         layout.addWidget(acc_hint)
 
-        self.btn_delete_account = QPushButton("Ausgew\u00e4hlten Account l\u00f6schen")
+        self.btn_delete_account = QPushButton(_tr("Ausgewählten Account löschen"))
         self.btn_delete_account.clicked.connect(self._delete_account)
         layout.addWidget(self.btn_delete_account)
 
         # Line-Status
         layout.addSpacing(24)
         line_status_row = QHBoxLayout()
-        line_status_title = QLabel("Line-Status")
+        line_status_title = QLabel(_tr("Line-Status"))
         line_status_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         line_status_row.addWidget(line_status_title)
         line_status_row.addStretch()
         self.btn_refresh_line_info = QPushButton("\u21bb")
-        self.btn_refresh_line_info.setToolTip("Aktualisieren")
+        self.btn_refresh_line_info.setToolTip(_tr("Aktualisieren"))
         self.btn_refresh_line_info.setStyleSheet("""
             QPushButton {
                 padding: 2px 8px; border-radius: 4px;
@@ -618,7 +619,7 @@ class UiBuilderMixin:
         line_status_row.addWidget(self.btn_refresh_line_info)
         layout.addLayout(line_status_row)
 
-        self.lbl_line_info = QLabel("Kein aktiver Account")
+        self.lbl_line_info = QLabel(_tr("Kein aktiver Account"))
         self.lbl_line_info.setStyleSheet("""
             QLabel {
                 background: #1a1a2a;
@@ -634,18 +635,18 @@ class UiBuilderMixin:
 
         # Wiedergabe-Einstellungen
         layout.addSpacing(24)
-        playback_title = QLabel("Wiedergabe")
+        playback_title = QLabel(_tr("Wiedergabe"))
         playback_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(playback_title)
 
         hwdec_row = QHBoxLayout()
-        hwdec_label = QLabel("Hardware-Dekodierung:")
+        hwdec_label = QLabel(_tr("Hardware-Dekodierung:"))
         hwdec_label.setStyleSheet("font-size: 13px; color: #ccc;")
         hwdec_row.addWidget(hwdec_label)
         self.hwdec_combo = QComboBox()
-        self.hwdec_combo.addItem("Automatisch (empfohlen)", "auto")
-        self.hwdec_combo.addItem("Hardware + Kopie (auto-copy)", "auto-copy")
-        self.hwdec_combo.addItem("Software (kompatibel, mehr CPU)", "no")
+        self.hwdec_combo.addItem(_tr("Automatisch (empfohlen)"), "auto")
+        self.hwdec_combo.addItem(_tr("Hardware + Kopie (auto-copy)"), "auto-copy")
+        self.hwdec_combo.addItem(_tr("Software (kompatibel, mehr CPU)"), "no")
         saved_hwdec = self.app_settings.get("hwdec", "auto")
         idx = self.hwdec_combo.findData(saved_hwdec)
         self.hwdec_combo.setCurrentIndex(idx if idx >= 0 else 0)
@@ -653,19 +654,19 @@ class UiBuilderMixin:
         hwdec_row.addWidget(self.hwdec_combo, stretch=1)
         layout.addLayout(hwdec_row)
 
-        self.lbl_hwdec_hint = QLabel("↻ App neu starten damit die Änderung wirkt")
+        self.lbl_hwdec_hint = QLabel(_tr("↻ App neu starten damit die Änderung wirkt"))
         self.lbl_hwdec_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
         self.lbl_hwdec_hint.hide()
         layout.addWidget(self.lbl_hwdec_hint)
 
         # Sprache
         layout.addSpacing(24)
-        lang_title = QLabel("Sprache / Language")
+        lang_title = QLabel(_tr("Sprache / Language"))
         lang_title.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(lang_title)
 
         lang_row = QHBoxLayout()
-        lang_label = QLabel("Sprache:")
+        lang_label = QLabel(_tr("Sprache:"))
         lang_label.setStyleSheet("font-size: 13px; color: #ccc;")
         lang_row.addWidget(lang_label)
         self.lang_combo = QComboBox()
@@ -678,7 +679,7 @@ class UiBuilderMixin:
         lang_row.addWidget(self.lang_combo, stretch=1)
         layout.addLayout(lang_row)
 
-        self.lbl_lang_hint = QLabel("↻ App neu starten damit die Änderung wirkt")
+        self.lbl_lang_hint = QLabel(_tr("↻ App neu starten damit die Änderung wirkt"))
         self.lbl_lang_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
         self.lbl_lang_hint.hide()
         layout.addWidget(self.lbl_lang_hint)
@@ -810,7 +811,7 @@ class UiBuilderMixin:
         _cat_row_layout.setContentsMargins(12, 0, 0, 0)
         _cat_row_layout.setSpacing(8)
 
-        _cat_label = QLabel("Kategorie:")
+        _cat_label = QLabel(_tr("Kategorie:"))
         _cat_label.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
         _cat_row_layout.addWidget(_cat_label)
 
@@ -850,7 +851,7 @@ class UiBuilderMixin:
             QPushButton:hover { border-color: #0078d4; color: #ccc; }
             QPushButton[active="true"] { background: #0078d4; border-color: #0078d4; color: white; font-weight: bold; }
         """
-        for label, ftype in [("Alle", None), ("📺 Live", "live"), ("🎬 Filme", "vod"), ("📖 Serien", "series")]:
+        for label, ftype in [(_tr("Alle"), None), ("📺 " + _tr("Live"), "live"), ("🎬 " + _tr("Filme"), "vod"), ("📖 " + _tr("Serien"), "series")]:
             btn = QPushButton(label)
             btn.setStyleSheet(_fav_btn_style)
             btn.setProperty("active", "false")
@@ -910,7 +911,7 @@ class UiBuilderMixin:
         self._hidden_cat_sep.hide()
         cl_layout.addWidget(self._hidden_cat_sep)
 
-        self.manage_hidden_btn = QPushButton("Kategorien verwalten")
+        self.manage_hidden_btn = QPushButton(_tr("Kategorien verwalten"))
         self.manage_hidden_btn.setStyleSheet("""
             QPushButton {
                 text-align: left;
@@ -936,17 +937,17 @@ class UiBuilderMixin:
         sort_layout.setContentsMargins(12, 4, 10, 4)
         sort_layout.setSpacing(8)
 
-        sort_label = QLabel("Sortierung:")
+        sort_label = QLabel(_tr("Sortierung:"))
         sort_label.setStyleSheet("color: #666; font-size: 12px; border: none;")
         sort_layout.addWidget(sort_label)
 
         self.sort_combo = QComboBox()
         self.sort_combo.addItems([
-            "Standard",
-            "Zuletzt hinzugefuegt",
-            "Bewertung (beste zuerst)",
-            "A - Z",
-            "Z - A",
+            _tr("Standard"),
+            _tr("Zuletzt hinzugefügt"),
+            _tr("Bewertung (beste zuerst)"),
+            _tr("A – Z"),
+            _tr("Z – A"),
         ])
         self.sort_combo.setStyleSheet("""
             QComboBox {
@@ -997,10 +998,10 @@ class UiBuilderMixin:
                 border-radius: 3px;
             }
         """)
-        self._loading_text = QLabel("Lade...")
+        self._loading_text = QLabel(_tr("Lade…"))
         self._loading_text.setAlignment(Qt.AlignCenter)
         self._loading_text.setStyleSheet("color: #888; font-size: 13px;")
-        self._loading_retry_btn = QPushButton("Erneut versuchen")
+        self._loading_retry_btn = QPushButton(_tr("Erneut versuchen"))
         self._loading_retry_btn.setFixedWidth(160)
         self._loading_retry_btn.setStyleSheet("""
             QPushButton {
@@ -1096,14 +1097,14 @@ class UiBuilderMixin:
         h_lay.setSpacing(8)
 
         title_row = QHBoxLayout()
-        title_lbl = QLabel("Programm-Suche")
+        title_lbl = QLabel(_tr("Programm-Suche"))
         title_lbl.setStyleSheet("color: white; font-size: 15px; font-weight: bold;")
         title_row.addWidget(title_lbl, stretch=1)
         reload_btn = QPushButton()
         reload_btn.setIcon(_si("refresh.svg"))
         reload_btn.setIconSize(QSize(15, 15))
         reload_btn.setFixedSize(28, 28)
-        reload_btn.setToolTip("EPG neu laden")
+        reload_btn.setToolTip(_tr("EPG neu laden"))
         reload_btn.setStyleSheet("""
             QPushButton { background: transparent; border: none; }
             QPushButton:hover { background: rgba(255,255,255,10); border-radius: 5px; }
@@ -1113,7 +1114,7 @@ class UiBuilderMixin:
         h_lay.addLayout(title_row)
 
         self.epg_search_input = QLineEdit()
-        self.epg_search_input.setPlaceholderText("Sendung suchen…")
+        self.epg_search_input.setPlaceholderText(_tr("Sendung suchen…"))
         self.epg_search_input.setClearButtonEnabled(True)
         self.epg_search_input.setStyleSheet("""
             QLineEdit {
@@ -1151,7 +1152,7 @@ class UiBuilderMixin:
         f_lay.setSpacing(6)
 
         self._epg_filter_buttons = {}
-        for label, fkey in [("Alle", "all"), ("Jetzt", "now"), ("Bald", "soon")]:
+        for label, fkey in [(_tr("Alle"), "all"), (_tr("Jetzt"), "now"), (_tr("Bald"), "soon")]:
             btn = QPushButton(label)
             btn.setProperty("active", "true" if fkey == "all" else "false")
             btn.setCursor(Qt.PointingHandCursor)
@@ -1227,7 +1228,7 @@ class UiBuilderMixin:
         back_bar.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
         back_bar_layout = QHBoxLayout(back_bar)
         back_bar_layout.setContentsMargins(8, 0, 8, 0)
-        self.detail_back_btn = QPushButton("‹  Senderliste")
+        self.detail_back_btn = QPushButton("‹  " + _tr("Senderliste"))
         self.detail_back_btn.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #777;
@@ -1314,7 +1315,7 @@ class UiBuilderMixin:
         prev_lay.setContentsMargins(0, 0, 0, 0)
         prev_lay.setSpacing(4)
 
-        davor_lbl = QLabel("DAVOR")
+        davor_lbl = QLabel(_tr("DAVOR"))
         davor_lbl.setStyleSheet(
             "font-size: 10px; font-weight: bold; color: #333; letter-spacing: 2px;"
         )
@@ -1348,7 +1349,7 @@ class UiBuilderMixin:
         now_lay.setContentsMargins(0, 0, 0, 0)
         now_lay.setSpacing(8)
 
-        jetzt_lbl = QLabel("JETZT")
+        jetzt_lbl = QLabel(_tr("JETZT"))
         jetzt_lbl.setStyleSheet(
             "font-size: 10px; font-weight: bold; color: #e8691a; letter-spacing: 2px;"
         )
@@ -1372,7 +1373,7 @@ class UiBuilderMixin:
         self.detail_now_rec_btn = QPushButton()
         self.detail_now_rec_btn.setIcon(_pi("record.svg", 16))
         self.detail_now_rec_btn.setIconSize(QSize(16, 16))
-        self.detail_now_rec_btn.setToolTip("Aufnahme planen")
+        self.detail_now_rec_btn.setToolTip(_tr("Aufnahme planen"))
         self.detail_now_rec_btn.setFixedSize(30, 30)
         self.detail_now_rec_btn.setStyleSheet("""
             QPushButton {
@@ -1417,7 +1418,7 @@ class UiBuilderMixin:
         future_outer.setContentsMargins(0, 0, 0, 0)
         future_outer.setSpacing(6)
 
-        danach_lbl = QLabel("DANACH")
+        danach_lbl = QLabel(_tr("DANACH"))
         danach_lbl.setStyleSheet(
             "font-size: 10px; font-weight: bold; color: #444; letter-spacing: 2px;"
         )
@@ -1434,7 +1435,7 @@ class UiBuilderMixin:
         lay.addWidget(self.detail_future_section)
 
         # ── Vollstaendiges EPG-Button ──────────────────────────────
-        self.detail_epg_action_btn = QPushButton("Vollst\u00e4ndiges EPG  \u25B8")
+        self.detail_epg_action_btn = QPushButton(_tr("Vollständiges EPG") + "  \u25B8")
         self.detail_epg_action_btn.setFixedHeight(38)
         self.detail_epg_action_btn.setStyleSheet("""
             QPushButton {
@@ -1535,7 +1536,7 @@ class UiBuilderMixin:
         self.epg_channel_name.setWordWrap(False)
         right_col.addWidget(self.epg_channel_name)
 
-        self.epg_now_label = QLabel("JETZT")
+        self.epg_now_label = QLabel(_tr("JETZT"))
         self.epg_now_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #e8691a; letter-spacing: 1px;")
         right_col.addWidget(self.epg_now_label)
 
@@ -1561,7 +1562,7 @@ class UiBuilderMixin:
         self.epg_now_desc.hide()
         right_col.addWidget(self.epg_now_desc)
 
-        self.epg_next_label = QLabel("DANACH")
+        self.epg_next_label = QLabel(_tr("DANACH"))
         self.epg_next_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #555; letter-spacing: 1px;")
         right_col.addWidget(self.epg_next_label)
 
@@ -1574,8 +1575,8 @@ class UiBuilderMixin:
         right_col.addStretch()
 
         # EPG-Button ganz unten rechts
-        self.btn_full_epg = QPushButton("EPG \u25B8")
-        self.btn_full_epg.setToolTip("Vollständiges Sendeprogramm anzeigen")
+        self.btn_full_epg = QPushButton(_tr("EPG") + " \u25B8")
+        self.btn_full_epg.setToolTip(_tr("Vollständiges Sendeprogramm anzeigen"))
         self.btn_full_epg.setFixedHeight(24)
         self.btn_full_epg.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         self.btn_full_epg.setStyleSheet("""
@@ -1619,7 +1620,7 @@ class UiBuilderMixin:
         header.setFixedHeight(40)
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 0, 8, 0)
-        self.btn_series_back = QPushButton("\u2190 Zur\u00fcck")
+        self.btn_series_back = QPushButton(_tr("\u2190 Zur\u00fcck"))
         self.btn_series_back.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #0078d4; border: none;
@@ -1725,7 +1726,7 @@ class UiBuilderMixin:
         self.season_combo.currentIndexChanged.connect(self._on_season_changed)
         season_layout.addWidget(self.season_combo)
 
-        self.btn_series_trailer = QPushButton("Trailer")
+        self.btn_series_trailer = QPushButton(_tr("Trailer"))
         self.btn_series_trailer.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #0078d4; border: 1px solid #0078d4;
@@ -1781,7 +1782,7 @@ class UiBuilderMixin:
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 0, 8, 0)
 
-        self.btn_vod_back = QPushButton("\u2190 Zurueck")
+        self.btn_vod_back = QPushButton(_tr("\u2190 Zur\u00fcck"))
         self.btn_vod_back.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #0078d4; border: none;
@@ -1872,7 +1873,7 @@ class UiBuilderMixin:
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        self.btn_play_vod = QPushButton("\u25B6\uFE0E  Abspielen")
+        self.btn_play_vod = QPushButton(_tr("\u25B6\uFE0E  Abspielen"))
         self.btn_play_vod.setStyleSheet("""
             QPushButton {
                 background-color: #0078d4; color: white; border: none;
@@ -1884,7 +1885,7 @@ class UiBuilderMixin:
         self.btn_play_vod.clicked.connect(self._play_current_vod)
         btn_layout.addWidget(self.btn_play_vod)
 
-        self.btn_trailer = QPushButton("Trailer")
+        self.btn_trailer = QPushButton(_tr("Trailer"))
         self.btn_trailer.setStyleSheet("""
             QPushButton {
                 background: transparent; color: #0078d4; border: 1px solid #0078d4;
@@ -1925,7 +1926,7 @@ class UiBuilderMixin:
         details_layout.addWidget(self.vod_genre_widget)
 
         # Handlung
-        self.vod_plot_header = QLabel("Handlung")
+        self.vod_plot_header = QLabel(_tr("Handlung"))
         self.vod_plot_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
         self.vod_plot_header.hide()
         details_layout.addWidget(self.vod_plot_header)
@@ -1942,7 +1943,7 @@ class UiBuilderMixin:
         dir_layout = QVBoxLayout(self.vod_director_widget)
         dir_layout.setContentsMargins(0, 0, 0, 0)
         dir_layout.setSpacing(8)
-        dir_header = QLabel("Regie")
+        dir_header = QLabel(_tr("Regie"))
         dir_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
         dir_layout.addWidget(dir_header)
         self.vod_director_label = QLabel("")
@@ -1956,7 +1957,7 @@ class UiBuilderMixin:
         cast_outer = QVBoxLayout(self.vod_cast_widget)
         cast_outer.setContentsMargins(0, 0, 0, 0)
         cast_outer.setSpacing(10)
-        cast_header = QLabel("Besetzung")
+        cast_header = QLabel(_tr("Besetzung"))
         cast_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
         cast_outer.addWidget(cast_header)
         # Flow-Layout fuer Schauspieler-Chips
@@ -2033,7 +2034,7 @@ class UiBuilderMixin:
         pc_layout.addWidget(self.player)
 
         # Buffering-Overlay
-        self.buffering_overlay = QLabel("Laden...")
+        self.buffering_overlay = QLabel(_tr("Laden..."))
         self.buffering_overlay.setAlignment(Qt.AlignCenter)
         self.buffering_overlay.setStyleSheet("""
             QLabel {
@@ -2215,7 +2216,7 @@ class UiBuilderMixin:
         self.pip_expand_btn.setIcon(_pi("maximize2.svg", 14))
         self.pip_expand_btn.setIconSize(QSize(14, 14))
         self.pip_expand_btn.setFixedSize(28, 26)
-        self.pip_expand_btn.setToolTip("Vergrößern")
+        self.pip_expand_btn.setToolTip(_tr("Vergrößern"))
         self.pip_expand_btn.setStyleSheet(
             _pip_btn_base +
             "QPushButton:hover { background: rgba(50,180,50,180); border-radius: 4px; }"
@@ -2227,7 +2228,7 @@ class UiBuilderMixin:
         self.pip_close_btn.setIcon(_svg_icon("x.svg", 14, bright=True))
         self.pip_close_btn.setIconSize(QSize(14, 14))
         self.pip_close_btn.setFixedSize(28, 26)
-        self.pip_close_btn.setToolTip("Wiedergabe beenden")
+        self.pip_close_btn.setToolTip(_tr("Wiedergabe beenden"))
         self.pip_close_btn.setStyleSheet(
             _pip_btn_base +
             "QPushButton:hover { background: rgba(220,50,50,200); border-radius: 4px; }"
@@ -2268,7 +2269,7 @@ class UiBuilderMixin:
         """
         _epg_icon_size = QSize(16, 16)
 
-        self.live_epg_von_anfang_btn = QPushButton(" Anfang")
+        self.live_epg_von_anfang_btn = QPushButton(" " + _tr("Anfang"))
         self.live_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 16))
         self.live_epg_von_anfang_btn.setIconSize(_epg_icon_size)
         self.live_epg_von_anfang_btn.setFixedHeight(28)
@@ -2277,7 +2278,7 @@ class UiBuilderMixin:
         self.live_epg_von_anfang_btn.hide()
         layout.addWidget(self.live_epg_von_anfang_btn)
 
-        self.live_epg_catchup_btn = QPushButton(" Catchup")
+        self.live_epg_catchup_btn = QPushButton(" " + _tr("Catchup"))
         self.live_epg_catchup_btn.setIcon(_pi("catchup.svg", 16))
         self.live_epg_catchup_btn.setIconSize(_epg_icon_size)
         self.live_epg_catchup_btn.setFixedHeight(28)
@@ -2286,7 +2287,7 @@ class UiBuilderMixin:
         self.live_epg_catchup_btn.hide()
         layout.addWidget(self.live_epg_catchup_btn)
 
-        self.live_epg_epg_btn = QPushButton(" EPG")
+        self.live_epg_epg_btn = QPushButton(" " + _tr("EPG"))
         self.live_epg_epg_btn.setIcon(_pi("clock.svg", 16))
         self.live_epg_epg_btn.setIconSize(_epg_icon_size)
         self.live_epg_epg_btn.setFixedHeight(28)
@@ -2362,7 +2363,7 @@ class UiBuilderMixin:
         self.btn_play_pause.setIcon(self._icon_play)
         self.btn_play_pause.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_play_pause.setFixedSize(36, 36)
-        self.btn_play_pause.setToolTip("Play / Pause  (Leertaste)")
+        self.btn_play_pause.setToolTip(_tr("Play / Pause  (Leertaste)"))
         self.btn_play_pause.clicked.connect(self._toggle_play_pause)
         layout.addWidget(self.btn_play_pause)
 
@@ -2382,7 +2383,7 @@ class UiBuilderMixin:
         self.btn_record.setIcon(_pi_colored("record.svg", _CTRL_ICON - 2, "#ff4444"))
         self.btn_record.setIconSize(QSize(_CTRL_ICON - 2, _CTRL_ICON - 2))
         self.btn_record.setFixedSize(36, 36)
-        self.btn_record.setToolTip("Aufnahme starten / stoppen")
+        self.btn_record.setToolTip(_tr("Aufnahme starten / stoppen"))
         self.btn_record.clicked.connect(self._toggle_recording)
         layout.addWidget(self.btn_record)
 
@@ -2391,7 +2392,7 @@ class UiBuilderMixin:
         self.btn_zap_prev.setIcon(_pi("chevron-left.svg", _CTRL_ICON))
         self.btn_zap_prev.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_zap_prev.setFixedSize(32, 32)
-        self.btn_zap_prev.setToolTip("Vorheriger Kanal")
+        self.btn_zap_prev.setToolTip(_tr("Vorheriger Kanal"))
         self.btn_zap_prev.clicked.connect(self._zap_prev)
         self.btn_zap_prev.hide()
         layout.addWidget(self.btn_zap_prev)
@@ -2400,7 +2401,7 @@ class UiBuilderMixin:
         self.btn_zap_next.setIcon(_pi("chevron-right.svg", _CTRL_ICON))
         self.btn_zap_next.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_zap_next.setFixedSize(32, 32)
-        self.btn_zap_next.setToolTip("Nächster Kanal")
+        self.btn_zap_next.setToolTip(_tr("Nächster Kanal"))
         self.btn_zap_next.clicked.connect(self._zap_next)
         self.btn_zap_next.hide()
         layout.addWidget(self.btn_zap_next)
@@ -2519,7 +2520,7 @@ class UiBuilderMixin:
         self.btn_audio.setIcon(_pi("headphones.svg", _SIDE_ICON))
         self.btn_audio.setIconSize(QSize(_SIDE_ICON, _SIDE_ICON))
         self.btn_audio.setFixedSize(32, 32)
-        self.btn_audio.setToolTip("Tonspur wählen")
+        self.btn_audio.setToolTip(_tr("Tonspur w\u00e4hlen"))
         self.btn_audio.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }
             QPushButton:hover { background: rgba(255,255,255,10); }
@@ -2531,7 +2532,7 @@ class UiBuilderMixin:
         self.btn_subtitle.setIcon(_pi("captions.svg", _SIDE_ICON))
         self.btn_subtitle.setIconSize(QSize(_SIDE_ICON, _SIDE_ICON))
         self.btn_subtitle.setFixedSize(32, 32)
-        self.btn_subtitle.setToolTip("Untertitel wählen")
+        self.btn_subtitle.setToolTip(_tr("Untertitel w\u00e4hlen"))
         self.btn_subtitle.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }
             QPushButton:hover { background: rgba(255,255,255,10); }
@@ -2544,7 +2545,7 @@ class UiBuilderMixin:
         self.btn_stream_info.setIcon(_pi_colored("info.svg", _SIDE_ICON, "#e8691a"))
         self.btn_stream_info.setIconSize(QSize(_SIDE_ICON, _SIDE_ICON))
         self.btn_stream_info.setFixedSize(32, 32)
-        self.btn_stream_info.setToolTip("Stream-Info")
+        self.btn_stream_info.setToolTip(_tr("Stream-Info"))
         self.btn_stream_info.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }
             QPushButton:hover { background: rgba(255,255,255,10); }
@@ -2557,7 +2558,7 @@ class UiBuilderMixin:
         self.btn_zoom.setIcon(_pi("crop.svg", _SIDE_ICON))
         self.btn_zoom.setIconSize(QSize(_SIDE_ICON, _SIDE_ICON))
         self.btn_zoom.setFixedSize(32, 32)
-        self.btn_zoom.setToolTip("Seitenverhältnis: Normal → Fill → Stretch")
+        self.btn_zoom.setToolTip(_tr("Seitenverh\u00e4ltnis: Normal \u2192 Fill \u2192 Stretch"))
         self.btn_zoom.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }
             QPushButton:hover { background: rgba(255,255,255,10); }
@@ -2574,7 +2575,7 @@ class UiBuilderMixin:
         self.btn_fullscreen.setIcon(_pi("maximize.svg", _CTRL_ICON))
         self.btn_fullscreen.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_fullscreen.setFixedSize(36, 36)
-        self.btn_fullscreen.setToolTip("Vollbild  (F / Doppelklick)")
+        self.btn_fullscreen.setToolTip(_tr("Vollbild  (F / Doppelklick)"))
         self.btn_fullscreen.clicked.connect(self._toggle_player_maximized)
         layout.addWidget(self.btn_fullscreen)
 
@@ -2664,11 +2665,11 @@ class UiBuilderMixin:
         prog_row_layout.setContentsMargins(0, 2, 0, 2)
         prog_row_layout.setSpacing(8)
 
-        self.fs_epg_von_anfang_btn = QPushButton(" Anfang")
+        self.fs_epg_von_anfang_btn = QPushButton(_tr(" Anfang"))
         self.fs_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 15))
         self.fs_epg_von_anfang_btn.setIconSize(QSize(15, 15))
         self.fs_epg_von_anfang_btn.setFixedHeight(32)
-        self.fs_epg_von_anfang_btn.setToolTip("Sendung von Anfang abspielen (Catchup)")
+        self.fs_epg_von_anfang_btn.setToolTip(_tr("Sendung von Anfang abspielen (Catchup)"))
         self.fs_epg_von_anfang_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -2786,7 +2787,7 @@ class UiBuilderMixin:
         self.fs_btn_skip_back.setIconSize(QSize(_FS, _FS))
         self.fs_btn_skip_back.setFixedSize(44, 44)
         self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-30))
-        self.fs_btn_skip_back.setToolTip("30s zurück")
+        self.fs_btn_skip_back.setToolTip(_tr("30s zur\u00fcck"))
         self.fs_btn_skip_back.hide()
         btn_row.addWidget(self.fs_btn_skip_back)
 
@@ -2795,7 +2796,7 @@ class UiBuilderMixin:
         self.fs_btn_skip_forward.setIconSize(QSize(_FS, _FS))
         self.fs_btn_skip_forward.setFixedSize(44, 44)
         self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(30))
-        self.fs_btn_skip_forward.setToolTip("30s vor")
+        self.fs_btn_skip_forward.setToolTip(_tr("30s vor"))
         self.fs_btn_skip_forward.hide()
         btn_row.addWidget(self.fs_btn_skip_forward)
 
@@ -2827,7 +2828,7 @@ class UiBuilderMixin:
         self.fs_btn_record.setIcon(_pi_colored("record.svg", _FS - 4, "#ff4444"))
         self.fs_btn_record.setIconSize(QSize(_FS - 4, _FS - 4))
         self.fs_btn_record.setFixedSize(44, 44)
-        self.fs_btn_record.setToolTip("Aufnahme starten / stoppen")
+        self.fs_btn_record.setToolTip(_tr("Aufnahme starten / stoppen"))
         self.fs_btn_record.clicked.connect(self._toggle_recording)
         btn_row.addWidget(self.fs_btn_record)
 
@@ -2844,7 +2845,7 @@ class UiBuilderMixin:
         self.fs_btn_audio.setIcon(_pi("headphones.svg", _FS_SM))
         self.fs_btn_audio.setIconSize(QSize(_FS_SM, _FS_SM))
         self.fs_btn_audio.setFixedSize(40, 40)
-        self.fs_btn_audio.setToolTip("Tonspur wählen")
+        self.fs_btn_audio.setToolTip(_tr("Tonspur w\u00e4hlen"))
         self.fs_btn_audio.setStyleSheet(_fs_icon_btn_style)
         self.fs_btn_audio.clicked.connect(self._show_audio_menu)
         btn_row.addWidget(self.fs_btn_audio)
@@ -2853,7 +2854,7 @@ class UiBuilderMixin:
         self.fs_btn_subtitle.setIcon(_pi("captions.svg", _FS_SM))
         self.fs_btn_subtitle.setIconSize(QSize(_FS_SM, _FS_SM))
         self.fs_btn_subtitle.setFixedSize(40, 40)
-        self.fs_btn_subtitle.setToolTip("Untertitel wählen")
+        self.fs_btn_subtitle.setToolTip(_tr("Untertitel w\u00e4hlen"))
         self.fs_btn_subtitle.setStyleSheet(_fs_icon_btn_style)
         self.fs_btn_subtitle.clicked.connect(self._show_subtitle_menu)
         btn_row.addWidget(self.fs_btn_subtitle)
@@ -2863,7 +2864,7 @@ class UiBuilderMixin:
         self.fs_btn_stream_info.setIcon(_pi_colored("info.svg", _FS_SM, "#e8691a"))
         self.fs_btn_stream_info.setIconSize(QSize(_FS_SM, _FS_SM))
         self.fs_btn_stream_info.setFixedSize(40, 40)
-        self.fs_btn_stream_info.setToolTip("Stream-Info")
+        self.fs_btn_stream_info.setToolTip(_tr("Stream-Info"))
         self.fs_btn_stream_info.setStyleSheet(_fs_icon_btn_style)
         self.fs_btn_stream_info.clicked.connect(self._toggle_stream_info)
         btn_row.addWidget(self.fs_btn_stream_info)
@@ -2872,7 +2873,7 @@ class UiBuilderMixin:
         self.fs_btn_zoom.setIcon(_pi("crop.svg", _FS_SM))
         self.fs_btn_zoom.setIconSize(QSize(_FS_SM, _FS_SM))
         self.fs_btn_zoom.setFixedSize(40, 40)
-        self.fs_btn_zoom.setToolTip("Seitenverhältnis: Normal → Fill → Stretch")
+        self.fs_btn_zoom.setToolTip(_tr("Seitenverh\u00e4ltnis: Normal \u2192 Fill \u2192 Stretch"))
         self.fs_btn_zoom.setStyleSheet(_fs_icon_btn_style)
         self.fs_btn_zoom.clicked.connect(self._cycle_zoom_mode)
         btn_row.addWidget(self.fs_btn_zoom)
@@ -2909,7 +2910,7 @@ class UiBuilderMixin:
         fs_exit_btn.setIcon(_pi("minimize.svg", _FS))
         fs_exit_btn.setIconSize(QSize(_FS, _FS))
         fs_exit_btn.setFixedSize(48, 48)
-        fs_exit_btn.setToolTip("Vollbild verlassen  (Esc / F)")
+        fs_exit_btn.setToolTip(_tr("Vollbild verlassen  (Esc / F)"))
         fs_exit_btn.clicked.connect(self._toggle_player_maximized)
         btn_row.addWidget(fs_exit_btn)
 
@@ -2990,7 +2991,7 @@ class UiBuilderMixin:
             }
             QStatusBar::item { border: none; }
         """)
-        self.status_bar.showMessage("Bereit")
+        self.status_bar.showMessage(_tr("Bereit"))
 
         self.loading_bar = QProgressBar()
         self.loading_bar.setRange(0, 0)  # indeterminate

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from watch_history_manager import WatchEntry
+from i18n import _tr
 
 
 class HistoryMixin:
@@ -36,14 +37,14 @@ class HistoryMixin:
 
         for entry in entries:
             # Typ-Badge + Titel + Zeitpunkt
-            type_badge = {"live": "[Live]", "vod": "[Film]", "series": "[Serie]"}.get(entry.stream_type, "")
+            type_badge = {"live": _tr("[Live]"), "vod": _tr("[Film]"), "series": _tr("[Serie]")}.get(entry.stream_type, "")
             time_str = self._format_relative_time(entry.watched_at)
             text = f"{type_badge} {entry.title}  \u2022  {time_str}"
             list_item = QListWidgetItem(text)
             list_item.setData(Qt.UserRole, entry)
             self.channel_list.addItem(list_item)
 
-        self.status_bar.showMessage(f"{len(entries)} Eintraege im Verlauf")
+        self.status_bar.showMessage(_tr("{} Eintraege im Verlauf").format(len(entries)))
 
     def _load_recordings(self):
         """Laedt und zeigt gespeicherte Aufnahmen an"""
@@ -68,7 +69,7 @@ class HistoryMixin:
                 if rec.epg_title:
                     label += f" \u2013 {rec.epg_title}"
                 end_str = datetime.fromtimestamp(rec.end_timestamp).strftime("%H:%M")
-                label += f"  \u2022  L\u00e4uft bis {end_str}"
+                label += _tr("  \u2022  L\u00e4uft bis {}").format(end_str)
             else:
                 start_str = datetime.fromtimestamp(rec.start_timestamp).strftime("%d.%m. %H:%M")
                 end_str = datetime.fromtimestamp(rec.end_timestamp).strftime("%H:%M")
@@ -87,10 +88,10 @@ class HistoryMixin:
 
         rec_dir = self.recorder.output_dir
         if not rec_dir.exists() and not active:
-            self.status_bar.showMessage("Keine Aufnahmen vorhanden")
+            self.status_bar.showMessage(_tr("Keine Aufnahmen vorhanden"))
             return
         elif not rec_dir.exists():
-            self.status_bar.showMessage(f"{len(active)} geplante Aufnahmen")
+            self.status_bar.showMessage(_tr("{} geplante Aufnahmen").format(len(active)))
             return
 
         files = sorted(
@@ -115,7 +116,7 @@ class HistoryMixin:
             list_item.setData(Qt.UserRole, ("recording", f))
             self.channel_list.addItem(list_item)
 
-        self.status_bar.showMessage(f"{len(files)} Aufnahmen")
+        self.status_bar.showMessage(_tr("{} Aufnahmen").format(len(files)))
 
     @staticmethod
     def _format_relative_time(iso_str: str) -> str:
@@ -125,18 +126,18 @@ class HistoryMixin:
             diff = datetime.now() - dt
             seconds = int(diff.total_seconds())
             if seconds < 60:
-                return "gerade eben"
+                return _tr("gerade eben")
             elif seconds < 3600:
                 mins = seconds // 60
-                return f"vor {mins} Min."
+                return _tr("vor {} Min.").format(mins)
             elif seconds < 86400:
                 hours = seconds // 3600
-                return f"vor {hours}h"
+                return _tr("vor {}h").format(hours)
             elif seconds < 172800:
-                return "gestern"
+                return _tr("gestern")
             else:
                 days = seconds // 86400
-                return f"vor {days} Tagen"
+                return _tr("vor {} Tagen").format(days)
         except (ValueError, TypeError):
             return ""
 
@@ -206,8 +207,8 @@ class HistoryMixin:
         dur_str = self._format_time(dur)
 
         reply = QMessageBox.question(
-            self, "Fortsetzen",
-            f"Fortsetzen bei {pos_str} / {dur_str}?",
+            self, _tr("Fortsetzen"),
+            _tr("Fortsetzen bei {} / {}?").format(pos_str, dur_str),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes
         )
@@ -222,9 +223,9 @@ class HistoryMixin:
             # Stoppen
             filepath = self.recorder.stop()
             if filepath and filepath.exists() and filepath.stat().st_size > 0:
-                self.status_bar.showMessage(f"Aufnahme gespeichert: {filepath.name}")
+                self.status_bar.showMessage(_tr("Aufnahme gespeichert: {}").format(filepath.name))
             else:
-                self.status_bar.showMessage("Aufnahme gestoppt")
+                self.status_bar.showMessage(_tr("Aufnahme gestoppt"))
             self._sync_record_buttons(False)
         else:
             # Starten
@@ -232,12 +233,12 @@ class HistoryMixin:
                 self._sync_record_buttons(False)
                 return
             filepath = self.recorder.start(self._current_stream_url, self._current_stream_title)
-            self.status_bar.showMessage(f"Aufnahme: {filepath.name}")
+            self.status_bar.showMessage(_tr("Aufnahme: {}").format(filepath.name))
             self._sync_record_buttons(True)
 
     def _sync_record_buttons(self, recording: bool):
         """Synchronisiert den Aufnahme-Status in allen Buttons."""
-        tip = "Aufnahme stoppen" if recording else "Aufnahme starten"
+        tip = _tr("Aufnahme stoppen") if recording else _tr("Aufnahme starten")
         self.btn_record.setChecked(recording)
         self.btn_record.setToolTip(tip)
         fs_btn = getattr(self, 'fs_btn_record', None)
@@ -254,7 +255,7 @@ class HistoryMixin:
         # Button-State synchronisieren falls ffmpeg unerwartet beendet
         if self.btn_record.isChecked() and not self.recorder.is_recording:
             self._sync_record_buttons(False)
-            self.status_bar.showMessage("Aufnahme beendet (ffmpeg gestoppt)")
+            self.status_bar.showMessage(_tr("Aufnahme beendet (ffmpeg gestoppt)"))
             return
         if self.recorder.is_recording and self.recorder.start_time:
             elapsed = datetime.now() - self.recorder.start_time
@@ -265,5 +266,5 @@ class HistoryMixin:
             else:
                 time_str = f"{mins:02d}:{secs:02d}"
             self.status_bar.showMessage(
-                f"\u23FA Aufnahme: {self.recorder.current_title} - seit {time_str}"
+                _tr("\u23FA Aufnahme: {} - seit {}").format(self.recorder.current_title, time_str)
             )

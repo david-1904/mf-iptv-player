@@ -14,6 +14,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QFontMetrics, QColor
 
 from xtream_api import LiveStream, VodStream, Series
 from favorites_manager import Favorite
+from i18n import _tr
 
 
 class CategoriesMixin:
@@ -109,7 +110,7 @@ class CategoriesMixin:
             self._apply_channel_list_style(grid_mode=False)
             self.epg_panel.setVisible(False)
             self.channel_list.clear()
-            self.status_bar.showMessage("Enter druecken zum Suchen")
+            self.status_bar.showMessage(_tr("Enter drücken zum Suchen"))
             # Aktiven Filter-Chip visuell korrekt rendern (ohne Suche neu zu triggern)
             fkey = getattr(self, "_search_filter", "all")
             for k, btn in getattr(self, "_search_filter_buttons", {}).items():
@@ -121,7 +122,7 @@ class CategoriesMixin:
             self.channel_list.clear()
             self.channel_list.hide()
             self.epg_panel.hide()
-            self._loading_text.setText("Lade...")
+            self._loading_text.setText(_tr("Lade…"))
             self.channel_loading.show()
             asyncio.ensure_future(self._load_categories())
 
@@ -136,7 +137,7 @@ class CategoriesMixin:
             self.manage_hidden_btn.hide()
             self._epg_splitter.show()
 
-        self._show_loading("Lade Kategorien...")
+        self._show_loading(_tr("Lade Kategorien…"))
 
         try:
             if self.current_mode == "live":
@@ -192,7 +193,7 @@ class CategoriesMixin:
                 if session:
                     self._restore_session_item(session)
             else:
-                self.category_btn.setText("Keine Kategorien")
+                self.category_btn.setText(_tr("Keine Kategorien"))
 
             self._hide_loading()
         except Exception as e:
@@ -298,12 +299,12 @@ class CategoriesMixin:
             return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Kategorien verwalten")
+        dialog.setWindowTitle(_tr("Kategorien verwalten"))
         dialog.setMinimumSize(420, 480)
         layout = QVBoxLayout(dialog)
         layout.setSpacing(12)
 
-        label = QLabel("Aktivierte Kategorien werden in der Liste angezeigt.")
+        label = QLabel(_tr("Aktivierte Kategorien werden in der Liste angezeigt."))
         label.setStyleSheet("color: #999; font-size: 12px;")
         layout.addWidget(label)
 
@@ -325,8 +326,8 @@ class CategoriesMixin:
         layout.addWidget(scroll)
 
         btn_layout = QHBoxLayout()
-        apply_btn = QPushButton("Übernehmen")
-        cancel_btn = QPushButton("Abbrechen")
+        apply_btn = QPushButton(_tr("Übernehmen"))
+        cancel_btn = QPushButton(_tr("Abbrechen"))
         cancel_btn.setStyleSheet("""
             QPushButton {
                 background-color: rgba(255,255,255,8);
@@ -452,7 +453,7 @@ class CategoriesMixin:
         if not self.api:
             return
 
-        self._show_loading("Lade Inhalte...")
+        self._show_loading(_tr("Lade Inhalte…"))
         self.channel_list.clear()
 
         # View-Modus je nach Kategorie umschalten
@@ -500,7 +501,7 @@ class CategoriesMixin:
                     if cell_size.isValid():
                         list_item.setSizeHint(cell_size)
                     if item.rating and item.rating not in ("0", ""):
-                        list_item.setToolTip(f"Bewertung: {item.rating}")
+                        list_item.setToolTip(_tr("Bewertung: {}").format(item.rating))
                     self.channel_list.addItem(list_item)
 
             else:  # series
@@ -513,10 +514,10 @@ class CategoriesMixin:
                     if cell_size.isValid():
                         list_item.setSizeHint(cell_size)
                     if item.rating and item.rating not in ("0", ""):
-                        list_item.setToolTip(f"Bewertung: {item.rating}")
+                        list_item.setToolTip(_tr("Bewertung: {}").format(item.rating))
                     self.channel_list.addItem(list_item)
 
-            self._hide_loading(f"{self.channel_list.count()} Eintraege geladen")
+            self._hide_loading(_tr("{} Einträge geladen").format(self.channel_list.count()))
             self._update_current_list_item_display()
 
             # Ersten Live-Sender markieren + EPG vorladen (Detail-Panel bleibt zu)

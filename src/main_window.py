@@ -38,6 +38,7 @@ from app_settings import AppSettings
 from schedule_manager import ScheduleManager
 from schedule_mixin import ScheduleMixin
 from epg_search_mixin import EpgSearchMixin
+from i18n import _tr
 
 class MainWindow(
     UiBuilderMixin,
@@ -264,7 +265,7 @@ class MainWindow(
         if not info:
             return
         self._update_release_info = info
-        self.btn_update.setText(f"Update v{info.version}")
+        self.btn_update.setText(_tr("Update v{}").format(info.version))
         self.btn_update.clicked.connect(self._show_update_dialog)
         self.btn_update.show()
 
@@ -274,16 +275,16 @@ class MainWindow(
             return
 
         dlg = QDialog(self)
-        dlg.setWindowTitle(f"Update v{info.version}")
+        dlg.setWindowTitle(_tr("Update v{}").format(info.version))
         dlg.setMinimumSize(500, 400)
         layout = QVBoxLayout(dlg)
 
-        title = QLabel(f"Version {info.version} ist verfügbar!")
+        title = QLabel(_tr("Version {} ist verfügbar!").format(info.version))
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 8px;")
         layout.addWidget(title)
 
         if info.release_notes:
-            notes_label = QLabel("Release-Notes:")
+            notes_label = QLabel(_tr("Release-Notes:"))
             notes_label.setStyleSheet("font-weight: bold;")
             layout.addWidget(notes_label)
             notes = QTextEdit()
@@ -300,7 +301,7 @@ class MainWindow(
         status_label.setStyleSheet("color: #999;")
         layout.addWidget(status_label)
 
-        update_btn = QPushButton("\u2B07  Jetzt aktualisieren")
+        update_btn = QPushButton(_tr("\u2B07  Jetzt aktualisieren"))
         update_btn.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60;
@@ -341,15 +342,15 @@ class MainWindow(
         if success:
             if msg == "RESTART":
                 # Windows: Updater-Script läuft, App jetzt beenden
-                status_label.setText("Update heruntergeladen – App wird neu gestartet…")
+                status_label.setText(_tr("Update heruntergeladen \u2013 App wird neu gestartet\u2026"))
                 status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
                 QTimer.singleShot(1500, QApplication.instance().quit)
             else:
                 # Linux: git pull, manueller Neustart nötig
-                status_label.setText("Update erfolgreich! Bitte App neu starten.")
+                status_label.setText(_tr("Update erfolgreich! Bitte App neu starten."))
                 status_label.setStyleSheet("color: #4caf50; font-weight: bold;")
-                update_btn.setText("\u2714  Bitte App neu starten")
+                update_btn.setText(_tr("\u2714  Bitte App neu starten"))
         else:
-            status_label.setText(f"Fehler: {msg}")
+            status_label.setText(_tr("Fehler: {}").format(msg))
             status_label.setStyleSheet("color: #f44336;")
             update_btn.setEnabled(True)

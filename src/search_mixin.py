@@ -5,6 +5,7 @@ import asyncio
 
 from PySide6.QtWidgets import QListWidgetItem
 from PySide6.QtCore import Qt, QTimer
+from i18n import _tr
 
 
 class SearchMixin:
@@ -57,7 +58,7 @@ class SearchMixin:
 
     async def _perform_search(self, query: str):
         """Durchsucht alle Streams nach dem Suchbegriff"""
-        self._show_loading("Suche laeuft...")
+        self._show_loading(_tr("Suche laeuft..."))
         self.channel_list.clear()
         words = query.lower().split()
 
@@ -108,7 +109,7 @@ class SearchMixin:
                         self.channel_list.addItem(list_item)
 
             count = self.channel_list.count()
-            self._hide_loading(f"{count} Treffer fuer \"{query}\"")
+            self._hide_loading(_tr('{} Treffer f\u00fcr "{}"').format(count, query))
 
         except Exception as e:
-            self._hide_loading(f"Suchfehler: {e}")
+            self._hide_loading(_tr("Suchfehler: {}").format(e))

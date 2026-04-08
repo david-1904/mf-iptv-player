@@ -2,6 +2,7 @@
 Audio/Untertitel/Stream-Info: Track-Auswahl, Info-Panel
 """
 from PySide6.QtWidgets import QMenu
+from i18n import _tr
 
 
 class StreamControlsMixin:
@@ -12,7 +13,7 @@ class StreamControlsMixin:
         menu = QMenu(self)
 
         if not tracks:
-            action = menu.addAction("Keine Audio-Spuren verfuegbar")
+            action = menu.addAction(_tr("Keine Audio-Spuren verfügbar"))
             action.setEnabled(False)
         else:
             for track in tracks:
@@ -27,7 +28,7 @@ class StreamControlsMixin:
                 if parts:
                     label = " - ".join(parts)
                 else:
-                    label = f"Spur {track['id']}"
+                    label = _tr("Spur {}").format(track['id'])
 
                 action = menu.addAction(label)
                 action.setCheckable(True)
@@ -44,7 +45,7 @@ class StreamControlsMixin:
         menu = QMenu(self)
 
         # "Aus"-Eintrag
-        action_off = menu.addAction("Aus")
+        action_off = menu.addAction(_tr("Aus"))
         action_off.setCheckable(True)
         action_off.setChecked(not any(t["selected"] for t in tracks))
         action_off.triggered.connect(lambda: self.player.set_subtitle_track(False))
@@ -58,9 +59,9 @@ class StreamControlsMixin:
                     if track["lang"]:
                         label += f" ({track['lang']})"
                 elif track["lang"]:
-                    label = f"Spur {track['id']} ({track['lang']})"
+                    label = _tr("Spur {}").format(track['id']) + f" ({track['lang']})"
                 else:
-                    label = f"Spur {track['id']}"
+                    label = _tr("Spur {}").format(track['id'])
 
                 action = menu.addAction(label)
                 action.setCheckable(True)
@@ -124,10 +125,10 @@ class StreamControlsMixin:
             self.player.player["keepaspect"] = keepaspect
         except Exception:
             pass
-        self.btn_zoom.setToolTip(f"Bildgröße: {name}  →  Normal / Fill / Stretch")
+        self.btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Fill / Stretch").format(name))
         if hasattr(self, "fs_btn_zoom"):
-            self.fs_btn_zoom.setToolTip(f"Bildgröße: {name}  →  Normal / Fill / Stretch")
-        self.status_bar.showMessage(f"Bildgr\u00f6\u00dfe: {name}")
+            self.fs_btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Fill / Stretch").format(name))
+        self.status_bar.showMessage(_tr("Bildgröße: {}").format(name))
 
     def _update_stream_info(self):
         """Update stream info panel with current stream data"""
@@ -157,6 +158,6 @@ class StreamControlsMixin:
 
         num_tracks = len(info["audio_tracks"])
         if num_tracks > 0:
-            self.info_audio_tracks.setText(f"{num_tracks} Spur{'en' if num_tracks > 1 else ''}")
+            self.info_audio_tracks.setText(_tr("{} Spur").format(num_tracks) if num_tracks == 1 else _tr("{} Spuren").format(num_tracks))
         else:
             self.info_audio_tracks.setText("–")

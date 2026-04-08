@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
 
 from xtream_api import VodStream
+from i18n import _tr
 
 
 class VodDetailMixin:
@@ -127,7 +128,7 @@ class VodDetailMixin:
 
     async def _load_vod_detail(self, vod: VodStream):
         """Laedt VOD-Details asynchron"""
-        self._show_loading("Lade Film-Informationen...")
+        self._show_loading(_tr("Lade Film-Informationen..."))
         try:
             data = await self.api.get_vod_info(vod.stream_id)
             info = data.get("info", {}) or {}
@@ -234,7 +235,7 @@ class VodDetailMixin:
                 asyncio.ensure_future(self._load_vod_cover(cover_url))
 
         except Exception as e:
-            self._hide_loading(f"Fehler: {e}")
+            self._hide_loading(_tr("Fehler: {}").format(e))
             self.vod_loading_bar.hide()
             if vod.stream_icon:
                 asyncio.ensure_future(self._load_vod_cover(vod.stream_icon))

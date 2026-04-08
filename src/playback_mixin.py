@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QListWidgetItem
 from xtream_api import LiveStream, VodStream, Series, EpgEntry
 from watch_history_manager import WatchEntry
 from favorites_manager import Favorite
+from i18n import _tr
 
 
 class PlaybackMixin:
@@ -37,8 +38,8 @@ class PlaybackMixin:
             if rec.epg_title:
                 label += f" \u2013 {rec.epg_title}"
             reply = QMessageBox.question(
-                self, "Geplante Aufnahme",
-                f"Aufnahme abbrechen?\n{label}",
+                self, _tr("Geplante Aufnahme"),
+                _tr("Aufnahme abbrechen?") + f"\n{label}",
                 QMessageBox.Yes | QMessageBox.No,
             )
             if reply == QMessageBox.Yes:
@@ -169,7 +170,7 @@ class PlaybackMixin:
         self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         self.player_info_label.setText("")
         self.controls_timer.start(1000)
-        self.status_bar.showMessage(f"Spiele: {title}")
+        self.status_bar.showMessage(_tr("Spiele: {}").format(title))
 
         # Verlaufseintrag anlegen
         account = self.account_manager.get_selected()
@@ -268,7 +269,7 @@ class PlaybackMixin:
             if self._current_stream_type == "vod":
                 self._vod_has_played = True
             if self._reconnect_attempt > 0:
-                self.status_bar.showMessage(f"Verbunden: {self._current_stream_title}", 4000)
+                self.status_bar.showMessage(_tr("Verbunden: {}").format(self._current_stream_title), 4000)
             self._reconnect_attempt = 0
             self._stream_starting = False  # Stream laeuft → Schutzphase beenden
 
@@ -276,7 +277,7 @@ class PlaybackMixin:
         """Animiert den Buffering-Text"""
         self._buffering_dots = (self._buffering_dots + 1) % 4
         dots = "." * self._buffering_dots
-        self.buffering_overlay.setText(f"Laden{dots}")
+        self.buffering_overlay.setText(_tr("Laden") + dots)
 
     def _toggle_play_pause(self):
         """Play/Pause umschalten - mit Timeshift fuer Catchup-Sender"""
@@ -964,7 +965,7 @@ class PlaybackMixin:
             self._schedule_reconnect()
         elif self._current_stream_type == "vod" and reason == 'error':
             self.buffering_overlay.hide()
-            self.status_bar.showMessage("Fehler: Video konnte nicht geladen werden")
+            self.status_bar.showMessage(_tr("Fehler: Video konnte nicht geladen werden"))
 
     def _handle_vod_end(self):
         """Cleanup nach VOD-Ende: Player stoppen, Vollbild verlassen, zur Detailansicht zurück.
@@ -1003,7 +1004,7 @@ class PlaybackMixin:
         self._reconnect_attempt += 1
         delay = min(3000 * self._reconnect_attempt, 10000)
         self.status_bar.showMessage(
-            f"Stream unterbrochen – Verbindungsversuch {self._reconnect_attempt}/{self._max_reconnect_attempts} ..."
+            _tr("Stream unterbrochen \u2013 Verbindungsversuch {}/{}").format(self._reconnect_attempt, self._max_reconnect_attempts)
         )
         self._reconnect_timer.start(delay)
 
@@ -1034,7 +1035,7 @@ class PlaybackMixin:
         self._reconnect_attempt = 0
         self.buffering_overlay.hide()
         self._buffering_timer.stop()
-        self.status_bar.showMessage("Stream nicht erreichbar – bitte anderen Sender wählen")
+        self.status_bar.showMessage(_tr("Stream nicht erreichbar \u2013 bitte anderen Sender w\u00e4hlen"))
 
     @Slot()
     def _on_gl_context_recreated(self):

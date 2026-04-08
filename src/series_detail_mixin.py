@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from xtream_api import Series
+from i18n import _tr
 
 
 class SeriesDetailMixin:
@@ -56,7 +57,7 @@ class SeriesDetailMixin:
 
     async def _load_series_detail(self, series: Series):
         """Laedt Serien-Details asynchron"""
-        self._show_loading("Lade Serien-Informationen...")
+        self._show_loading(_tr("Lade Serien-Informationen..."))
         try:
             data = await self.api.get_series_info_parsed(series.series_id)
             self._series_data = data
@@ -82,21 +83,21 @@ class SeriesDetailMixin:
                 parts.append(genre[:40])
             n_seasons = len(data["seasons"])
             if n_seasons:
-                parts.append(f"{n_seasons} {'Staffel' if n_seasons == 1 else 'Staffeln'}")
+                parts.append(_tr("{} Staffel").format(n_seasons) if n_seasons == 1 else _tr("{} Staffeln").format(n_seasons))
             self.series_subtitle_label.setText("  \u00b7  ".join(parts))
 
             # Staffeln eintragen
             self.season_combo.blockSignals(True)
             self.season_combo.clear()
             for s in data["seasons"]:
-                self.season_combo.addItem(f"Staffel {s}", s)
+                self.season_combo.addItem(_tr("Staffel {}").format(s), s)
             self.season_combo.blockSignals(False)
 
             # Erste Staffel laden
             if data["seasons"]:
                 self._populate_episodes(data["seasons"][0])
 
-            self._hide_loading(f"{len(data['seasons'])} Staffeln geladen")
+            self._hide_loading(_tr("{} Staffeln geladen").format(len(data['seasons'])))
 
             # Trailer
             import urllib.parse
@@ -117,7 +118,7 @@ class SeriesDetailMixin:
                 asyncio.ensure_future(self._load_series_cover(cover_url))
 
         except Exception as e:
-            self._hide_loading(f"Fehler: {e}")
+            self._hide_loading(_tr("Fehler: {}").format(e))
 
     async def _load_series_cover(self, url: str):
         """Laedt das Serien-Cover asynchron"""
@@ -209,7 +210,7 @@ class SeriesDetailMixin:
             self.episode_list.addItem(item)
             self.episode_list.setItemWidget(item, card)
 
-        self.status_bar.showMessage(f"Staffel {season}: {len(episodes)} Episoden")
+        self.status_bar.showMessage(_tr("Staffel {}: {} Episoden").format(season, len(episodes)))
 
     @Slot(QListWidgetItem)
     def _on_episode_selected(self, item: QListWidgetItem):

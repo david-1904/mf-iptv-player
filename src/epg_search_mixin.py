@@ -12,6 +12,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtWidgets import QLabel, QPushButton, QWidget, QHBoxLayout, QVBoxLayout, QSizePolicy
+from i18n import _tr
 
 _EPG_CACHE_TTL = 24 * 3600  # 24 Stunden
 
@@ -27,17 +28,17 @@ class EpgSearchMixin:
         self._epg_search_generation = getattr(self, '_epg_search_generation', 0) + 1
         self._epg_search_set_filter_ui("all")
         self._epg_search_set_locked(True)
-        self._epg_search_show_placeholder("EPG wird geladen…")
+        self._epg_search_show_placeholder(_tr("EPG wird geladen…"))
         asyncio.ensure_future(self._epg_search_load_all())
 
     def _epg_search_set_locked(self, locked: bool):
         """Sperrt/entsperrt das Suchfeld."""
         self.epg_search_input.setEnabled(not locked)
         if locked:
-            self.epg_search_input.setPlaceholderText("Bitte warten – lade Programmdaten…")
+            self.epg_search_input.setPlaceholderText(_tr("Bitte warten – lade Programmdaten…"))
             self.epg_search_loading_widget.show()
         else:
-            self.epg_search_input.setPlaceholderText("Sendungstitel oder Beschreibung suchen…")
+            self.epg_search_input.setPlaceholderText(_tr("Sendungstitel oder Beschreibung suchen…"))
             self.epg_search_loading_widget.hide()
             self.epg_search_input.setFocus()
 
@@ -117,13 +118,13 @@ class EpgSearchMixin:
             return
 
         if not getattr(self, '_search_cache_live', None):
-            self._epg_search_set_status("Lade Senderliste…")
+            self._epg_search_set_status(_tr("Lade Senderliste…"))
             self._search_cache_live = await self.api.get_live_streams()
 
         all_streams = getattr(self, '_search_cache_live', [])
         if not all_streams:
             self._epg_search_set_locked(False)
-            self._epg_search_show_placeholder("Keine Sender verfügbar")
+            self._epg_search_show_placeholder(_tr("Keine Sender verfügbar"))
             return
 
         # Ausgeblendete Kategorien ausschließen
@@ -137,7 +138,7 @@ class EpgSearchMixin:
 
         # Disk-Cache laden (einmal pro Session, wenn noch nicht geschehen)
         if not getattr(self, '_epg_disk_cache_loaded', False):
-            self._epg_search_set_status("Lade gespeicherten EPG-Cache…")
+            self._epg_search_set_status(_tr("Lade gespeicherten EPG-Cache…"))
             self._epg_disk_cache_loaded = True
             if self._epg_cache_load_from_disk():
                 # Frischer Cache vom Disk — prüfen ob komplett
@@ -185,7 +186,7 @@ class EpgSearchMixin:
                         done = already_done + loaded
                         if self._epg_search_generation == gen:
                             self.epg_search_progress.setValue(done)
-                            self._epg_search_set_status(f"Lade Programmdaten… {done}/{total}")
+                            self._epg_search_set_status(_tr("Lade Programmdaten… {}/{}").format(done, total))
 
                 await asyncio.gather(*[_load_one(s) for s in missing], return_exceptions=True)
 
@@ -209,7 +210,7 @@ class EpgSearchMixin:
         self._epg_search_ready = False
         self._epg_search_generation = getattr(self, '_epg_search_generation', 0) + 1
         self._epg_search_set_locked(True)
-        self._epg_search_show_placeholder("EPG wird neu geladen…")
+        self._epg_search_show_placeholder(_tr("EPG wird neu geladen…"))
         asyncio.ensure_future(self._epg_search_load_all())
 
     def _epg_search_finish(self, gen: int):
@@ -219,7 +220,7 @@ class EpgSearchMixin:
         self._epg_search_ready = True
         self._epg_cache_save_to_disk()
         self._epg_search_set_locked(False)
-        self._epg_search_show_placeholder("Sendungstitel oder Beschreibung eingeben")
+        self._epg_search_show_placeholder(_tr("Sendungstitel oder Beschreibung eingeben"))
         self._epg_search_set_status("")
 
     # ── Filter / Suche ───────────────────────────────────────────────────────
@@ -247,7 +248,7 @@ class EpgSearchMixin:
             self._epg_search_debounce.start(300)
         else:
             self._epg_search_debounce.stop()
-            self._epg_search_show_placeholder("Sendungstitel oder Beschreibung eingeben")
+            self._epg_search_show_placeholder(_tr("Sendungstitel oder Beschreibung eingeben"))
 
     # ── Ergebnisse ───────────────────────────────────────────────────────────
 
@@ -312,7 +313,7 @@ class EpgSearchMixin:
             for stream, entry, status in results[:300]:
                 lay.addWidget(self._epg_search_make_row(stream, entry, status))
         else:
-            lbl = QLabel("Keine Treffer")
+            lbl = QLabel(_tr("Keine Treffer"))
             lbl.setAlignment(Qt.AlignCenter)
             lbl.setStyleSheet("color: #444; font-size: 13px; padding: 40px;")
             lay.addWidget(lbl)
@@ -387,14 +388,14 @@ class EpgSearchMixin:
         if status == "now":
             btn.setIcon(_pi("play.svg", 13))
             btn.setIconSize(QSize(13, 13))
-            btn.setToolTip("Abspielen")
+            btn.setToolTip(_tr("Abspielen"))
             btn.clicked.connect(
                 lambda checked=False, s=stream, e=entry: self._epg_search_play(s, e)
             )
         else:
             btn.setIcon(_pi("record.svg", 13))
             btn.setIconSize(QSize(13, 13))
-            btn.setToolTip("Aufnahme planen")
+            btn.setToolTip(_tr("Aufnahme planen"))
             btn.clicked.connect(
                 lambda checked=False, s=stream, e=entry: self._epg_search_schedule(s, e)
             )

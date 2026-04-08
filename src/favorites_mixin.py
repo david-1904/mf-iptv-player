@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 
 from xtream_api import LiveStream, VodStream, Series
 from favorites_manager import Favorite
+from i18n import _tr
 
 
 class FavoritesMixin:
@@ -70,7 +71,7 @@ class FavoritesMixin:
             list_item.setData(Qt.UserRole, fav)
             self.channel_list.addItem(list_item)
 
-        label = {"live": "Live TV", "vod": "Filme", "series": "Serien"}.get(ftype, "Favoriten")
+        label = {"live": _tr("Live TV"), "vod": _tr("Filme"), "series": _tr("Serien")}.get(ftype, _tr("Favoriten"))
         self.status_bar.showMessage(f"{len(favorites)} {label}")
 
         if is_grid:
@@ -92,16 +93,16 @@ class FavoritesMixin:
         if favorite:
             is_now_fav = self.favorites_manager.toggle(favorite)
             if is_now_fav:
-                self.status_bar.showMessage(f"'{favorite.name}' zu Favoriten hinzugefuegt")
+                self.status_bar.showMessage(_tr("'{}' zu Favoriten hinzugefuegt").format(favorite.name))
             else:
-                self.status_bar.showMessage(f"'{favorite.name}' aus Favoriten entfernt")
+                self.status_bar.showMessage(_tr("'{}' aus Favoriten entfernt").format(favorite.name))
             # Liste aktualisieren um Stern anzuzeigen/entfernen
             self._update_current_list_item_display()
 
     def _remove_from_favorites(self, fav: Favorite):
         """Entfernt einen Favoriten"""
         self.favorites_manager.remove(fav.id, fav.type, fav.account_name)
-        self.status_bar.showMessage(f"'{fav.name}' aus Favoriten entfernt")
+        self.status_bar.showMessage(_tr("'{}' aus Favoriten entfernt").format(fav.name))
         self._load_favorites()
 
     def _create_favorite_from_data(self, data, account_name: str) -> Favorite | None:
