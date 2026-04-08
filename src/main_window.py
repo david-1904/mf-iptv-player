@@ -139,8 +139,9 @@ class MainWindow(
         self._load_initial_account()
         self.showMaximized()
 
-        asyncio.ensure_future(self._check_for_updates())
-        asyncio.ensure_future(self._schedule_checker_loop())
+        self._bg_tasks: list[asyncio.Task] = []
+        self._bg_tasks.append(asyncio.ensure_future(self._check_for_updates()))
+        self._bg_tasks.append(asyncio.ensure_future(self._schedule_checker_loop()))
 
     def _setup_ui(self):
         central = QWidget()
@@ -248,8 +249,11 @@ class MainWindow(
 
     def closeEvent(self, event):
         self._save_current_position()
+        # Background-Tasks sofort canceln (verhindert bis zu 30s Warten auf asyncio.sleep)
+        for task in getattr(self, "_bg_tasks", []):
+            task.cancel()
         if self.recorder.is_recording:
-            self.recorder.stop()
+            self.recorder.stop_nowait()
         self.stream_info_timer.stop()
         self.controls_timer.stop()
         self.player.cleanup()

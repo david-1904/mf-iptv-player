@@ -160,3 +160,24 @@ class StreamRecorder:
             self._log_file = None
 
         return filepath
+
+    def stop_nowait(self) -> None:
+        """Sofortiger Stop beim App-Shutdown: SIGKILL ohne Warten."""
+        if not self._process:
+            return
+        try:
+            if _IS_WIN:
+                self._process.kill()
+            else:
+                os.killpg(self._process.pid, signal.SIGKILL)
+        except Exception:
+            pass
+        self._process = None
+        self._current_title = ""
+        self._start_time = None
+        if self._log_fh:
+            try:
+                self._log_fh.close()
+            except Exception:
+                pass
+            self._log_fh = None

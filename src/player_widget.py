@@ -565,13 +565,26 @@ class MpvPlayerWidget(QOpenGLWidget):
         """Raeumt auf bevor das Widget zerstoert wird"""
         self._uninhibit_screensaver()
         self._freeze_check_timer.stop()
+        # Erst Stream stoppen (beendet Netzwerk-IO), dann Render-Kontext freigeben,
+        # dann mpv terminieren — diese Reihenfolge vermeidet ctx.free()-Blockaden.
+        if self.player:
+            try:
+                self.player.stop()
+            except Exception:
+                pass
         self.makeCurrent()
         if self.ctx:
-            self.ctx.free()
+            try:
+                self.ctx.free()
+            except Exception:
+                pass
             self.ctx = None
         self.doneCurrent()
         if self.player:
-            self.player.terminate()
+            try:
+                self.player.terminate()
+            except Exception:
+                pass
             self.player = None
 
     def closeEvent(self, event):
