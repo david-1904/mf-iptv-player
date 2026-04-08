@@ -477,6 +477,19 @@ class UiBuilderMixin:
         self.btn_update.hide()
         layout.addWidget(self.btn_update)
 
+        # Versions-Label unten links
+        from version import __version__
+        _version_label = QLabel(f"v{__version__}")
+        _version_label.setAlignment(Qt.AlignCenter)
+        _version_label.setStyleSheet("""
+            QLabel {
+                color: rgba(255, 255, 255, 25);
+                font-size: 11px;
+                padding: 6px 0;
+            }
+        """)
+        layout.addWidget(_version_label)
+
         return sidebar
 
     def _create_settings_page(self) -> QWidget:
