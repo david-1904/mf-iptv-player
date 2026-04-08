@@ -44,7 +44,7 @@ class HistoryMixin:
             list_item.setData(Qt.UserRole, entry)
             self.channel_list.addItem(list_item)
 
-        self.status_bar.showMessage(_tr("{} Eintraege im Verlauf").format(len(entries)))
+        self.status_bar.showMessage(_tr("{} Einträge im Verlauf").format(len(entries)))
 
     def _load_recordings(self):
         """Laedt und zeigt gespeicherte Aufnahmen an"""

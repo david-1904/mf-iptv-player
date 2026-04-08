@@ -58,7 +58,7 @@ class SearchMixin:
 
     async def _perform_search(self, query: str):
         """Durchsucht alle Streams nach dem Suchbegriff"""
-        self._show_loading(_tr("Suche laeuft..."))
+        self._show_loading(_tr("Suche läuft..."))
         self.channel_list.clear()
         words = query.lower().split()
 

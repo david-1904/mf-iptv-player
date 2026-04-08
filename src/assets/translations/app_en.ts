@@ -76,11 +76,11 @@
       <translation>Error</translation>
     </message>
     <message>
-      <source>Bitte Name und URL ausfuellen</source>
+      <source>Bitte Name und URL ausfüllen</source>
       <translation>Please fill in name and URL</translation>
     </message>
     <message>
-      <source>Bitte alle Felder ausfuellen</source>
+      <source>Bitte alle Felder ausfüllen</source>
       <translation>Please fill in all fields</translation>
     </message>
     <message>
@@ -102,15 +102,15 @@
       <translation>Connection failed</translation>
     </message>
     <message>
-      <source>Account erfolgreich hinzugefuegt</source>
+      <source>Account erfolgreich hinzugefügt</source>
       <translation>Account added successfully</translation>
     </message>
     <message>
-      <source>Account loeschen</source>
+      <source>Account löschen</source>
       <translation>Delete account</translation>
     </message>
     <message>
-      <source>Account wirklich loeschen?</source>
+      <source>Account wirklich löschen?</source>
       <translation>Really delete account?</translation>
     </message>
     <message>
@@ -308,7 +308,7 @@
       <translation>Favorites</translation>
     </message>
     <message>
-      <source>'{}' zu Favoriten hinzugefuegt</source>
+      <source>'{}' zu Favoriten hinzugefügt</source>
       <translation>'{}' added to favorites</translation>
     </message>
     <message>
@@ -328,7 +328,7 @@
       <translation>[Series]</translation>
     </message>
     <message>
-      <source>{} Eintraege im Verlauf</source>
+      <source>{} Einträge im Verlauf</source>
       <translation>{} entries in history</translation>
     </message>
     <message>
@@ -506,7 +506,7 @@
       <translation>Recording scheduled: {} at {}</translation>
     </message>
     <message>
-      <source>Suche laeuft...</source>
+      <source>Suche läuft...</source>
       <translation>Searching...</translation>
     </message>
     <message>

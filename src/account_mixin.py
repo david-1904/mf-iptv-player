@@ -233,7 +233,7 @@ class AccountMixin:
         if account_type == "m3u":
             m3u_url = self.input_m3u_url.text().strip()
             if not name or not m3u_url:
-                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte Name und URL ausfuellen"))
+                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte Name und URL ausfüllen"))
                 return
             entry = AccountEntry(name=name, type="m3u", url=m3u_url)
         else:
@@ -241,7 +241,7 @@ class AccountMixin:
             username = self.input_username.text().strip()
             password = self.input_password.text().strip()
             if not all([name, server, username, password]):
-                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte alle Felder ausfuellen"))
+                QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte alle Felder ausfüllen"))
                 return
             entry = AccountEntry(
                 name=name, type="xtream",
@@ -321,7 +321,7 @@ class AccountMixin:
             self.content_stack.setCurrentWidget(self.main_page)
             await self._load_categories()
 
-            self._hide_loading(_tr("Account erfolgreich hinzugefuegt"))
+            self._hide_loading(_tr("Account erfolgreich hinzugefügt"))
         except Exception as e:
             QMessageBox.critical(self, _tr("Fehler"), _tr("Verbindung fehlgeschlagen:\n{}").format(e))
             self._hide_loading(_tr("Verbindung fehlgeschlagen"))
@@ -332,8 +332,8 @@ class AccountMixin:
         row = self.account_list.currentRow()
         if row >= 0:
             reply = QMessageBox.question(
-                self, _tr("Account loeschen"),
-                _tr("Account wirklich loeschen?"),
+                self, _tr("Account löschen"),
+                _tr("Account wirklich löschen?"),
                 QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:

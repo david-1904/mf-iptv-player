@@ -93,7 +93,7 @@ class FavoritesMixin:
         if favorite:
             is_now_fav = self.favorites_manager.toggle(favorite)
             if is_now_fav:
-                self.status_bar.showMessage(_tr("'{}' zu Favoriten hinzugefuegt").format(favorite.name))
+                self.status_bar.showMessage(_tr("'{}' zu Favoriten hinzugefügt").format(favorite.name))
             else:
                 self.status_bar.showMessage(_tr("'{}' aus Favoriten entfernt").format(favorite.name))
             # Liste aktualisieren um Stern anzuzeigen/entfernen
