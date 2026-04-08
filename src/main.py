@@ -6,11 +6,12 @@ Verwendet PySide6 und mpv
 import sys
 import os
 from PySide6.QtWidgets import QApplication, QAbstractButton, QAbstractSlider, QComboBox, QAbstractItemView
-from PySide6.QtCore import Qt, QObject, QEvent
+from PySide6.QtCore import Qt, QObject, QEvent, QTranslator
 from PySide6.QtGui import QPalette, QColor, QIcon, QFont, QFontDatabase
 import qasync
 import asyncio
 
+from app_settings import AppSettings
 from main_window import MainWindow
 
 
@@ -203,6 +204,14 @@ def main():
     app.setWindowIcon(QIcon(icon_path))
 
     setup_dark_theme(app)
+
+    # Sprache laden und Translator installieren (vor MainWindow-Erstellung)
+    _lang = AppSettings().get("language", "de")
+    _translator = QTranslator(app)
+    if _lang != "de":
+        _qm_path = os.path.join(_base_path(), "assets", "translations", f"app_{_lang}.qm")
+        if _translator.load(_qm_path):
+            app.installTranslator(_translator)
 
     _cursor_filter = _HandCursorFilter(app)
     app.installEventFilter(_cursor_filter)

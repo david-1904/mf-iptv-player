@@ -125,6 +125,11 @@ class AccountMixin:
         self.app_settings.set("hwdec", value)
         self.lbl_hwdec_hint.show()
 
+    def _on_language_changed(self):
+        value = self.lang_combo.currentData()
+        self.app_settings.set("language", value)
+        self.lbl_lang_hint.show()
+
     def _show_settings(self):
         self._update_account_combo()
         self.content_stack.setCurrentWidget(self.settings_page)

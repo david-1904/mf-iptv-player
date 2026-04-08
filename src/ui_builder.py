@@ -658,6 +658,31 @@ class UiBuilderMixin:
         self.lbl_hwdec_hint.hide()
         layout.addWidget(self.lbl_hwdec_hint)
 
+        # Sprache
+        layout.addSpacing(24)
+        lang_title = QLabel("Sprache / Language")
+        lang_title.setStyleSheet("font-size: 14px; font-weight: bold;")
+        layout.addWidget(lang_title)
+
+        lang_row = QHBoxLayout()
+        lang_label = QLabel("Sprache:")
+        lang_label.setStyleSheet("font-size: 13px; color: #ccc;")
+        lang_row.addWidget(lang_label)
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem("Deutsch", "de")
+        self.lang_combo.addItem("English", "en")
+        saved_lang = self.app_settings.get("language", "de")
+        lang_idx = self.lang_combo.findData(saved_lang)
+        self.lang_combo.setCurrentIndex(lang_idx if lang_idx >= 0 else 0)
+        self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
+        lang_row.addWidget(self.lang_combo, stretch=1)
+        layout.addLayout(lang_row)
+
+        self.lbl_lang_hint = QLabel("↻ App neu starten damit die Änderung wirkt")
+        self.lbl_lang_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
+        self.lbl_lang_hint.hide()
+        layout.addWidget(self.lbl_lang_hint)
+
         layout.addStretch()
 
         return page
