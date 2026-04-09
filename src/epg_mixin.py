@@ -59,6 +59,14 @@ class EpgMixin:
             self._update_detail_epg(epg)
             return
 
+        # Noch nicht gecacht: altes EPG sofort wegräumen bevor await kommt
+        self.epg_now_label.hide()
+        self.epg_now_title.setText(_tr("Lade Programm\u2026"))
+        self.epg_progress.hide()
+        self.epg_next_label.hide()
+        self.epg_next_title.setText("")
+        self.btn_full_epg.setEnabled(False)
+
         try:
             epg_data = await self.api.get_short_epg(stream_id, limit=8)
             self._epg_cache[stream_id] = epg_data
