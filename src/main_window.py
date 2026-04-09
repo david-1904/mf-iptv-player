@@ -91,6 +91,8 @@ class MainWindow(
         # EPG Cache
         self._epg_cache: dict = {}
         self._current_epg_stream_id: int | None = None
+        self._xmltv_epg = None           # XmltvEpg-Instanz wenn externe URL konfiguriert
+        self._stream_epg_channel_map: dict[int, str] = {}  # stream_id → tvg-id
         self._current_epg_has_catchup: bool = False
         self._detail_prev_entry = None
         self._detail_now_entry = None
@@ -186,6 +188,50 @@ class MainWindow(
             if (obj is self.player_container or obj is self.player) and self.player.is_playing:
                 if self._player_maximized:
                     self._show_fullscreen_controls()
+            elif obj is self.channel_list.viewport() and self.current_mode == "live":
+                delegate = self.channel_list.itemDelegate()
+                if delegate and hasattr(delegate, '_hovered_row'):
+                    item = self.channel_list.itemAt(event.position().toPoint())
+                    row = self.channel_list.row(item) if item else -1
+                    if delegate._hovered_row != row:
+                        delegate._hovered_row = row
+                        self.channel_list.viewport().update()
+        elif event.type() == QEvent.Leave:
+            if obj is self.channel_list.viewport():
+                delegate = self.channel_list.itemDelegate()
+                if delegate and hasattr(delegate, '_hovered_row') and delegate._hovered_row != -1:
+                    delegate._hovered_row = -1
+                    self.channel_list.viewport().update()
+        elif event.type() == QEvent.Type.ToolTip:
+            if obj is self.channel_list.viewport():
+                from PySide6.QtWidgets import QToolTip
+                from PySide6.QtGui import QCursor
+                global_pos = QCursor.pos()
+                local_pos = self.channel_list.viewport().mapFromGlobal(global_pos)
+                item = self.channel_list.itemAt(local_pos)
+                if item:
+                    stream = item.data(Qt.UserRole)
+                    rect = self.channel_list.visualItemRect(item)
+                    delegate = self.channel_list.itemDelegate()
+                    badge_w = delegate._right_margin(stream) if delegate else 0
+                    # Maus im Badge-Bereich (rechts)?
+                    if badge_w > 0 and local_pos.x() >= rect.right() - badge_w - 4:
+                        cache = getattr(self, '_stream_quality_cache', {})
+                        entry = cache.get(str(getattr(stream, 'stream_id', None)))
+                        if entry:
+                            from epg_search_mixin import _build_item_tooltip
+                            tip = _build_item_tooltip(item.text(), entry)
+                            QToolTip.showText(global_pos, tip)
+                        else:
+                            QToolTip.hideText()
+                    else:
+                        text = item.text()
+                        available = rect.width() - badge_w - 20
+                        if self.channel_list.fontMetrics().horizontalAdvance(text) > available:
+                            QToolTip.showText(global_pos, text)
+                        else:
+                            QToolTip.hideText()
+                return True
         elif event.type() == QEvent.MouseButtonRelease:
             if obj is getattr(self, '_epg_content_widget', None):
                 self._toggle_channel_detail()
@@ -241,7 +287,7 @@ class MainWindow(
             return
         # Im Live-Modus: gespeicherte Content-Breite bevorzugen
         if self.current_mode == "live" and getattr(self, '_live_channel_area_w', 0) > 0:
-            w = max(220, min(500, self._live_channel_area_w))
+            w = max(300, min(500, self._live_channel_area_w))
         else:
             # Breite proportional anpassen: 30% fuer Kanalliste, min 300, max 440
             w = max(300, min(440, int(available * 0.30)))

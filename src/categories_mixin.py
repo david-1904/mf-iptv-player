@@ -59,6 +59,10 @@ class CategoriesMixin:
         # Detail-Ansichten zuruecksetzen (außer im EPG-Suche-Modus)
         if mode != "epg_search":
             self.channel_stack.setCurrentIndex(0)
+            # EPG-Suche verlassen: Breite zurücksetzen
+            if self.current_mode == "epg_search":
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(0, self._refresh_player_layout)
 
         # Player-Layout anpassen wenn Player laeuft
         if self.player_area.isVisible() and not self._player_maximized:
@@ -90,6 +94,9 @@ class CategoriesMixin:
         if mode == "epg_search":
             self.channel_stack.setCurrentIndex(3)
             self.epg_panel.setVisible(False)
+            # Breiter als normale Senderliste — Badges + Titel brauchen mehr Platz
+            current_w = self.channel_area.width()
+            self.channel_area.setFixedWidth(max(current_w, 420))
             self._epg_search_open()
         elif mode == "favorites":
             self._load_favorites()
@@ -486,9 +493,12 @@ class CategoriesMixin:
                 for item in items:
                     list_item = QListWidgetItem(item.name)
                     list_item.setData(Qt.UserRole, item)
+                    list_item.setToolTip(item.name)
                     self.channel_list.addItem(list_item)
-                # Spaltenbreite an laengsten Namen anpassen
+                # Spaltenbreite an laengsten Namen anpassen; Tooltips mit Quality-Daten befüllen
                 if items:
+                    self._quality_cache_load()
+                    self._rebuild_channel_tooltips()
                     QTimer.singleShot(0, self._fit_live_channel_width)
 
             elif self.current_mode == "vod":
@@ -589,17 +599,20 @@ class CategoriesMixin:
         """Passt channel_area-Breite nach dem Rendern an den laengsten Sendernamen an."""
         if self.current_mode != "live":
             return
+
         fm = self.channel_list.fontMetrics()
-        max_w = 0
-        for i in range(self.channel_list.count()):
-            item = self.channel_list.item(i)
-            if item:
-                max_w = max(max_w, fm.horizontalAdvance(item.text()))
+        max_w = max(
+            (fm.horizontalAdvance(self.channel_list.item(i).text())
+             for i in range(self.channel_list.count())
+             if self.channel_list.item(i)),
+            default=0
+        )
+
         if max_w == 0:
             return
-        # 1.15x Sicherheitsfaktor fuer CSS/Qt Font-Abweichung
-        # + 12px links + 14px Abstand + 16px Icon + 16px rechts + 6px Scrollbar
-        self._live_channel_area_w = max(220, min(560, int(max_w * 1.15) + 74))
+
+        # 1.15x Sicherheitsfaktor + 12px links + 14px Abstand + 16px Icon + 16px rechts + 6px Scrollbar
+        self._live_channel_area_w = max(300, min(560, int(max_w * 1.15) + 74))
         self.channel_area.setFixedWidth(self._live_channel_area_w)
 
     def _update_grid_size(self):

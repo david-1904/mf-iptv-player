@@ -175,6 +175,14 @@ def setup_dark_theme(app: QApplication):
         QMessageBox QLabel {
             color: white;
         }
+        QToolTip {
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            border: 1px solid #3a3a5a;
+            border-radius: 5px;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
     """.replace("ARROW_DOWN_PATH", _arrow_down))
 
 

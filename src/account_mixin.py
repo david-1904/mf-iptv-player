@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QMessageBox
 from xtream_api import XtreamAPI, XtreamCredentials
 from m3u_provider import M3uProvider
 from account_manager import AccountEntry
+from xmltv_epg import XmltvEpg
 from i18n import _tr
 
 
@@ -53,6 +54,7 @@ class AccountMixin:
                 self.content_stack.setCurrentWidget(self.main_page)
                 asyncio.ensure_future(self._load_categories())
             self._update_series_button_visibility()
+            self._start_external_epg(account)
         else:
             self.content_stack.setCurrentWidget(self.settings_page)
 
@@ -120,6 +122,7 @@ class AccountMixin:
                     asyncio.ensure_future(self._load_categories())
 
                 self._update_series_button_visibility()
+                self._start_external_epg(account)
 
     def _on_hwdec_changed(self):
         value = self.hwdec_combo.currentData()
@@ -207,6 +210,7 @@ class AccountMixin:
             self.input_server.setText(acc.server)
             self.input_username.setText(acc.username)
             self.input_password.setText(acc.password)
+        self.input_epg_url.setText(getattr(acc, "epg_url", ""))
 
         self._editing_account_index = row
         self.settings_title.setText(_tr("Account bearbeiten"))
@@ -221,6 +225,7 @@ class AccountMixin:
         self.input_username.clear()
         self.input_password.clear()
         self.input_m3u_url.clear()
+        self.input_epg_url.clear()
         self.account_list.clearSelection()
         self.settings_title.setText(_tr("Account hinzuf\u00fcgen"))
         self.btn_add_account.setText(_tr("Account speichern"))
@@ -230,12 +235,13 @@ class AccountMixin:
         name = self.input_name.text().strip()
         account_type = self.account_type_combo.currentData()
 
+        epg_url = self.input_epg_url.text().strip()
         if account_type == "m3u":
             m3u_url = self.input_m3u_url.text().strip()
             if not name or not m3u_url:
                 QMessageBox.warning(self, _tr("Fehler"), _tr("Bitte Name und URL ausfüllen"))
                 return
-            entry = AccountEntry(name=name, type="m3u", url=m3u_url)
+            entry = AccountEntry(name=name, type="m3u", url=m3u_url, epg_url=epg_url)
         else:
             server = self.input_server.text().strip()
             username = self.input_username.text().strip()
@@ -246,6 +252,7 @@ class AccountMixin:
             entry = AccountEntry(
                 name=name, type="xtream",
                 server=server, username=username, password=password,
+                epg_url=epg_url,
             )
 
         if self._editing_account_index >= 0:
@@ -283,7 +290,10 @@ class AccountMixin:
                 self.vod_categories = []
                 self.series_categories = []
                 self._search_cache_loaded = False
-                asyncio.ensure_future(self._load_categories())
+                self._epg_cache = {}
+                self._start_external_epg(entry)
+                self.content_stack.setCurrentWidget(self.main_page)
+                await self._load_categories()
         except Exception as e:
             QMessageBox.critical(self, _tr("Fehler"), _tr("Verbindung fehlgeschlagen:\n{}").format(e))
             self._hide_loading(_tr("Verbindung fehlgeschlagen"))
@@ -308,6 +318,7 @@ class AccountMixin:
 
             self.account_manager.add_account(entry)
             self.api = api
+            self._start_external_epg(entry)
 
             # Eingaben leeren
             self.input_name.clear()
@@ -315,6 +326,7 @@ class AccountMixin:
             self.input_username.clear()
             self.input_password.clear()
             self.input_m3u_url.clear()
+            self.input_epg_url.clear()
 
             self._update_account_combo()
             self._update_series_button_visibility()
@@ -346,6 +358,28 @@ class AccountMixin:
                 self._update_account_combo()
                 if not self.account_manager.get_all():
                     self.api = None
+
+    def _start_external_epg(self, account):
+        """Startet das Laden des externen XMLTV-EPG falls eine URL konfiguriert ist."""
+        self._xmltv_epg = None
+        self._stream_epg_channel_map = {}
+        epg_url = getattr(account, "epg_url", "")
+        if epg_url:
+            self._xmltv_epg = XmltvEpg()
+            asyncio.ensure_future(self._fetch_external_epg(epg_url))
+
+    async def _fetch_external_epg(self, url: str):
+        """Lädt und parst den externen XMLTV-EPG-Feed im Hintergrund."""
+        self.statusBar().showMessage(_tr("Lade externe EPG-Daten…"))
+        try:
+            await self._xmltv_epg.fetch(url)
+            self.statusBar().showMessage(
+                _tr("Externe EPG geladen ({} Kanäle)").format(self._xmltv_epg.channel_count),
+                5000,
+            )
+        except Exception:
+            self._xmltv_epg = None
+            self.statusBar().showMessage(_tr("Externe EPG-URL konnte nicht geladen werden"), 5000)
 
     def _refresh_current(self):
         """Aktualisiert die aktuelle Ansicht"""

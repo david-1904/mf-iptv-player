@@ -33,9 +33,11 @@ class MpvPlayerWidget(QOpenGLWidget):
     buffering_changed = Signal(bool)  # True = buffering, False = playing
     stream_ended = Signal(str)        # reason: 'error', 'eof', 'stop', ...
     gl_context_recreated = Signal()   # GL-Kontext nach Bildschirmsperre neu erstellt
+    stream_specs_detected = Signal(int, int, str, str, str)  # width, height, quality, audio, fps
     _mpv_update = Signal()
     _buffering_signal = Signal(bool)
     _stream_ended_signal = Signal(str)
+    _stream_specs_signal = Signal(int, int, str, str, str)   # thread-sicherer Brücken-Signal
 
     def __init__(self, parent=None, hwdec: str = "auto"):
         super().__init__(parent)
@@ -57,9 +59,11 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._freeze_check_timer.setInterval(5000)
         self._freeze_check_timer.timeout.connect(self._check_render_freeze)
 
+        self._last_resolution_path = None
         self._mpv_update.connect(self.update)
         self._buffering_signal.connect(self._on_buffering_changed)
         self._stream_ended_signal.connect(self.stream_ended)
+        self._stream_specs_signal.connect(self.stream_specs_detected)
 
     def initializeGL(self):
         """OpenGL-Kontext bereit (ggf. nach Neustart durch Bildschirmsperre)"""
@@ -163,6 +167,59 @@ class MpvPlayerWidget(QOpenGLWidget):
             except Exception:
                 reason = 'unknown'
             self._stream_ended_signal.emit(reason)
+
+        @self.player.property_observer('video-params')
+        def _on_video_params(_name, value):
+            if not value:
+                return
+            try:
+                w = int(value.get('w') or 0)
+                h = int(value.get('h') or 0)
+            except Exception:
+                return
+            if w <= 0 or h <= 0:
+                return
+            path = self.player.path if self.player else None
+            if not path or path == self._last_resolution_path:
+                return
+            self._last_resolution_path = path
+
+            # Auflösungs-Label
+            if h >= 2160 or w >= 3840:
+                q_label = "4K"
+            elif h >= 1080 or w >= 1920:
+                q_label = "FHD"
+            elif h >= 720 or w >= 1280:
+                q_label = "HD"
+            else:
+                q_label = "SD"
+
+            # Audio-Label aus aktuellem Audio-Track
+            a_label = ""
+            try:
+                ap = self.player.audio_params
+                if ap:
+                    ch = int(ap.get('channel-count') or 0)
+                    if ch >= 8:
+                        a_label = "7.1"
+                    elif ch >= 6:
+                        a_label = "5.1"
+                    elif ch >= 2:
+                        a_label = "2.0"
+                    elif ch == 1:
+                        a_label = "Mono"
+            except Exception:
+                pass
+
+            fps_str = ""
+            try:
+                fps = self.player.container_fps
+                if fps and fps > 0:
+                    fps_str = f"{round(fps)}fps"
+            except Exception:
+                pass
+
+            self._stream_specs_signal.emit(w, h, q_label, a_label, fps_str)
 
         if self._pending_url:
             self.player.play(self._pending_url)

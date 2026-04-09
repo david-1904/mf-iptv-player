@@ -150,9 +150,14 @@ class PlaybackMixin:
 
         is_vod_playback = stream_type == "vod"
 
+        # PiP immer beenden wenn eine Aufnahme / VOD gestartet wird —
+        # sonst bleibt der Player als floating Overlay (recording spielt im Mini-Fenster)
+        if self._pip_mode and is_vod_playback:
+            self._exit_pip_mode()
+
         if not self.player_area.isVisible():
             if is_vod_playback:
-                # Film/Serie: Player ueber volle Breite, Kanalliste ausblenden
+                # Film/Serie/Aufnahme: Player ueber volle Breite, Kanalliste ausblenden
                 self.channel_area.hide()
                 self.player_area.show()
             else:
@@ -230,6 +235,12 @@ class PlaybackMixin:
         self.channel_area.show()
         self.channel_area.setMinimumWidth(0)
         self.channel_area.setMaximumWidth(16777215)
+
+    @Slot(int, int, str, str, str)
+    def _on_stream_specs_detected(self, w: int, h: int, q_label: str, a_label: str, fps_str: str):
+        """Speichert gemessene Auflösung + Audio + FPS eines Live-Streams in den Quality-Cache."""
+        if self._current_stream_type == "live" and self._current_playing_stream_id:
+            self._save_stream_quality(self._current_playing_stream_id, q_label, a_label, fps_str)
 
     @Slot(bool)
     def _on_buffering(self, buffering: bool):

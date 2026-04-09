@@ -114,6 +114,18 @@
       <translation>Really delete account?</translation>
     </message>
     <message>
+      <source>Lade externe EPG-Daten…</source>
+      <translation>Loading external EPG data…</translation>
+    </message>
+    <message>
+      <source>Externe EPG geladen ({} Kanäle)</source>
+      <translation>External EPG loaded ({} channels)</translation>
+    </message>
+    <message>
+      <source>Externe EPG-URL konnte nicht geladen werden</source>
+      <translation>External EPG URL could not be loaded</translation>
+    </message>
+    <message>
       <source>Enter drücken zum Suchen</source>
       <translation>Press Enter to search</translation>
     </message>
@@ -236,6 +248,10 @@
       <translation>Schedule recording</translation>
     </message>
     <message>
+      <source>Lade Programm…</source>
+      <translation>Loading program…</translation>
+    </message>
+    <message>
       <source>Keine EPG-Daten</source>
       <translation>No EPG data</translation>
     </message>
@@ -246,10 +262,6 @@
     <message>
       <source>Lade vollständiges Programm…</source>
       <translation>Loading full program…</translation>
-    </message>
-    <message>
-      <source>Lade Programm…</source>
-      <translation>Loading program…</translation>
     </message>
     <message>
       <source>EPG wird geladen…</source>
@@ -290,6 +302,10 @@
     <message>
       <source>Keine Treffer</source>
       <translation>No results</translation>
+    </message>
+    <message>
+      <source>Wahrscheinlich offline – kein Audio beim letzten Abspielen</source>
+      <translation>Probably offline – no audio during last playback</translation>
     </message>
     <message>
       <source>Live TV</source>
@@ -658,6 +674,14 @@
       <translation>M3U Playlist URL (http://...)</translation>
     </message>
     <message>
+      <source>Externe EPG-URL (optional)</source>
+      <translation>External EPG URL (optional)</translation>
+    </message>
+    <message>
+      <source>XMLTV-URL (http://... oder http://.../epg.xml.gz)</source>
+      <translation>XMLTV URL (http://... or http://.../epg.xml.gz)</translation>
+    </message>
+    <message>
       <source>Gespeicherte Accounts</source>
       <translation>Saved accounts</translation>
     </message>
@@ -746,6 +770,10 @@
       <translation>Try again</translation>
     </message>
     <message>
+      <source>Sender abspielen → App lernt Qualität &amp; Audio</source>
+      <translation>Play channel → app learns quality &amp; audio</translation>
+    </message>
+    <message>
       <source>EPG neu laden</source>
       <translation>Reload EPG</translation>
     </message>
@@ -760,6 +788,14 @@
     <message>
       <source>Bald</source>
       <translation>Soon</translation>
+    </message>
+    <message>
+      <source>Qualität</source>
+      <translation>Quality</translation>
+    </message>
+    <message>
+      <source>Nach Qualität sortieren</source>
+      <translation>Sort by quality</translation>
     </message>
     <message>
       <source>Senderliste</source>

@@ -17,6 +17,7 @@ class AccountEntry:
     username: str = ""         # Xtream
     password: str = ""         # Xtream
     url: str = ""              # M3U Playlist-URL
+    epg_url: str = ""          # Externe XMLTV-EPG-URL (optional)
 
 
 class AccountManager:

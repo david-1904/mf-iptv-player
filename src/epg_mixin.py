@@ -33,6 +33,8 @@ class EpgMixin:
             stream_id = data.stream_id
             stream_name = data.name
             has_catchup = data.tv_archive
+            if data.epg_channel_id:
+                self._stream_epg_channel_map[stream_id] = data.epg_channel_id
         elif isinstance(data, Favorite) and data.type == "live":
             stream_id = data.id
             stream_name = data.name
@@ -67,18 +69,52 @@ class EpgMixin:
         self.epg_next_title.setText("")
         self.btn_full_epg.setEnabled(False)
 
-        try:
-            epg_data = await self.api.get_short_epg(stream_id, limit=8)
+        from m3u_provider import M3uProvider
+        is_m3u = isinstance(self.api, M3uProvider)
+        xmltv = getattr(self, '_xmltv_epg', None)
+
+        def _apply(epg_data):
             self._epg_cache[stream_id] = epg_data
             if self._current_epg_stream_id == stream_id:
                 self._update_epg_panel(epg_data)
-                # Detail-Panel aktualisieren wenn es diesen Sender zeigt
                 detail_id = getattr(self._detail_stream_data, 'stream_id',
                                     getattr(self._detail_stream_data, 'id', None))
                 if self.channel_detail_panel.isVisible() and detail_id == stream_id:
                     self._update_detail_epg(epg_data)
-        except Exception:
-            self._clear_epg_panel()
+
+        def _try_external() -> bool:
+            """Versucht externen EPG. Gibt True zurück wenn Daten gefunden."""
+            if not (xmltv and xmltv.loaded):
+                return False
+            tvg_id = self._stream_epg_channel_map.get(stream_id, "")
+            if not tvg_id:
+                return False
+            external = xmltv.get_short_epg(tvg_id, limit=8)
+            if external:
+                _apply(external)
+                return True
+            return False
+
+        if is_m3u:
+            # M3U: externer EPG zuerst (Provider hat keinen), Fallback: Provider (leer)
+            if not _try_external():
+                try:
+                    epg_data = await self.api.get_short_epg(stream_id, limit=8)
+                    _apply(epg_data)
+                except Exception:
+                    self._clear_epg_panel()
+        else:
+            # Xtream: Provider-EPG zuerst (Matching via stream_id ist korrekt)
+            # Externer EPG nur als Fallback wenn Provider nichts liefert
+            try:
+                epg_data = await self.api.get_short_epg(stream_id, limit=8)
+                if epg_data:
+                    _apply(epg_data)
+                elif not _try_external():
+                    _apply([])
+            except Exception:
+                if not _try_external():
+                    self._clear_epg_panel()
 
     def _update_epg_panel(self, epg_data: list[EpgEntry]):
         """Update EPG panel with data"""
@@ -176,9 +212,28 @@ class EpgMixin:
         if stream_id is None or not self.api:
             return
 
+        from m3u_provider import M3uProvider
+        is_m3u = isinstance(self.api, M3uProvider)
+        xmltv = getattr(self, '_xmltv_epg', None)
+
+        # Für M3U: externen EPG bevorzugen (vollständig, kein API-Call nötig)
+        if is_m3u and xmltv and xmltv.loaded:
+            tvg_id = self._stream_epg_channel_map.get(stream_id, "")
+            if tvg_id:
+                full_epg = xmltv.get_full_epg(tvg_id)
+                if full_epg:
+                    self._open_epg_dialog(full_epg, has_catchup)
+                    return
+
         self._show_loading(_tr("Lade vollständiges Programm…"))
         try:
             epg_data = await self.api.get_full_epg(stream_id)
+            if not epg_data:
+                # Fallback: externer EPG (auch für Xtream wenn Provider leer)
+                if xmltv and xmltv.loaded:
+                    tvg_id = self._stream_epg_channel_map.get(stream_id, "")
+                    if tvg_id:
+                        epg_data = xmltv.get_full_epg(tvg_id)
             if not epg_data:
                 epg_data = self._epg_cache.get(stream_id, [])
             if self._current_epg_stream_id == stream_id:

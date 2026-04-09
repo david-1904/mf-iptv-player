@@ -110,27 +110,146 @@ def _catchup_icon() -> QPixmap:
     return _CATCHUP_PX
 
 
+# Zentrale Qualitäts-Farben — werden von Delegate (QColor) und EPG-Suche (CSS) genutzt
+_QUALITY_HEX = {
+    "4K":  ("#c8860a", "#ffffff"),
+    "FHD": ("#6a3fa0", "#ffffff"),
+    "HD":  ("#0078d4", "#ffffff"),
+    "SD":  ("#444444", "#aaaaaa"),
+}
+_QUALITY_BADGE_COLORS = {
+    k: (QColor(bg), QColor(fg)) for k, (bg, fg) in _QUALITY_HEX.items()
+}
+_AUDIO_BADGE_BG    = QColor(232, 105, 26, 60)
+_AUDIO_BADGE_BORDER= QColor(232, 105, 26, 130)
+_AUDIO_BADGE_TEXT  = QColor("#e8691a")
+_OFFLINE_BADGE_BG  = QColor(180, 40, 40, 80)
+_OFFLINE_BADGE_BORDER = QColor(180, 40, 40, 160)
+_OFFLINE_BADGE_TEXT   = QColor("#e05555")
+
+
 class _CatchupDelegate(QStyledItemDelegate):
-    def paint(self, painter, option, index):
-        super().paint(painter, option, index)
-        stream = index.data(Qt.UserRole)
-        if not getattr(stream, 'tv_archive', False):
-            return
-        px = _catchup_icon()
-        if px.isNull():
-            return
-        from PySide6.QtCore import QRect, QSize
-        from PySide6.QtWidgets import QStyle
-        icon_rect = QStyle.alignedRect(
-            Qt.LeftToRight,
-            Qt.AlignVCenter | Qt.AlignRight,
-            QSize(px.width(), px.height()),
-            option.rect.adjusted(0, 0, -14, 0),
-        )
+    def __init__(self, parent=None, main_window=None):
+        super().__init__(parent)
+        self._mw = main_window
+        self._hovered_row = -1
+        self._badge_font = QFont()
+        self._badge_font.setPointSize(7)
+        self._badge_font.setBold(True)
+        from PySide6.QtGui import QFontMetrics
+        self._badge_fm = QFontMetrics(self._badge_font)
+
+    def _badge_w(self, text: str) -> int:
+        """Breite eines Badges inkl. Padding und Abstand zum nächsten Element."""
+        return self._badge_fm.horizontalAdvance(text) + 10 + 6  # text + innen + außen
+
+    def _right_margin(self, stream) -> int:
+        """Gesamtbreite aller Badges + Catchup-Icon für diesen Stream."""
+        margin = 0
+        if getattr(stream, 'tv_archive', False):
+            px = _catchup_icon()
+            if not px.isNull():
+                margin += px.width() + 8
+        cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
+        measured = cache.get(str(getattr(stream, 'stream_id', None)))
+        if isinstance(measured, dict):
+            if measured.get("offline"):
+                margin += self._badge_w("Offline")
+            else:
+                if measured.get("a"):
+                    margin += self._badge_w(measured["a"])
+                if measured.get("q") in _QUALITY_BADGE_COLORS:
+                    margin += self._badge_w(measured["q"])
+        return margin
+
+    def _draw_badge(self, painter, right_x, center_y, text, bg, fg, border=None):
+        """Zeichnet ein Badge, gibt linken Rand zurück."""
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QPen
+        tw = self._badge_fm.horizontalAdvance(text)
+        bw, bh = tw + 10, 14
+        bx = right_x - bw - 4
+        by = center_y - bh // 2
+        rect = QRectF(bx, by, bw, bh)
         painter.save()
-        painter.setOpacity(0.7)
-        painter.drawPixmap(icon_rect.topLeft(), px)
+        painter.setFont(self._badge_font)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(bg)
+        painter.setPen(QPen(border, 1) if border else Qt.NoPen)
+        painter.drawRoundedRect(rect, 3, 3)
+        painter.setPen(fg)
+        painter.drawText(rect, Qt.AlignCenter, text)
         painter.restore()
+        return bx - 2
+
+    def paint(self, painter, option, index):
+        stream = index.data(Qt.UserRole)
+        hovered = (index.row() == self._hovered_row)
+
+        # Catchup-Icon immer anzeigen; Badges nur beim Hover
+        catchup_margin = 0
+        if stream is not None and getattr(stream, 'tv_archive', False):
+            px = _catchup_icon()
+            if not px.isNull():
+                catchup_margin = px.width() + 8
+
+        badge_margin = self._right_margin(stream) - catchup_margin if (hovered and stream) else 0
+        total_margin = catchup_margin + badge_margin
+
+        if total_margin > 0:
+            from PySide6.QtWidgets import QStyleOptionViewItem
+            opt = QStyleOptionViewItem(option)
+            opt.rect = option.rect.adjusted(0, 0, -total_margin, 0)
+            super().paint(painter, opt, index)
+        else:
+            super().paint(painter, option, index)
+
+        if stream is None:
+            return
+
+        right_x = option.rect.right() - 4
+        center_y = option.rect.center().y()
+
+        # Catchup-Icon (ganz rechts, immer sichtbar)
+        if getattr(stream, 'tv_archive', False):
+            px = _catchup_icon()
+            if not px.isNull():
+                from PySide6.QtCore import QSize
+                from PySide6.QtWidgets import QStyle
+                icon_rect = QStyle.alignedRect(
+                    Qt.LeftToRight, Qt.AlignVCenter | Qt.AlignRight,
+                    QSize(px.width(), px.height()),
+                    option.rect.adjusted(0, 0, -4, 0),
+                )
+                painter.save()
+                painter.setOpacity(0.7)
+                painter.drawPixmap(icon_rect.topLeft(), px)
+                painter.restore()
+                right_x = icon_rect.left() - 4
+
+        # Badges nur beim Hover
+        if not hovered:
+            return
+
+        cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
+        measured = cache.get(str(getattr(stream, 'stream_id', None)))
+        if isinstance(measured, dict):
+            if measured.get("offline"):
+                self._draw_badge(
+                    painter, right_x, center_y, "Offline",
+                    _OFFLINE_BADGE_BG, _OFFLINE_BADGE_TEXT, _OFFLINE_BADGE_BORDER
+                )
+            else:
+                q_label = measured.get("q", "")
+                a_label = measured.get("a", "")
+                if a_label:
+                    right_x = self._draw_badge(
+                        painter, right_x, center_y, a_label,
+                        _AUDIO_BADGE_BG, _AUDIO_BADGE_TEXT, _AUDIO_BADGE_BORDER
+                    )
+                if q_label and q_label in _QUALITY_BADGE_COLORS:
+                    bg, fg = _QUALITY_BADGE_COLORS[q_label]
+                    self._draw_badge(painter, right_x, center_y, q_label, bg, fg)
 
 
 class AnimatedButton(QPushButton):
@@ -566,6 +685,15 @@ class UiBuilderMixin:
 
         layout.addWidget(self.m3u_fields)
         self.m3u_fields.hide()
+
+        # Externe EPG-URL (optional, für beide Account-Typen)
+        layout.addSpacing(8)
+        epg_url_label = QLabel(_tr("Externe EPG-URL (optional)"))
+        epg_url_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 2px;")
+        layout.addWidget(epg_url_label)
+        self.input_epg_url = QLineEdit()
+        self.input_epg_url.setPlaceholderText(_tr("XMLTV-URL (http://... oder http://.../epg.xml.gz)"))
+        layout.addWidget(self.input_epg_url)
 
         # Buttons
         btn_layout = QHBoxLayout()
@@ -1023,12 +1151,13 @@ class UiBuilderMixin:
         cl_layout.addWidget(self.channel_loading, stretch=1)
 
         self.channel_list = QListWidget()
-        self.channel_list.setItemDelegate(_CatchupDelegate(self.channel_list))
+        self.channel_list.setItemDelegate(_CatchupDelegate(self.channel_list, self))
         self._apply_channel_list_style(grid_mode=False)
         self.channel_list.itemClicked.connect(self._on_channel_selected)
         self.channel_list.itemDoubleClicked.connect(self._on_channel_selected)
         self.channel_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.channel_list.customContextMenuRequested.connect(self._show_channel_context_menu)
+        self.channel_list.viewport().setMouseTracking(True)
         self.channel_list.viewport().installEventFilter(self)
 
         # EPG Panel
@@ -1051,6 +1180,49 @@ class UiBuilderMixin:
         self._epg_splitter.addWidget(self.epg_panel)
         self._epg_splitter.setSizes([99999, 0])
         self.epg_panel.hide()
+
+        # ── Quality-Hinweis-Banner (einmalig) ────────────────────────────────
+        from platform_utils import get_config_dir
+        _hint_flag = get_config_dir() / "epg_quality_hint_dismissed"
+        if not _hint_flag.exists():
+            hint_bar = QWidget()
+            hint_bar.setObjectName("epgQualityHint")
+            hint_bar.setStyleSheet("""
+                #epgQualityHint {
+                    background: rgba(0,120,212,12);
+                    border-bottom: 1px solid rgba(0,120,212,40);
+                }
+            """)
+            hint_lay = QHBoxLayout(hint_bar)
+            hint_lay.setContentsMargins(12, 6, 8, 6)
+            hint_lay.setSpacing(8)
+            hint_lbl = QLabel(_tr("Sender abspielen → App lernt Qualität & Audio"))
+            hint_lbl.setStyleSheet("color: #5aaef0; font-size: 11px;")
+            hint_lay.addWidget(hint_lbl, stretch=1)
+            dismiss_btn = QPushButton()
+            dismiss_btn.setIcon(_pi("x.svg", 11))
+            dismiss_btn.setIconSize(QSize(11, 11))
+            dismiss_btn.setFixedSize(20, 20)
+            dismiss_btn.setStyleSheet("""
+                QPushButton {
+                    background: rgba(255,255,255,15);
+                    border: 1px solid rgba(255,255,255,30);
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background: rgba(255,255,255,30);
+                }
+            """)
+            def _dismiss_hint(_checked=False, bar=hint_bar, flag=_hint_flag):
+                bar.hide()
+                try:
+                    flag.touch()
+                except Exception:
+                    pass
+            dismiss_btn.clicked.connect(_dismiss_hint)
+            hint_lay.addWidget(dismiss_btn, alignment=Qt.AlignVCenter)
+            cl_layout.addWidget(hint_bar)
+
         cl_layout.addWidget(self._epg_splitter, stretch=1)
 
         outer_layout.addWidget(self.channel_nav_widget, stretch=1)
@@ -1160,6 +1332,13 @@ class UiBuilderMixin:
             f_lay.addWidget(btn)
             self._epg_filter_buttons[fkey] = btn
         f_lay.addStretch()
+
+        self.epg_sort_quality_btn = QPushButton(_tr("Qualität"))
+        self.epg_sort_quality_btn.setProperty("active", "false")
+        self.epg_sort_quality_btn.setCursor(Qt.PointingHandCursor)
+        self.epg_sort_quality_btn.setToolTip(_tr("Nach Qualität sortieren"))
+        self.epg_sort_quality_btn.clicked.connect(self._epg_search_toggle_quality_sort)
+        f_lay.addWidget(self.epg_sort_quality_btn)
 
         outer.addWidget(filter_row)
 
@@ -2147,6 +2326,7 @@ class UiBuilderMixin:
 
         self.player.stream_ended.connect(self._on_stream_ended)
         self.player.gl_context_recreated.connect(self._on_gl_context_recreated)
+        self.player.stream_specs_detected.connect(self._on_stream_specs_detected)
 
         player_container.setMouseTracking(True)
         self.player.setMouseTracking(True)
