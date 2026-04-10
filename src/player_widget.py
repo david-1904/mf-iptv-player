@@ -5,6 +5,7 @@ import time
 from ctypes import CFUNCTYPE, c_void_p, c_char_p
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QSurfaceFormat
 import mpv
 
 import sys
@@ -40,6 +41,12 @@ class MpvPlayerWidget(QOpenGLWidget):
     _stream_specs_signal = Signal(int, int, str, str, str)   # thread-sicherer Brücken-Signal
 
     def __init__(self, parent=None, hwdec: str = "auto"):
+        # Explizit Default-Farbraum (kein sRGB/scRGB-Extension) erzwingen –
+        # verhindert dass Windows den Display-Farbraum global umschaltet
+        if sys.platform == 'win32':
+            fmt = QSurfaceFormat()
+            fmt.setColorSpace(QSurfaceFormat.ColorSpace.DefaultColorSpace)
+            self.setFormat(fmt)
         super().__init__(parent)
         self.setFocusPolicy(Qt.StrongFocus)
         self._hwdec_setting = hwdec
@@ -113,6 +120,15 @@ class MpvPlayerWidget(QOpenGLWidget):
             # Display-Primaries oder Gamma systemweit aendert
             self.player['target-prim'] = 'bt.709'
             self.player['target-trc'] = 'gamma2.2'
+            # HDR-Peak-Analyse deaktivieren – verhindert dass mpv HDR-Metadaten
+            # aus dem Stream liest und daraufhin den Display-Modus aendert
+            self.player['hdr-compute-peak'] = 'no'
+            # Tone-Mapping auf clip setzen – kein HDR-Passthrough, kein Auto-HDR
+            self.player['tone-mapping'] = 'clip'
+            # Output-Pegel explizit auf full erzwingen – verhindert dass mpv
+            # zwischen limited (16-235) und full (0-255) wechselt, was als
+            # globale Helligkeitsverschiebung wahrgenommen wird
+            self.player['video-output-levels'] = 'full'
 
         def _get_proc_address(ctx, name):
             glctx = self.context()
