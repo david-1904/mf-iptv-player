@@ -41,13 +41,13 @@ class MpvPlayerWidget(QOpenGLWidget):
     _stream_specs_signal = Signal(int, int, str, str, str)   # thread-sicherer Brücken-Signal
 
     def __init__(self, parent=None, hwdec: str = "auto"):
+        super().__init__(parent)
         # Explizit Default-Farbraum (kein sRGB/scRGB-Extension) erzwingen –
         # verhindert dass Windows den Display-Farbraum global umschaltet
         if sys.platform == 'win32':
             fmt = QSurfaceFormat()
             fmt.setColorSpace(QSurfaceFormat.ColorSpace.DefaultColorSpace)
             self.setFormat(fmt)
-        super().__init__(parent)
         self.setFocusPolicy(Qt.StrongFocus)
         self._hwdec_setting = hwdec
 
