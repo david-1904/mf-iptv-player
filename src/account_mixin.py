@@ -129,6 +129,16 @@ class AccountMixin:
         self.app_settings.set("hwdec", value)
         self.lbl_hwdec_hint.show()
 
+    def _on_buffer_changed(self):
+        value = self.buffer_combo.currentData()
+        self.app_settings.set("buffer_secs", value)
+        # Sofort auf den laufenden Player anwenden – kein Neustart nötig
+        try:
+            if self.player.player:
+                self.player.player['cache-pause-wait'] = str(value)
+        except Exception:
+            pass
+
     def _on_language_changed(self):
         value = self.lang_combo.currentData()
         self.app_settings.set("language", value)

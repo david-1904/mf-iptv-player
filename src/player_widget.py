@@ -40,7 +40,7 @@ class MpvPlayerWidget(QOpenGLWidget):
     _stream_ended_signal = Signal(str)
     _stream_specs_signal = Signal(int, int, str, str, str)   # thread-sicherer Brücken-Signal
 
-    def __init__(self, parent=None, hwdec: str = "auto"):
+    def __init__(self, parent=None, hwdec: str = "auto", buffer_secs: int = 4):
         super().__init__(parent)
         # Explizit Default-Farbraum (kein sRGB/scRGB-Extension) erzwingen –
         # verhindert dass Windows den Display-Farbraum global umschaltet
@@ -50,6 +50,7 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.setFormat(fmt)
         self.setFocusPolicy(Qt.StrongFocus)
         self._hwdec_setting = hwdec
+        self._buffer_secs = max(1, int(buffer_secs))
 
         self.player = None
         self.ctx = None
@@ -103,6 +104,11 @@ class MpvPlayerWidget(QOpenGLWidget):
         self.player['user-agent'] = 'okhttp/4.9.0'
         self.player['stream-lavf-o'] = 'user_agent=okhttp/4.9.0,icy=0,seekable=0,multiple_requests=1'
         self.player['http-header-fields'] = 'Connection: keep-alive'
+        # Netzwerk-Timeout: verhindert endloses Hängen bei schlechter Verbindung
+        self.player['network-timeout'] = '10'
+        # Puffer-Strategie: nach Buffer-Underrun erst N Sekunden füllen bevor fortgesetzt wird
+        # → verhindert schnell aufeinanderfolgende Aussetzer bei schwankendem Stream
+        self.player['cache-pause-wait'] = str(self._buffer_secs)
         if sys.platform == 'win32':
             # WASAPI Exclusive Mode deaktivieren – verhindert Audio-Ausfall wenn
             # ein anderes Programm den Audio-Device belegt oder bei manchen Treibern

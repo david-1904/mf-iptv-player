@@ -787,6 +787,25 @@ class UiBuilderMixin:
         self.lbl_hwdec_hint.hide()
         layout.addWidget(self.lbl_hwdec_hint)
 
+        buffer_row = QHBoxLayout()
+        buffer_label = QLabel(_tr("Wiedergabe-Stabilität:"))
+        buffer_label.setStyleSheet("font-size: 13px; color: #ccc;")
+        buffer_row.addWidget(buffer_label)
+        self.buffer_combo = QComboBox()
+        self.buffer_combo.addItem(_tr("Ausgewogen – ideal für die meisten Verbindungen (4s)"), 4)
+        self.buffer_combo.addItem(_tr("Hoch – stabil bei häufigen Aussetzern (8s)"), 8)
+        self.buffer_combo.addItem(_tr("Niedrig – bei sehr guter Verbindung (1s)"), 1)
+        saved_buf = self.app_settings.get("buffer_secs", 4)
+        buf_idx = self.buffer_combo.findData(saved_buf)
+        self.buffer_combo.setCurrentIndex(buf_idx if buf_idx >= 0 else 0)
+        self.buffer_combo.currentIndexChanged.connect(self._on_buffer_changed)
+        buffer_row.addWidget(self.buffer_combo, stretch=1)
+        layout.addLayout(buffer_row)
+
+        lbl_buffer_context = QLabel(_tr("Erhöhen wenn der Stream häufig unterbricht."))
+        lbl_buffer_context.setStyleSheet("color: #888; font-size: 11px; margin: 2px 0 0 0;")
+        layout.addWidget(lbl_buffer_context)
+
         # Sprache
         layout.addSpacing(24)
         lang_title = QLabel(_tr("Sprache / Language"))
@@ -2206,7 +2225,10 @@ class UiBuilderMixin:
         pc_layout.setContentsMargins(0, 0, 0, 0)
         pc_layout.setSpacing(0)
 
-        self.player = MpvPlayerWidget(hwdec=self.app_settings.get("hwdec", "auto"))
+        self.player = MpvPlayerWidget(
+            hwdec=self.app_settings.get("hwdec", "auto"),
+            buffer_secs=self.app_settings.get("buffer_secs", 4),
+        )
         self.player.double_clicked.connect(self._toggle_player_maximized)
         self.player.escape_pressed.connect(self._on_player_escape)
         self.player.buffering_changed.connect(self._on_buffering)
