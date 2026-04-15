@@ -727,23 +727,23 @@
     </message>
     <message>
       <source>Wiedergabe-Stabilität:</source>
-      <translation type="unfinished">Wiedergabe-Stabilität:</translation>
+      <translation>Playback Stability:</translation>
     </message>
     <message>
       <source>Ausgewogen – ideal für die meisten Verbindungen (4s)</source>
-      <translation type="unfinished">Ausgewogen – ideal für die meisten Verbindungen (4s)</translation>
+      <translation>Balanced – ideal for most connections (4s)</translation>
     </message>
     <message>
       <source>Hoch – stabil bei häufigen Aussetzern (8s)</source>
-      <translation type="unfinished">Hoch – stabil bei häufigen Aussetzern (8s)</translation>
+      <translation>High – stable for frequent interruptions (8s)</translation>
     </message>
     <message>
       <source>Niedrig – bei sehr guter Verbindung (1s)</source>
-      <translation type="unfinished">Niedrig – bei sehr guter Verbindung (1s)</translation>
+      <translation>Low – for very good connections (1s)</translation>
     </message>
     <message>
       <source>Erhöhen wenn der Stream häufig unterbricht.</source>
-      <translation type="unfinished">Erhöhen wenn der Stream häufig unterbricht.</translation>
+      <translation>Increase if the stream frequently interrupts.</translation>
     </message>
     <message>
       <source>Sprache / Language</source>
