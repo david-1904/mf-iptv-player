@@ -949,21 +949,5 @@
       <source>Lade Film-Informationen...</source>
       <translation>Loading movie information...</translation>
     </message>
-    <message>
-      <source>Stream-Puffer:</source>
-      <translation type="obsolete">Stream-Puffer:</translation>
-    </message>
-    <message>
-      <source>Klein – wenig Latenz (1s)</source>
-      <translation type="obsolete">Klein – wenig Latenz (1s)</translation>
-    </message>
-    <message>
-      <source>Normal – empfohlen (4s)</source>
-      <translation type="obsolete">Normal – empfohlen (4s)</translation>
-    </message>
-    <message>
-      <source>Groß – stabil bei schlechter Verbindung (8s)</source>
-      <translation type="obsolete">Groß – stabil bei schlechter Verbindung (8s)</translation>
-    </message>
   </context>
 </TS>

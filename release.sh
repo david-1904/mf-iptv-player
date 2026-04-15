@@ -9,6 +9,19 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
+# i18n-Check: update_ts.py ausführen und auf unfinished translations prüfen
+echo "Prüfe i18n..."
+python3 update_ts.py --no-compile 2>&1
+if grep -q 'type="unfinished"' src/assets/translations/app_en.ts; then
+    echo ""
+    echo "FEHLER: app_en.ts enthält unfertige Übersetzungen (type=\"unfinished\"):"
+    grep -n 'type="unfinished"' src/assets/translations/app_en.ts | head -20
+    echo ""
+    echo "Bitte alle fehlenden EN-Übersetzungen eintragen, dann erneut releasen."
+    exit 1
+fi
+echo "OK: i18n vollständig."
+
 # Ausstehende Änderungen committen (außer version.py)
 if ! git diff --quiet || ! git diff --cached --quiet; then
     if [ -z "$MSG" ]; then
