@@ -192,7 +192,6 @@ class EpgMixin:
         self.epg_next_title.setText("")
         self.btn_full_epg.setEnabled(False)
         self._current_epg_stream_id = None
-        self._current_epg_has_catchup = False
 
     def _show_full_epg(self):
         """Show full EPG dialog - laedt bei Catchup-Sendern den vollen EPG"""
