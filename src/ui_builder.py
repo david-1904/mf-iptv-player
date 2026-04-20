@@ -2866,11 +2866,11 @@ class UiBuilderMixin:
         self.btn_go_live.setFixedHeight(24)
         self.btn_go_live.setStyleSheet("""
             QPushButton {
-                background: rgba(0,204,102,12); color: #00cc66;
-                border: 1px solid rgba(0,204,102,160); padding: 0px 12px;
+                background: rgba(232,105,26,12); color: #e8691a;
+                border: 1px solid rgba(232,105,26,160); padding: 0px 12px;
                 border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: 1px;
             }
-            QPushButton:hover { background: rgba(0,204,102,30); border-color: #00cc66; }
+            QPushButton:hover { background: rgba(232,105,26,30); border-color: #e8691a; }
         """)
         self.btn_go_live.clicked.connect(self._go_live)
         self.btn_go_live.hide()
@@ -3061,7 +3061,7 @@ class UiBuilderMixin:
         self.fs_epg_von_anfang_btn.hide()
         prog_row_layout.addWidget(self.fs_epg_von_anfang_btn)
 
-        self.fs_epg_seek_slider = QSlider(Qt.Horizontal)
+        self.fs_epg_seek_slider = ClickSlider(Qt.Horizontal)
         self.fs_epg_seek_slider.setRange(0, 1000)
         self.fs_epg_seek_slider.setStyleSheet("""
             QSlider::groove:horizontal {
@@ -3106,7 +3106,7 @@ class UiBuilderMixin:
         self.fs_pos_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         seek_layout.addWidget(self.fs_pos_label)
 
-        self.fs_seek_slider = QSlider(Qt.Horizontal)
+        self.fs_seek_slider = ClickSlider(Qt.Horizontal)
         self.fs_seek_slider.setRange(0, 1000)
         self.fs_seek_slider.setValue(0)
         self.fs_seek_slider.setStyleSheet("""
@@ -3178,11 +3178,11 @@ class UiBuilderMixin:
         self.fs_btn_go_live.setFixedHeight(34)
         self.fs_btn_go_live.setStyleSheet("""
             QPushButton {
-                background: rgba(255,68,68,18); color: #ff4444;
-                border: 1px solid rgba(255,68,68,160); padding: 4px 16px;
+                background: rgba(232,105,26,12); color: #e8691a;
+                border: 1px solid rgba(232,105,26,160); padding: 4px 16px;
                 border-radius: 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
             }
-            QPushButton:hover { background: rgba(255,68,68,40); border-color: #ff4444; }
+            QPushButton:hover { background: rgba(232,105,26,30); border-color: #e8691a; }
         """)
         self.fs_btn_go_live.clicked.connect(self._go_live)
         self.fs_btn_go_live.hide()

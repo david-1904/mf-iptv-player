@@ -130,13 +130,16 @@ class PlaybackMixin:
             self._current_stream_icon = ""
             self.player_channel_logo.clear()
             self.player_channel_logo.hide()
-        # else: gleicher Sender (Catchup/Seek) → icon + Logo behalten
-
-        self._current_stream_type = stream_type
-        self._current_playing_stream_id = stream_id
+            # EPG-Einträge für Overlay zurücksetzen damit kein altes EPG erscheint
+            self._detail_now_entry = None
+            self._detail_next_entry = None
+        # else: gleicher Sender (Catchup/Seek) → icon + Logo + EPG behalten
 
         # EPG-Bar sofort leeren damit kein altes EPG bleibt, wenn neuer Sender kein EPG hat
         self.live_epg_bar.hide()
+
+        self._current_stream_type = stream_type
+        self._current_playing_stream_id = stream_id
 
         # Logo sofort laden (oder aus Cache anzeigen) — kein Hover noetig
         if self._current_stream_icon:

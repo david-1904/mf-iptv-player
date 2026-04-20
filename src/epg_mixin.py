@@ -59,6 +59,8 @@ class EpgMixin:
             epg = self._epg_cache[stream_id]
             self._update_epg_panel(epg)
             self._update_detail_epg(epg)
+            if self._current_epg_stream_id == stream_id:
+                self._update_live_epg_row()
             return
 
         # Noch nicht gecacht: altes EPG sofort wegräumen bevor await kommt
@@ -77,6 +79,7 @@ class EpgMixin:
             self._epg_cache[stream_id] = epg_data
             if self._current_epg_stream_id == stream_id:
                 self._update_epg_panel(epg_data)
+                self._update_live_epg_row()
                 detail_id = getattr(self._detail_stream_data, 'stream_id',
                                     getattr(self._detail_stream_data, 'id', None))
                 if self.channel_detail_panel.isVisible() and detail_id == stream_id:
