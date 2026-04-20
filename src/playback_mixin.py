@@ -249,14 +249,7 @@ class PlaybackMixin:
         if buffering and getattr(self, '_vod_eof_received', False):
             return
         if buffering:
-            # Overlay auf volle Groesse des Parents setzen
-            parent = self.buffering_overlay.parentWidget()
-            if parent:
-                self.buffering_overlay.setGeometry(0, 0, parent.width(), parent.height())
-            self.buffering_overlay.raise_()
-            self.buffering_overlay.show()
-            self._buffering_dots = 0
-            self._buffering_timer.start(400)
+            self._buffering_show_timer.start(400)
             # Watchdog bei Live-Streams: Timer basiert auf akkumulierter Buffering-Zeit.
             # Bei kurzen True/False-Oszillationen (z.B. langsame HLS-Segmente) feuert
             # der Watchdog trotzdem nach insgesamt 10s Buffering – ohne einzelne
@@ -268,6 +261,7 @@ class PlaybackMixin:
                 remaining_ms = max(500, int((10.0 - elapsed) * 1000))
                 self._buffering_watchdog.start(remaining_ms)
         else:
+            self._buffering_show_timer.stop()
             self._buffering_timer.stop()
             self.buffering_overlay.hide()
             self._buffering_watchdog.stop()
@@ -283,6 +277,18 @@ class PlaybackMixin:
                 self.status_bar.showMessage(_tr("Verbunden: {}").format(self._current_stream_title), 4000)
             self._reconnect_attempt = 0
             self._stream_starting = False  # Stream laeuft → Schutzphase beenden
+
+    def _show_buffering_overlay(self):
+        parent = self.buffering_overlay.parentWidget()
+        if parent:
+            controls_h = self.player_controls.height() if self.player_controls.isVisible() else 0
+            epg_h = self.live_epg_bar.height() if self.live_epg_bar.isVisible() else 0
+            h = parent.height() - controls_h - epg_h
+            self.buffering_overlay.setGeometry(0, 0, parent.width(), h)
+        self.buffering_overlay.raise_()
+        self.buffering_overlay.show()
+        self._buffering_dots = 0
+        self._buffering_timer.start(400)
 
     def _animate_buffering(self):
         """Animiert den Buffering-Text"""
@@ -870,6 +876,7 @@ class PlaybackMixin:
                                   self._current_playing_stream_id)
                 self._timeshift_active = True
                 self._update_seek_controls_visibility()
+                self.live_epg_bar.show()
             return
 
         # Live → Vorwaerts-Seek nicht erlaubt
@@ -891,6 +898,7 @@ class PlaybackMixin:
                           self._current_playing_stream_id)
         self._timeshift_active = True
         self._update_seek_controls_visibility()
+        self.live_epg_bar.show()
 
     def _update_live_epg_row(self):
         """Aktualisiert die EPG-Fortschrittszeile im normalen Player"""

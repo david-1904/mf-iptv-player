@@ -4,9 +4,9 @@ EPG Detail Dialog
 from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QScrollArea, QWidget,
-    QPushButton, QHBoxLayout, QFrame, QProgressBar
+    QPushButton, QHBoxLayout, QFrame, QProgressBar, QSizePolicy
 )
-from PySide6.QtCore import Qt, QTimer, QSize
+from PySide6.QtCore import Qt, QTimer, QSize, QPropertyAnimation, QEasingCurve
 
 from xtream_api import EpgEntry
 from ui_builder import _pi
@@ -20,8 +20,8 @@ class EpgDialog(QDialog):
                  schedule_callback=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle(_tr("Programm \u2013 {}").format(channel_name))
-        self.setMinimumSize(540, 520)
-        self.resize(620, 720)
+        self.setMinimumSize(600, 580)
+        self.resize(660, 760)
         self.setStyleSheet("""
             QDialog { background-color: #0f0f1a; color: white; }
         """)
@@ -156,7 +156,7 @@ class EpgDialog(QDialog):
         line_l.setStyleSheet("color: #1e1e30;")
 
         lbl = QLabel(day_str)
-        lbl.setStyleSheet("font-size: 11px; font-weight: bold; color: #444; text-transform: uppercase;")
+        lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;")
         lbl.setFixedWidth(lbl.sizeHint().width() + 8)
 
         line_r = QFrame()
@@ -169,7 +169,7 @@ class EpgDialog(QDialog):
         return w
 
     def _create_program_row(self, entry: EpgEntry, now: float, is_current: bool = False) -> QFrame:
-        """Erstellt eine Programmzeile"""
+        """Erstellt eine kompakte Programmzeile mit ausklappbarer Beschreibung."""
         is_past = entry.stop_timestamp <= now
 
         row = QFrame()
@@ -177,62 +177,66 @@ class EpgDialog(QDialog):
 
         if is_current:
             row.setStyleSheet("""
-                #epgRow {
-                    background-color: #16202c;
-                    border-left: 3px solid #e8691a;
-                    border-bottom: 1px solid #1e2a38;
-                }
+                #epgRow { background-color: #16202c; border-left: 3px solid #e8691a; border-bottom: 1px solid #1e2a38; }
                 #epgRow:hover { background-color: #1c2a3a; }
             """)
         elif is_past:
             row.setStyleSheet("""
-                #epgRow {
-                    background-color: transparent;
-                    border-left: 3px solid transparent;
-                    border-bottom: 1px solid #161626;
-                }
+                #epgRow { background-color: transparent; border-left: 3px solid transparent; border-bottom: 1px solid #161626; }
                 #epgRow:hover { background-color: #141420; }
             """)
         else:
             row.setStyleSheet("""
-                #epgRow {
-                    background-color: transparent;
-                    border-left: 3px solid transparent;
-                    border-bottom: 1px solid #161626;
-                }
+                #epgRow { background-color: transparent; border-left: 3px solid transparent; border-bottom: 1px solid #161626; }
                 #epgRow:hover { background-color: #14141e; }
             """)
 
-        layout = QVBoxLayout(row)
-        layout.setContentsMargins(16, 11, 14, 11)
-        layout.setSpacing(5)
+        outer = QVBoxLayout(row)
+        outer.setContentsMargins(16, 0, 14, 0)
+        outer.setSpacing(0)
 
-        # Kopfzeile: Zeit + Titel + Badges/Buttons
-        title_line = QHBoxLayout()
-        title_line.setSpacing(10)
+        # ── Hauptzeile (feste Höhe) ───────────────────────────
+        main_line = QWidget()
+        main_line.setFixedHeight(44)
+        main_line.setStyleSheet("background: transparent;")
+        hl = QHBoxLayout(main_line)
+        hl.setContentsMargins(0, 0, 0, 0)
+        hl.setSpacing(10)
 
-        # Zeit
+        # Zeit als einzelnes Label
         start = datetime.fromtimestamp(entry.start_timestamp).strftime("%H:%M")
         end   = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
-        time_color = '#e8691a' if is_current else '#383850' if is_past else '#555'
-        time_label = QLabel(f"{start}")
-        time_label.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {time_color};")
-        time_label.setFixedWidth(44)
-        title_line.addWidget(time_label)
+        time_color = '#e8691a' if is_current else '#484860' if is_past else '#666'
+        time_label = QLabel(f"{start} – {end}")
+        time_label.setStyleSheet(f"font-size: 13px; font-weight: 500; color: {time_color};")
+        time_label.setFixedWidth(112)
+        hl.addWidget(time_label)
 
-        end_label = QLabel(f"– {end}")
-        end_label.setStyleSheet(f"font-size: 12px; color: {time_color}; opacity: 0.7;")
-        end_label.setFixedWidth(52)
-        title_line.addWidget(end_label)
+        # Fortschrittsbalken für aktuelle Sendung (vertikal zentriert, schmal)
+        if is_current:
+            duration = entry.stop_timestamp - entry.start_timestamp
+            if duration > 0:
+                elapsed = now - entry.start_timestamp
+                progress = max(0, min(100, int(elapsed / duration * 100)))
+                bar = QProgressBar()
+                bar.setFixedSize(3, 28)
+                bar.setOrientation(Qt.Vertical)
+                bar.setTextVisible(False)
+                bar.setValue(progress)
+                bar.setStyleSheet("""
+                    QProgressBar { background: rgba(232,105,26,0.2); border: none; border-radius: 1px; }
+                    QProgressBar::chunk { background: #e8691a; border-radius: 1px; }
+                """)
+                hl.addWidget(bar)
 
         # Titel
         weight = "600" if is_current else "normal"
-        size   = "14px" if is_current else "13px"
-        title_color = "white" if is_current else "#303044" if is_past else "#bbb"
+        title_color = "white" if is_current else "#5a5a75" if is_past else "#ccc"
         title_label = QLabel(entry.title)
-        title_label.setStyleSheet(f"font-size: {size}; font-weight: {weight}; color: {title_color};")
-        title_label.setWordWrap(True)
-        title_line.addWidget(title_label, stretch=1)
+        title_label.setStyleSheet(f"font-size: 14px; font-weight: {weight}; color: {title_color};")
+        title_label.setWordWrap(False)
+        title_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        hl.addWidget(title_label, stretch=1)
 
         # JETZT-Badge
         if is_current:
@@ -242,7 +246,7 @@ class EpgDialog(QDialog):
                 background-color: #e8691a; padding: 2px 8px; border-radius: 3px;
             """)
             badge.setFixedHeight(18)
-            title_line.addWidget(badge)
+            hl.addWidget(badge)
 
         # Catchup-Button
         if self._has_catchup and (is_past or is_current):
@@ -252,15 +256,11 @@ class EpgDialog(QDialog):
             btn_play.setFixedSize(28, 28)
             btn_play.setToolTip(_tr("Von Anfang abspielen") if is_current else _tr("Abspielen"))
             btn_play.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    border: 1px solid rgba(0,120,212,0.4); border-radius: 6px;
-                    padding: 0;
-                }
+                QPushButton { background: transparent; border: 1px solid rgba(0,120,212,0.4); border-radius: 6px; }
                 QPushButton:hover { background-color: #0078d4; border-color: #0078d4; }
             """)
             btn_play.clicked.connect(lambda checked=False, e=entry: self._on_catchup_clicked(e))
-            title_line.addWidget(btn_play)
+            hl.addWidget(btn_play)
 
         # Aufnahme-Button
         if self._schedule_callback and (is_current or not is_past):
@@ -270,44 +270,47 @@ class EpgDialog(QDialog):
             btn_rec.setToolTip(_tr("Aufnahme planen"))
             btn_rec.setFixedSize(28, 28)
             btn_rec.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    border: 1px solid #2a2a3a; border-radius: 5px;
-                    padding: 0;
-                }
+                QPushButton { background: transparent; border: 1px solid #2a2a3a; border-radius: 5px; }
                 QPushButton:hover { background: #c0392b; border-color: #c0392b; }
             """)
             btn_rec.clicked.connect(lambda checked=False, e=entry: self._schedule_callback(e))
-            title_line.addWidget(btn_rec)
+            hl.addWidget(btn_rec)
 
-        layout.addLayout(title_line)
-
-        # Fortschrittsbalken für aktuelle Sendung
-        if is_current:
-            duration = entry.stop_timestamp - entry.start_timestamp
-            if duration > 0:
-                elapsed  = now - entry.start_timestamp
-                progress = max(0, min(100, int(elapsed / duration * 100)))
-                bar = QProgressBar()
-                bar.setFixedHeight(2)
-                bar.setTextVisible(False)
-                bar.setValue(progress)
-                bar.setStyleSheet("""
-                    QProgressBar { background: rgba(232,105,26,0.15); border: none; border-radius: 1px; }
-                    QProgressBar::chunk { background: #e8691a; border-radius: 1px; }
-                """)
-                layout.addWidget(bar)
-
-        # Beschreibung
+        # Expand-Button (nur wenn Beschreibung vorhanden)
         desc = entry.description.strip() if entry.description else ""
         if desc:
-            desc_color = '#888' if is_current else '#2a2a38' if is_past else '#555'
-            desc_label = QLabel(desc)
-            desc_label.setStyleSheet(
-                f"font-size: 11px; color: {desc_color}; padding-left: 100px; padding-top: 1px;"
+            btn_expand = QPushButton()
+            btn_expand.setIcon(_pi("chevron-right.svg", 14, rotate=90))
+            btn_expand.setIconSize(QSize(14, 14))
+            btn_expand.setFixedSize(24, 24)
+            btn_expand.setStyleSheet(
+                "QPushButton { background: transparent; border: none; border-radius: 4px; padding: 4px; }"
+                "QPushButton:hover { background-color: rgba(255,255,255,10); }"
             )
-            desc_label.setWordWrap(True)
-            layout.addWidget(desc_label)
+            hl.addWidget(btn_expand)
+        else:
+            btn_expand = None
+
+        outer.addWidget(main_line)
+
+        # ── Beschreibungs-Bereich (ausgeklappt = sichtbar) ───
+        if desc:
+            desc_widget = QLabel(desc)
+            desc_color = '#888' if is_current else '#555570' if is_past else '#777'
+            desc_widget.setStyleSheet(
+                f"font-size: 13px; color: {desc_color}; padding: 0 0 10px 114px;"
+            )
+            desc_widget.setWordWrap(True)
+            desc_widget.hide()
+            outer.addWidget(desc_widget)
+
+            _expanded = [False]
+            def _toggle(checked=False, dw=desc_widget, btn=btn_expand, state=_expanded):
+                state[0] = not state[0]
+                dw.setVisible(state[0])
+                btn.setIcon(_pi("chevron-right.svg", 14, rotate=-90 if state[0] else 90))
+
+            btn_expand.clicked.connect(_toggle)
 
         return row
 

@@ -94,7 +94,6 @@ class StreamRecorder:
             [
                 _find_ffmpeg(),
                 "-nostdin",
-                "-extension_picky", "0",
                 "-reconnect", "1",
                 "-reconnect_streamed", "1",
                 "-reconnect_delay_max", "5",

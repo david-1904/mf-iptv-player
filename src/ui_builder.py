@@ -24,7 +24,8 @@ _ICONS_DIR = os.path.join(os.path.dirname(__file__), "assets", "icons")
 
 
 def _svg_icon(name: str, size: int = 17, bright: bool = False,
-              active_color: str = "#ffffff", right_pad: int = 0) -> QIcon:
+              active_color: str = "#ffffff", right_pad: int = 0,
+              rotate: int = 0) -> QIcon:
     """Load a Lucide SVG and return a QIcon with dim (Off) and bright (On/Active) states.
 
     bright=True  → off-state is #c0c0c8 instead of #707080 (for player controls on black bg)
@@ -51,6 +52,10 @@ def _svg_icon(name: str, size: int = 17, bright: bool = False,
         p = QPainter(big)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.SmoothPixmapTransform)
+        if rotate:
+            p.translate(render_size / 2, render_size / 2)
+            p.rotate(rotate)
+            p.translate(-render_size / 2, -render_size / 2)
         renderer.render(p)
         p.end()
         px = big.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -75,9 +80,9 @@ def _si(name: str) -> QIcon:
     return _svg_icon(name, size=16, right_pad=6)
 
 
-def _pi(name: str, size: int = 20) -> QIcon:
+def _pi(name: str, size: int = 20, rotate: int = 0) -> QIcon:
     """Shorthand: bright player icon (white active state)."""
-    return _svg_icon(name, size, bright=True)
+    return _svg_icon(name, size, bright=True, rotate=rotate)
 
 
 def _pi_colored(name: str, size: int, active_color: str) -> QIcon:
@@ -127,6 +132,18 @@ _AUDIO_BADGE_TEXT  = QColor("#e8691a")
 _OFFLINE_BADGE_BG  = QColor(180, 40, 40, 80)
 _OFFLINE_BADGE_BORDER = QColor(180, 40, 40, 160)
 _OFFLINE_BADGE_TEXT   = QColor("#e05555")
+
+
+class ClickSlider(QSlider):
+    """QSlider that jumps directly to the clicked position on click."""
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            val = self.minimum() + int((self.maximum() - self.minimum()) * event.position().x() / self.width())
+            self.setValue(val)
+            self.sliderReleased.emit()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
 
 class _CatchupDelegate(QStyledItemDelegate):
@@ -2536,6 +2553,10 @@ class UiBuilderMixin:
         self._buffering_timer = QTimer()
         self._buffering_timer.timeout.connect(self._animate_buffering)
 
+        self._buffering_show_timer = QTimer()
+        self._buffering_show_timer.setSingleShot(True)
+        self._buffering_show_timer.timeout.connect(self._show_buffering_overlay)
+
         # PiP-Kontrollleiste (schwebt oben im PiP-Fenster, nur im PiP-Modus)
         self.pip_bar = QFrame(area)
         self.pip_bar.setObjectName("pipBar")
@@ -2648,7 +2669,7 @@ class UiBuilderMixin:
         self.live_epg_epg_btn.clicked.connect(self._toggle_channel_detail)
         layout.addWidget(self.live_epg_epg_btn)
 
-        self.live_epg_seek_slider = QSlider(Qt.Horizontal)
+        self.live_epg_seek_slider = ClickSlider(Qt.Horizontal)
         self.live_epg_seek_slider.setRange(0, 1000)
         self.live_epg_seek_slider.setStyleSheet("""
             QSlider::groove:horizontal {
@@ -2794,7 +2815,7 @@ class UiBuilderMixin:
         self.vol_mute_btn.mousePressEvent = lambda e: self._toggle_mute()
         layout.addWidget(self.vol_mute_btn)
 
-        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider = ClickSlider(Qt.Horizontal)
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(100)
         self.volume_slider.setFixedWidth(88)
@@ -2819,7 +2840,7 @@ class UiBuilderMixin:
 
         # Seek-Slider
         self._seeking = False
-        self.seek_slider = QSlider(Qt.Horizontal)
+        self.seek_slider = ClickSlider(Qt.Horizontal)
         self.seek_slider.setRange(0, 1000)
         self.seek_slider.setValue(0)
         self.seek_slider.setStyleSheet("""
