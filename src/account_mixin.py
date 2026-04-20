@@ -301,6 +301,7 @@ class AccountMixin:
                 self.series_categories = []
                 self._search_cache_loaded = False
                 self._epg_cache = {}
+                self._initial_epg_loaded = False
                 self._start_external_epg(entry)
                 self.content_stack.setCurrentWidget(self.main_page)
                 await self._load_categories()
@@ -337,6 +338,13 @@ class AccountMixin:
             self.input_password.clear()
             self.input_m3u_url.clear()
             self.input_epg_url.clear()
+
+            self.live_categories = []
+            self.vod_categories = []
+            self.series_categories = []
+            self._search_cache_loaded = False
+            self._epg_cache = {}
+            self._initial_epg_loaded = False
 
             self._update_account_combo()
             self._update_series_button_visibility()

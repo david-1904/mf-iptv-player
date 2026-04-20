@@ -642,12 +642,16 @@
       <translation>Update available</translation>
     </message>
     <message>
+      <source>Account</source>
+      <translation>Account</translation>
+    </message>
+    <message>
       <source>Account-Name</source>
       <translation>Account name</translation>
     </message>
     <message>
-      <source>Typ:</source>
-      <translation>Type:</translation>
+      <source>Typ</source>
+      <translation>Type</translation>
     </message>
     <message>
       <source>Xtream Codes</source>
@@ -690,8 +694,8 @@
       <translation>Click an account to edit it</translation>
     </message>
     <message>
-      <source>Ausgewählten Account löschen</source>
-      <translation>Delete selected account</translation>
+      <source>Löschen</source>
+      <translation>Delete</translation>
     </message>
     <message>
       <source>Line-Status</source>
@@ -706,8 +710,8 @@
       <translation>Playback</translation>
     </message>
     <message>
-      <source>Hardware-Dekodierung:</source>
-      <translation>Hardware decoding:</translation>
+      <source>Hardware-Dekodierung</source>
+      <translation>Hardware decoding</translation>
     </message>
     <message>
       <source>Automatisch (empfohlen)</source>
@@ -726,20 +730,20 @@
       <translation>↻ Restart app for the change to take effect</translation>
     </message>
     <message>
-      <source>Wiedergabe-Stabilität:</source>
-      <translation>Playback Stability:</translation>
+      <source>Wiedergabe-Stabilität</source>
+      <translation>Playback stability</translation>
     </message>
     <message>
-      <source>Ausgewogen – ideal für die meisten Verbindungen (4s)</source>
-      <translation>Balanced – ideal for most connections (4s)</translation>
+      <source>Ausgewogen (4s)</source>
+      <translation>Balanced (4s)</translation>
     </message>
     <message>
-      <source>Hoch – stabil bei häufigen Aussetzern (8s)</source>
-      <translation>High – stable for frequent interruptions (8s)</translation>
+      <source>Hoch – stabil bei Aussetzern (8s)</source>
+      <translation>High – stable for interruptions (8s)</translation>
     </message>
     <message>
-      <source>Niedrig – bei sehr guter Verbindung (1s)</source>
-      <translation>Low – for very good connections (1s)</translation>
+      <source>Niedrig – sehr gute Verbindung (1s)</source>
+      <translation>Low – very good connection (1s)</translation>
     </message>
     <message>
       <source>Erhöhen wenn der Stream häufig unterbricht.</source>
@@ -750,8 +754,8 @@
       <translation>Sprache / Language</translation>
     </message>
     <message>
-      <source>Sprache:</source>
-      <translation>Language:</translation>
+      <source>Sprache</source>
+      <translation>Language</translation>
     </message>
     <message>
       <source>Kategorie:</source>

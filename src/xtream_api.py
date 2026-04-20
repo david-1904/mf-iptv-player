@@ -32,7 +32,7 @@ class XtreamCredentials:
         server = self.server.rstrip('/')
         return f"{server}/player_api.php"
 
-    def stream_url(self, stream_id: int, extension: str = "m3u8") -> str:
+    def stream_url(self, stream_id: int, extension: str = "ts") -> str:
         server = self.server.rstrip('/')
         return f"{server}/live/{self.username}/{self.password}/{stream_id}.{extension}"
 
@@ -126,16 +126,17 @@ class XtreamAPI:
     async def _get(self, action: str, retries: int = 3,
                    _session: "aiohttp.ClientSession | None" = None, **params) -> dict | list:
         timeout = aiohttp.ClientTimeout(total=15)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         all_params = self._params(action=action, **params)
         for attempt in range(retries):
             try:
                 if _session is not None:
-                    async with _session.get(self.creds.base_url, params=all_params) as resp:
+                    async with _session.get(self.creds.base_url, params=all_params, headers=headers) as resp:
                         resp.raise_for_status()
                         return await resp.json()
                 else:
                     async with aiohttp.ClientSession(timeout=timeout) as session:
-                        async with session.get(self.creds.base_url, params=all_params) as resp:
+                        async with session.get(self.creds.base_url, params=all_params, headers=headers) as resp:
                             resp.raise_for_status()
                             return await resp.json()
             except (aiohttp.ClientError, asyncio.TimeoutError):

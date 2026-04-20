@@ -1,6 +1,7 @@
 """
 UI-Erstellung: Alle _create_* Methoden und Layout-Setup
 """
+import asyncio
 import os
 import sys
 
@@ -182,6 +183,10 @@ class _CatchupDelegate(QStyledItemDelegate):
         painter.restore()
         return bx - 2
 
+    def sizeHint(self, option, index):
+        sz = super().sizeHint(option, index)
+        return QSize(sz.width(), 46)
+
     def paint(self, painter, option, index):
         stream = index.data(Qt.UserRole)
         hovered = (index.row() == self._hovered_row)
@@ -196,13 +201,10 @@ class _CatchupDelegate(QStyledItemDelegate):
         badge_margin = self._right_margin(stream) - catchup_margin if (hovered and stream) else 0
         total_margin = catchup_margin + badge_margin
 
-        if total_margin > 0:
-            from PySide6.QtWidgets import QStyleOptionViewItem
-            opt = QStyleOptionViewItem(option)
-            opt.rect = option.rect.adjusted(0, 0, -total_margin, 0)
-            super().paint(painter, opt, index)
-        else:
-            super().paint(painter, option, index)
+        # super().paint() immer mit vollem option.rect → Hover/Selection-Hintergrund
+        # deckt die gesamte Zeile ab. Text kann in den Badge-Bereich laufen, wird
+        # aber von Badges/Icons die danach gezeichnet werden überdeckt.
+        super().paint(painter, option, index)
 
         if stream is None:
             return
@@ -614,163 +616,307 @@ class UiBuilderMixin:
 
     def _create_settings_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setAlignment(Qt.AlignTop)
+        page_lay = QVBoxLayout(page)
+        page_lay.setContentsMargins(0, 0, 0, 0)
+        page_lay.setSpacing(0)
 
-        # Titelzeile mit Schliessen-Button
-        title_row = QHBoxLayout()
+        # ── Fixed header ──────────────────────────────────────
+        header = QWidget()
+        header.setFixedHeight(54)
+        header.setStyleSheet(
+            "QWidget { background: #0b0b1a; border-bottom: 1px solid #181828; }"
+        )
+        h_row = QHBoxLayout(header)
+        h_row.setContentsMargins(24, 0, 16, 0)
+
         self.settings_title = QLabel(_tr("Account hinzufügen"))
-        self.settings_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 16px;")
-        title_row.addWidget(self.settings_title)
-        title_row.addStretch()
+        self.settings_title.setStyleSheet(
+            "font-size: 15px; font-weight: 600; color: #d8d8f0;"
+            " background: transparent; border: none;"
+        )
+        h_row.addWidget(self.settings_title)
+        h_row.addStretch()
+
         self.btn_close_settings = QPushButton(_tr("Schließen"))
         self.btn_close_settings.setStyleSheet("""
             QPushButton {
-                padding: 6px 14px; border-radius: 6px;
-                background: #2a2a3a; border: 1px solid #3a3a4a;
-                color: #ccc; font-size: 12px;
+                padding: 5px 14px; border-radius: 6px;
+                background: #1a1a2e; border: 1px solid #282840;
+                color: #999; font-size: 12px;
             }
-            QPushButton:hover { background: #e04050; color: white; border-color: #e04050; }
+            QPushButton:hover { background: #b02030; color: white; border-color: #b02030; }
         """)
-        self.btn_close_settings.clicked.connect(lambda: self.content_stack.setCurrentWidget(self.main_page))
-        title_row.addWidget(self.btn_close_settings)
-        layout.addLayout(title_row)
+        self.btn_close_settings.clicked.connect(
+            lambda: self.content_stack.setCurrentWidget(self.main_page)
+        )
+        h_row.addWidget(self.btn_close_settings)
+        page_lay.addWidget(header)
 
-        # Eingabefelder
+        # ── Scrollable content ────────────────────────────────
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+
+        scroll_w = QWidget()
+        scroll_w.setStyleSheet("background: transparent;")
+        outer = QVBoxLayout(scroll_w)
+        outer.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        outer.setContentsMargins(20, 18, 20, 32)
+        outer.setSpacing(0)
+
+        inner = QWidget()
+        inner.setMaximumWidth(660)
+        inner.setStyleSheet("background: transparent;")
+        inner_lay = QVBoxLayout(inner)
+        inner_lay.setContentsMargins(0, 0, 0, 0)
+        inner_lay.setSpacing(10)
+
+        # ── Card factory ──────────────────────────────────────
+        _card_idx = [0]
+
+        def _card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
+            _card_idx[0] += 1
+            n = f"sc{_card_idx[0]}"
+            c = QFrame()
+            c.setObjectName(n)
+            c.setStyleSheet(f"""
+                QFrame#{n} {{
+                    background: #0f0f1e;
+                    border: 1px solid #1c1c2e;
+                    border-radius: 10px;
+                }}
+                QFrame#{n} QLabel {{ background: transparent; border: none; }}
+                QFrame#{n} QWidget {{ background: transparent; }}
+            """)
+            lay = QVBoxLayout(c)
+            lay.setContentsMargins(20, 16, 20, 18)
+            lay.setSpacing(9)
+            if title:
+                sec = QLabel(title.upper())
+                sec.setStyleSheet(
+                    "font-size: 10px; font-weight: 700; color: #3e3e5e;"
+                    " letter-spacing: 0.8px; margin-bottom: 2px;"
+                )
+                lay.addWidget(sec)
+            return c, lay
+
+        # ── Sektion-Trennlinie ────────────────────────────────
+        def _divider() -> QWidget:
+            d = QWidget()
+            d.setFixedHeight(1)
+            d.setStyleSheet("background: #1a1a2c;")
+            return d
+
+        # ══════════════════════════════════════════════════════
+        # Karte 1 — Account hinzufügen / bearbeiten
+        # ══════════════════════════════════════════════════════
+        card1, c1 = _card(_tr("Account"))
+
         self.input_name = QLineEdit()
         self.input_name.setPlaceholderText(_tr("Account-Name"))
-        layout.addWidget(self.input_name)
+        c1.addWidget(self.input_name)
 
-        # Account-Typ Auswahl
-        type_layout = QHBoxLayout()
-        type_label = QLabel(_tr("Typ:"))
-        type_label.setStyleSheet("font-size: 13px; color: #ccc;")
-        type_layout.addWidget(type_label)
+        typ_row = QHBoxLayout()
+        typ_row.setSpacing(12)
+        typ_lbl = QLabel(_tr("Typ"))
+        typ_lbl.setStyleSheet("color: #7a7a9a; font-size: 12px; min-width: 36px;")
+        typ_row.addWidget(typ_lbl)
         self.account_type_combo = QComboBox()
         self.account_type_combo.addItem(_tr("Xtream Codes"), "xtream")
         self.account_type_combo.addItem(_tr("M3U Playlist"), "m3u")
         self.account_type_combo.currentIndexChanged.connect(self._on_account_type_changed)
-        type_layout.addWidget(self.account_type_combo, stretch=1)
-        layout.addLayout(type_layout)
+        typ_row.addWidget(self.account_type_combo, stretch=1)
+        c1.addLayout(typ_row)
 
-        # Xtream-Felder
         self.xtream_fields = QWidget()
-        xtream_layout = QVBoxLayout(self.xtream_fields)
-        xtream_layout.setContentsMargins(0, 0, 0, 0)
-
+        xf = QVBoxLayout(self.xtream_fields)
+        xf.setContentsMargins(0, 0, 0, 0)
+        xf.setSpacing(6)
         self.input_server = QLineEdit()
         self.input_server.setPlaceholderText(_tr("Server URL (http://...)"))
-        xtream_layout.addWidget(self.input_server)
-
+        xf.addWidget(self.input_server)
         self.input_username = QLineEdit()
         self.input_username.setPlaceholderText(_tr("Benutzername"))
-        xtream_layout.addWidget(self.input_username)
-
+        xf.addWidget(self.input_username)
         self.input_password = QLineEdit()
         self.input_password.setPlaceholderText(_tr("Passwort"))
         self.input_password.setEchoMode(QLineEdit.Password)
-        xtream_layout.addWidget(self.input_password)
+        xf.addWidget(self.input_password)
+        c1.addWidget(self.xtream_fields)
 
-        layout.addWidget(self.xtream_fields)
-
-        # M3U-Felder
         self.m3u_fields = QWidget()
-        m3u_layout = QVBoxLayout(self.m3u_fields)
-        m3u_layout.setContentsMargins(0, 0, 0, 0)
-
+        mf = QVBoxLayout(self.m3u_fields)
+        mf.setContentsMargins(0, 0, 0, 0)
         self.input_m3u_url = QLineEdit()
         self.input_m3u_url.setPlaceholderText(_tr("M3U Playlist URL (http://...)"))
-        m3u_layout.addWidget(self.input_m3u_url)
-
-        layout.addWidget(self.m3u_fields)
+        mf.addWidget(self.input_m3u_url)
+        c1.addWidget(self.m3u_fields)
         self.m3u_fields.hide()
 
-        # Externe EPG-URL (optional, für beide Account-Typen)
-        layout.addSpacing(8)
-        epg_url_label = QLabel(_tr("Externe EPG-URL (optional)"))
-        epg_url_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 2px;")
-        layout.addWidget(epg_url_label)
-        self.input_epg_url = QLineEdit()
-        self.input_epg_url.setPlaceholderText(_tr("XMLTV-URL (http://... oder http://.../epg.xml.gz)"))
-        layout.addWidget(self.input_epg_url)
+        c1.addWidget(_divider())
 
-        # Buttons
-        btn_layout = QHBoxLayout()
+        epg_lbl = QLabel(_tr("Externe EPG-URL (optional)"))
+        epg_lbl.setStyleSheet("font-size: 11px; color: #55556a; margin-top: 2px;")
+        c1.addWidget(epg_lbl)
+        self.input_epg_url = QLineEdit()
+        self.input_epg_url.setPlaceholderText(
+            _tr("XMLTV-URL (http://... oder http://.../epg.xml.gz)")
+        )
+        c1.addWidget(self.input_epg_url)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
         self.btn_add_account = QPushButton(_tr("Account speichern"))
+        self.btn_add_account.setStyleSheet("""
+            QPushButton {
+                background: #0078d4; color: white; border: none;
+                border-radius: 7px; padding: 8px 22px;
+                font-size: 13px; font-weight: 500;
+            }
+            QPushButton:hover { background: #1a8ae4; }
+            QPushButton:pressed { background: #005fa8; }
+            QPushButton:disabled { background: #1e1e30; color: #444; border: none; }
+        """)
+        self.btn_add_account.setFixedHeight(36)
         self.btn_add_account.clicked.connect(self._add_account)
-        btn_layout.addWidget(self.btn_add_account)
+        btn_row.addWidget(self.btn_add_account)
 
         self.btn_cancel_edit = QPushButton(_tr("Abbrechen"))
+        self.btn_cancel_edit.setStyleSheet("""
+            QPushButton {
+                background: #1a1a2e; color: #999; border: 1px solid #282840;
+                border-radius: 7px; padding: 8px 18px; font-size: 13px;
+            }
+            QPushButton:hover { background: #24243c; color: #ccc; }
+        """)
+        self.btn_cancel_edit.setFixedHeight(36)
         self.btn_cancel_edit.clicked.connect(self._cancel_edit)
         self.btn_cancel_edit.hide()
-        btn_layout.addWidget(self.btn_cancel_edit)
+        btn_row.addWidget(self.btn_cancel_edit)
+        btn_row.addStretch()
+        c1.addLayout(btn_row)
 
-        layout.addLayout(btn_layout)
+        inner_lay.addWidget(card1)
 
-        # Account-Liste
-        layout.addSpacing(24)
-        list_title = QLabel(_tr("Gespeicherte Accounts"))
-        list_title.setStyleSheet("font-size: 14px; font-weight: bold;")
-        layout.addWidget(list_title)
+        # ══════════════════════════════════════════════════════
+        # Karte 2 — Gespeicherte Accounts
+        # ══════════════════════════════════════════════════════
+        card2, c2 = _card(_tr("Gespeicherte Accounts"))
 
         self.account_list = QListWidget()
-        self.account_list.setMaximumHeight(200)
+        self.account_list.setMaximumHeight(160)
+        self.account_list.setStyleSheet("""
+            QListWidget {
+                background: #08081a;
+                border: 1px solid #1a1a2c;
+                border-radius: 7px;
+                color: #c8c8e0;
+                font-size: 13px;
+                outline: 0;
+            }
+            QListWidget::item {
+                padding: 8px 12px;
+                border-bottom: 1px solid #141424;
+            }
+            QListWidget::item:hover { background: #141430; }
+            QListWidget::item:selected {
+                background: rgba(0,120,212,22);
+                color: white;
+                border-bottom-color: rgba(0,120,212,30);
+            }
+            QScrollBar:vertical { background: transparent; width: 5px; }
+            QScrollBar::handle:vertical {
+                background: rgba(255,255,255,14); border-radius: 3px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        """)
         self.account_list.itemClicked.connect(self._on_account_list_clicked)
-        layout.addWidget(self.account_list)
+        c2.addWidget(self.account_list)
 
+        acc_footer = QHBoxLayout()
         acc_hint = QLabel(_tr("Auf einen Account klicken, um ihn zu bearbeiten"))
-        acc_hint.setStyleSheet("color: #555; font-size: 11px; margin: 2px 0;")
-        layout.addWidget(acc_hint)
+        acc_hint.setStyleSheet("color: #3a3a55; font-size: 11px;")
+        acc_footer.addWidget(acc_hint)
+        acc_footer.addStretch()
 
-        self.btn_delete_account = QPushButton(_tr("Ausgewählten Account löschen"))
+        self.btn_delete_account = QPushButton(_tr("Löschen"))
+        self.btn_delete_account.setStyleSheet("""
+            QPushButton {
+                background: transparent; color: #a03030;
+                border: 1px solid #3a1818; border-radius: 6px;
+                padding: 5px 16px; font-size: 12px;
+            }
+            QPushButton:hover { background: #a03030; color: white; border-color: #a03030; }
+        """)
+        self.btn_delete_account.setFixedHeight(28)
         self.btn_delete_account.clicked.connect(self._delete_account)
-        layout.addWidget(self.btn_delete_account)
+        acc_footer.addWidget(self.btn_delete_account)
+        c2.addLayout(acc_footer)
 
-        # Line-Status
-        layout.addSpacing(24)
-        line_status_row = QHBoxLayout()
-        line_status_title = QLabel(_tr("Line-Status"))
-        line_status_title.setStyleSheet("font-size: 14px; font-weight: bold;")
-        line_status_row.addWidget(line_status_title)
-        line_status_row.addStretch()
-        self.btn_refresh_line_info = QPushButton("\u21bb")
+        inner_lay.addWidget(card2)
+
+        # ══════════════════════════════════════════════════════
+        # Karte 3 — Line-Status
+        # ══════════════════════════════════════════════════════
+        card3, c3 = _card()
+
+        ls_row = QHBoxLayout()
+        ls_title = QLabel(_tr("Line-Status"))
+        ls_title.setStyleSheet(
+            "font-size: 13px; font-weight: 600; color: #b0b0cc; background: transparent;"
+        )
+        ls_row.addWidget(ls_title)
+        ls_row.addStretch()
+
+        self.btn_refresh_line_info = QPushButton("↻")
         self.btn_refresh_line_info.setToolTip(_tr("Aktualisieren"))
+        self.btn_refresh_line_info.setFixedSize(28, 28)
         self.btn_refresh_line_info.setStyleSheet("""
             QPushButton {
-                padding: 2px 8px; border-radius: 4px;
-                background: #2a2a3a; border: 1px solid #3a3a4a; color: #aaa;
+                background: #181830; border: 1px solid #242440;
+                border-radius: 14px; color: #777; font-size: 14px;
+                padding: 0;
             }
-            QPushButton:hover { background: #3a3a4a; color: white; }
+            QPushButton:hover { background: #222244; color: white; }
         """)
-        self.btn_refresh_line_info.clicked.connect(lambda: asyncio.ensure_future(self._refresh_line_info()))
-        line_status_row.addWidget(self.btn_refresh_line_info)
-        layout.addLayout(line_status_row)
+        self.btn_refresh_line_info.clicked.connect(
+            lambda: asyncio.ensure_future(self._refresh_line_info())
+        )
+        ls_row.addWidget(self.btn_refresh_line_info)
+        c3.addLayout(ls_row)
 
         self.lbl_line_info = QLabel(_tr("Kein aktiver Account"))
         self.lbl_line_info.setStyleSheet("""
             QLabel {
-                background: #1a1a2a;
-                border: 1px solid #2a2a3a;
+                background: #08081a;
+                border: 1px solid #1a1a2c;
                 border-radius: 8px;
-                padding: 12px 16px;
-                color: #aaa;
+                padding: 12px 14px;
+                color: #666;
                 font-size: 13px;
+                line-height: 1.6;
             }
         """)
         self.lbl_line_info.setWordWrap(True)
-        layout.addWidget(self.lbl_line_info)
+        c3.addWidget(self.lbl_line_info)
 
-        # Wiedergabe-Einstellungen
-        layout.addSpacing(24)
-        playback_title = QLabel(_tr("Wiedergabe"))
-        playback_title.setStyleSheet("font-size: 14px; font-weight: bold;")
-        layout.addWidget(playback_title)
+        inner_lay.addWidget(card3)
 
-        hwdec_row = QHBoxLayout()
-        hwdec_label = QLabel(_tr("Hardware-Dekodierung:"))
-        hwdec_label.setStyleSheet("font-size: 13px; color: #ccc;")
-        hwdec_row.addWidget(hwdec_label)
+        # ══════════════════════════════════════════════════════
+        # Karte 4 — Wiedergabe
+        # ══════════════════════════════════════════════════════
+        card4, c4 = _card(_tr("Wiedergabe"))
+
+        def _setting_row(label_text: str) -> tuple[QHBoxLayout, QLabel]:
+            row = QHBoxLayout()
+            row.setSpacing(12)
+            lbl = QLabel(label_text)
+            lbl.setStyleSheet("color: #b8b8d0; font-size: 13px;")
+            row.addWidget(lbl, stretch=1)
+            return row, lbl
+
+        hw_row, _ = _setting_row(_tr("Hardware-Dekodierung"))
         self.hwdec_combo = QComboBox()
         self.hwdec_combo.addItem(_tr("Automatisch (empfohlen)"), "auto")
         self.hwdec_combo.addItem(_tr("Hardware + Kopie (auto-copy)"), "auto-copy")
@@ -779,43 +925,42 @@ class UiBuilderMixin:
         idx = self.hwdec_combo.findData(saved_hwdec)
         self.hwdec_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.hwdec_combo.currentIndexChanged.connect(self._on_hwdec_changed)
-        hwdec_row.addWidget(self.hwdec_combo, stretch=1)
-        layout.addLayout(hwdec_row)
+        self.hwdec_combo.setMaximumWidth(280)
+        hw_row.addWidget(self.hwdec_combo)
+        c4.addLayout(hw_row)
 
         self.lbl_hwdec_hint = QLabel(_tr("↻ App neu starten damit die Änderung wirkt"))
-        self.lbl_hwdec_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
+        self.lbl_hwdec_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 0 0 4px 0;")
         self.lbl_hwdec_hint.hide()
-        layout.addWidget(self.lbl_hwdec_hint)
+        c4.addWidget(self.lbl_hwdec_hint)
 
-        buffer_row = QHBoxLayout()
-        buffer_label = QLabel(_tr("Wiedergabe-Stabilität:"))
-        buffer_label.setStyleSheet("font-size: 13px; color: #ccc;")
-        buffer_row.addWidget(buffer_label)
+        c4.addWidget(_divider())
+
+        buf_row, _ = _setting_row(_tr("Wiedergabe-Stabilität"))
         self.buffer_combo = QComboBox()
-        self.buffer_combo.addItem(_tr("Ausgewogen – ideal für die meisten Verbindungen (4s)"), 4)
-        self.buffer_combo.addItem(_tr("Hoch – stabil bei häufigen Aussetzern (8s)"), 8)
-        self.buffer_combo.addItem(_tr("Niedrig – bei sehr guter Verbindung (1s)"), 1)
+        self.buffer_combo.addItem(_tr("Ausgewogen (4s)"), 4)
+        self.buffer_combo.addItem(_tr("Hoch – stabil bei Aussetzern (8s)"), 8)
+        self.buffer_combo.addItem(_tr("Niedrig – sehr gute Verbindung (1s)"), 1)
         saved_buf = self.app_settings.get("buffer_secs", 4)
         buf_idx = self.buffer_combo.findData(saved_buf)
         self.buffer_combo.setCurrentIndex(buf_idx if buf_idx >= 0 else 0)
         self.buffer_combo.currentIndexChanged.connect(self._on_buffer_changed)
-        buffer_row.addWidget(self.buffer_combo, stretch=1)
-        layout.addLayout(buffer_row)
+        self.buffer_combo.setMaximumWidth(280)
+        buf_row.addWidget(self.buffer_combo)
+        c4.addLayout(buf_row)
 
-        lbl_buffer_context = QLabel(_tr("Erhöhen wenn der Stream häufig unterbricht."))
-        lbl_buffer_context.setStyleSheet("color: #888; font-size: 11px; margin: 2px 0 0 0;")
-        layout.addWidget(lbl_buffer_context)
+        buf_hint = QLabel(_tr("Erhöhen wenn der Stream häufig unterbricht."))
+        buf_hint.setStyleSheet("color: #44445a; font-size: 11px;")
+        c4.addWidget(buf_hint)
 
-        # Sprache
-        layout.addSpacing(24)
-        lang_title = QLabel(_tr("Sprache / Language"))
-        lang_title.setStyleSheet("font-size: 14px; font-weight: bold;")
-        layout.addWidget(lang_title)
+        inner_lay.addWidget(card4)
 
-        lang_row = QHBoxLayout()
-        lang_label = QLabel(_tr("Sprache:"))
-        lang_label.setStyleSheet("font-size: 13px; color: #ccc;")
-        lang_row.addWidget(lang_label)
+        # ══════════════════════════════════════════════════════
+        # Karte 5 — Sprache
+        # ══════════════════════════════════════════════════════
+        card5, c5 = _card(_tr("Sprache / Language"))
+
+        lang_row, _ = _setting_row(_tr("Sprache"))
         self.lang_combo = QComboBox()
         self.lang_combo.addItem("Deutsch", "de")
         self.lang_combo.addItem("English", "en")
@@ -823,15 +968,21 @@ class UiBuilderMixin:
         lang_idx = self.lang_combo.findData(saved_lang)
         self.lang_combo.setCurrentIndex(lang_idx if lang_idx >= 0 else 0)
         self.lang_combo.currentIndexChanged.connect(self._on_language_changed)
-        lang_row.addWidget(self.lang_combo, stretch=1)
-        layout.addLayout(lang_row)
+        self.lang_combo.setMaximumWidth(200)
+        lang_row.addWidget(self.lang_combo)
+        c5.addLayout(lang_row)
 
         self.lbl_lang_hint = QLabel(_tr("↻ App neu starten damit die Änderung wirkt"))
-        self.lbl_lang_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 2px 0 0 0;")
+        self.lbl_lang_hint.setStyleSheet("color: #e8691a; font-size: 11px; margin: 0;")
         self.lbl_lang_hint.hide()
-        layout.addWidget(self.lbl_lang_hint)
+        c5.addWidget(self.lbl_lang_hint)
 
-        layout.addStretch()
+        inner_lay.addWidget(card5)
+
+        # ── Assemble ──────────────────────────────────────────
+        outer.addWidget(inner)
+        scroll.setWidget(scroll_w)
+        page_lay.addWidget(scroll)
 
         return page
 

@@ -101,9 +101,10 @@ class MpvPlayerWidget(QOpenGLWidget):
         else:
             hwdec = self._hwdec_setting
         self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
-        self.player['user-agent'] = 'okhttp/4.9.0'
-        self.player['stream-lavf-o'] = 'user_agent=okhttp/4.9.0,icy=0,seekable=0,multiple_requests=1'
-        self.player['http-header-fields'] = 'Connection: keep-alive'
+        _ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        self.player['user-agent'] = _ua
+        self.player['stream-lavf-o'] = f'headers=User-Agent: {_ua}\r\n,icy=0,seekable=0,multiple_requests=1'
+        self.player['http-header-fields'] = f'User-Agent: {_ua}'
         # Netzwerk-Timeout: verhindert endloses Hängen bei schlechter Verbindung
         self.player['network-timeout'] = '10'
         # Puffer-Strategie: nach Buffer-Underrun erst N Sekunden füllen bevor fortgesetzt wird
