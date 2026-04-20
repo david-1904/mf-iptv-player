@@ -46,8 +46,8 @@ class ScheduleMixin:
                 rec.status = "recording"
                 changed = True
 
-            elif rec.status == "recording" and (now >= rec.end_timestamp or not self.recorder.is_recording):
-                if self.recorder.is_recording:
+            elif rec.status == "recording" and (now >= rec.end_timestamp or not (is_rec := self.recorder.is_recording)):
+                if is_rec:
                     self.recorder.stop()
                     self._sync_record_buttons(False)
                     rec.status = "done"

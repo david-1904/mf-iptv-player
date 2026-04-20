@@ -138,7 +138,10 @@ class ClickSlider(QSlider):
     """QSlider that jumps directly to the clicked position on click."""
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            val = self.minimum() + int((self.maximum() - self.minimum()) * event.position().x() / self.width())
+            if self.width() == 0:
+                return
+            ratio = max(0.0, min(1.0, event.position().x() / self.width()))
+            val = self.minimum() + int((self.maximum() - self.minimum()) * ratio)
             self.setValue(val)
             self.sliderReleased.emit()
             event.accept()

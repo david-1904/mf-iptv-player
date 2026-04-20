@@ -232,7 +232,10 @@ class HistoryMixin:
             for rec in self.schedule_manager.get_all():
                 if rec.status == "recording" and rec.stream_url == current_url:
                     rec.status = "done"
-            self.schedule_manager.save()
+            try:
+                self.schedule_manager.save()
+            except Exception:
+                pass
         else:
             # Starten
             if not self._current_stream_url:
