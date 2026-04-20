@@ -46,12 +46,16 @@ class ScheduleMixin:
                 rec.status = "recording"
                 changed = True
 
-            elif rec.status == "recording" and now >= rec.end_timestamp:
-                self.recorder.stop()
-                self._sync_record_buttons(False)
-                rec.status = "done"
+            elif rec.status == "recording" and (now >= rec.end_timestamp or not self.recorder.is_recording):
+                if self.recorder.is_recording:
+                    self.recorder.stop()
+                    self._sync_record_buttons(False)
+                    rec.status = "done"
+                    self.status_bar.showMessage(_tr("Geplante Aufnahme beendet: {}").format(rec.channel_name))
+                else:
+                    rec.status = "failed"
+                    self.status_bar.showMessage(_tr("Geplante Aufnahme abgebrochen: {}").format(rec.channel_name))
                 changed = True
-                self.status_bar.showMessage(_tr("Geplante Aufnahme beendet: {}").format(rec.channel_name))
 
         if changed:
             self.schedule_manager.save()

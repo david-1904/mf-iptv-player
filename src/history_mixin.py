@@ -227,6 +227,12 @@ class HistoryMixin:
             else:
                 self.status_bar.showMessage(_tr("Aufnahme gestoppt"))
             self._sync_record_buttons(False)
+            # Zugehörigen Schedule-Eintrag sofort auf "done" setzen (nur passender Kanal)
+            current_url = self._current_stream_url
+            for rec in self.schedule_manager.get_all():
+                if rec.status == "recording" and rec.stream_url == current_url:
+                    rec.status = "done"
+            self.schedule_manager.save()
         else:
             # Starten
             if not self._current_stream_url:

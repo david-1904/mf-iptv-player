@@ -49,15 +49,6 @@ class EpgDialog(QDialog):
         title.setStyleSheet("font-size: 17px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
 
-        if self._has_catchup:
-            catchup_badge = QLabel(_tr("◀◀  Catchup"))
-            catchup_badge.setStyleSheet("""
-                font-size: 10px; font-weight: bold; color: #0078d4;
-                background-color: rgba(0,120,212,0.12); padding: 3px 10px;
-                border-radius: 8px; border: 1px solid rgba(0,120,212,0.4);
-            """)
-            header_layout.addWidget(catchup_badge)
-
         header_layout.addStretch()
 
         btn_close = QPushButton()
@@ -94,6 +85,17 @@ class EpgDialog(QDialog):
         now = datetime.now().timestamp()
         scroll_target = None
         last_date = None
+
+        # Duplikate entfernen: gleicher Titel + Startzeit < 5 Min. auseinander → späteren behalten
+        deduped = []
+        for entry in epg_data:
+            if (deduped and deduped[-1].title == entry.title
+                    and abs(entry.start_timestamp - deduped[-1].start_timestamp) < 300):
+                if entry.start_timestamp > deduped[-1].start_timestamp:
+                    deduped[-1] = entry
+            else:
+                deduped.append(entry)
+        epg_data = deduped
 
         # Bei überlappenden Einträgen nur den mit dem spätesten Start als "aktuell" markieren
         current_ts = None

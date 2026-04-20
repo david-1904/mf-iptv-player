@@ -208,10 +208,6 @@
       <translation>Program – {}</translation>
     </message>
     <message>
-      <source>◀◀  Catchup</source>
-      <translation>◀◀  Catchup</translation>
-    </message>
-    <message>
       <source>Schließen</source>
       <translation>Close</translation>
     </message>
@@ -500,6 +496,10 @@
     <message>
       <source>Geplante Aufnahme beendet: {}</source>
       <translation>Scheduled recording finished: {}</translation>
+    </message>
+    <message>
+      <source>Geplante Aufnahme abgebrochen: {}</source>
+      <translation>Scheduled recording aborted: {}</translation>
     </message>
     <message>
       <source>Start:</source>
