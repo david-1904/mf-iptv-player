@@ -206,6 +206,7 @@ class MainWindow(
             if obj is self.channel_list.viewport():
                 from PySide6.QtWidgets import QToolTip
                 from PySide6.QtGui import QCursor
+                from ui_builder import _quality_dot_tooltip
                 global_pos = QCursor.pos()
                 local_pos = self.channel_list.viewport().mapFromGlobal(global_pos)
                 item = self.channel_list.itemAt(local_pos)
@@ -213,20 +214,19 @@ class MainWindow(
                     stream = item.data(Qt.UserRole)
                     rect = self.channel_list.visualItemRect(item)
                     delegate = self.channel_list.itemDelegate()
-                    badge_w = delegate._right_margin(stream) if delegate else 0
-                    # Maus im Badge-Bereich (rechts)?
-                    if badge_w > 0 and local_pos.x() >= rect.right() - badge_w - 4:
+                    right_margin = delegate._right_margin(stream) if (delegate and stream) else 0
+                    # Maus im Dot-Bereich (rechts)? → Qualitäts-Tooltip
+                    if right_margin > 0 and local_pos.x() >= rect.right() - right_margin - 4:
                         cache = getattr(self, '_stream_quality_cache', {})
                         entry = cache.get(str(getattr(stream, 'stream_id', None)))
-                        if entry:
-                            from epg_search_mixin import _build_item_tooltip
-                            tip = _build_item_tooltip(item.text(), entry)
-                            QToolTip.showText(global_pos, tip)
+                        if isinstance(entry, dict):
+                            tip = _quality_dot_tooltip(entry)
+                            QToolTip.showText(global_pos, tip) if tip else QToolTip.hideText()
                         else:
                             QToolTip.hideText()
                     else:
                         text = item.text()
-                        available = rect.width() - badge_w - 20
+                        available = rect.width() - right_margin - 20
                         if self.channel_list.fontMetrics().horizontalAdvance(text) > available:
                             QToolTip.showText(global_pos, text)
                         else:
@@ -276,7 +276,10 @@ class MainWindow(
         """Passt channel_area-Breite nach OS-Resize an."""
         if self._player_maximized or not self.player_area.isVisible():
             return
-        # VOD: Kanalliste bleibt ausgeblendet, Player fuellt volle Breite
+        # VOD/Series-Browse: Layout wird von _update_grid_size verwaltet
+        if self.current_mode in ("vod", "series"):
+            return
+        # VOD-Playback: Kanalliste bleibt ausgeblendet, Player füllt volle Breite
         if self._current_stream_type == "vod":
             return
         # Detail-Panel verwaltet seine eigene Breite — nicht ueberschreiben

@@ -118,7 +118,7 @@ def _catchup_icon() -> QPixmap:
 
 # Zentrale Qualitäts-Farben — werden von Delegate (QColor) und EPG-Suche (CSS) genutzt
 _QUALITY_HEX = {
-    "4K":  ("#c8860a", "#ffffff"),
+    "4K":  ("#d4a017", "#ffffff"),
     "FHD": ("#6a3fa0", "#ffffff"),
     "HD":  ("#0078d4", "#ffffff"),
     "SD":  ("#444444", "#aaaaaa"),
@@ -132,6 +132,26 @@ _AUDIO_BADGE_TEXT  = QColor("#e8691a")
 _OFFLINE_BADGE_BG  = QColor(180, 40, 40, 80)
 _OFFLINE_BADGE_BORDER = QColor(180, 40, 40, 160)
 _OFFLINE_BADGE_TEXT   = QColor("#e05555")
+
+# Dot-Indikatoren für Qualität in der Senderliste
+_DOT_SIZE = 7
+_DOT_AREA_W = 20  # feste Breite der Dot-Spalte
+_DOT_QUALITY_COLORS = {k: QColor(bg) for k, (bg, _) in _QUALITY_HEX.items()}
+_DOT_OFFLINE_COLOR = QColor("#cc3333")
+_DOT_AUDIO_COLOR   = QColor("#e8691a")
+
+
+def _quality_dot_tooltip(entry: dict) -> str:
+    if entry.get("offline"):
+        return "Offline"
+    parts = []
+    q = entry.get("q", "")
+    a = entry.get("a", "")
+    if q:
+        parts.append(q)
+    if a:
+        parts.append(a)
+    return " · ".join(parts)
 
 
 class ClickSlider(QSlider):
@@ -154,18 +174,9 @@ class _CatchupDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self._mw = main_window
         self._hovered_row = -1
-        self._badge_font = QFont()
-        self._badge_font.setPointSize(7)
-        self._badge_font.setBold(True)
-        from PySide6.QtGui import QFontMetrics
-        self._badge_fm = QFontMetrics(self._badge_font)
-
-    def _badge_w(self, text: str) -> int:
-        """Breite eines Badges inkl. Padding und Abstand zum nächsten Element."""
-        return self._badge_fm.horizontalAdvance(text) + 10 + 6  # text + innen + außen
 
     def _right_margin(self, stream) -> int:
-        """Gesamtbreite aller Badges + Catchup-Icon für diesen Stream."""
+        """Feste Breite der Icon-Spalte rechts (Catchup + Dots)."""
         margin = 0
         if getattr(stream, 'tv_archive', False):
             px = _catchup_icon()
@@ -174,57 +185,42 @@ class _CatchupDelegate(QStyledItemDelegate):
         cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
         measured = cache.get(str(getattr(stream, 'stream_id', None)))
         if isinstance(measured, dict):
-            if measured.get("offline"):
-                margin += self._badge_w("Offline")
-            else:
-                if measured.get("a"):
-                    margin += self._badge_w(measured["a"])
-                if measured.get("q") in _QUALITY_BADGE_COLORS:
-                    margin += self._badge_w(measured["q"])
+            margin += _DOT_AREA_W
         return margin
 
-    def _draw_badge(self, painter, right_x, center_y, text, bg, fg, border=None):
-        """Zeichnet ein Badge, gibt linken Rand zurück."""
+    def _draw_quality_dots(self, painter, right_x, center_y, measured):
         from PySide6.QtCore import QRectF
-        from PySide6.QtGui import QPen
-        tw = self._badge_fm.horizontalAdvance(text)
-        bw, bh = tw + 10, 14
-        bx = right_x - bw - 4
-        by = center_y - bh // 2
-        rect = QRectF(bx, by, bw, bh)
+        size = _DOT_SIZE
+        gap = 3
+        dots = []
+        if measured.get("offline"):
+            dots = [_DOT_OFFLINE_COLOR]
+        else:
+            q = measured.get("q", "")
+            if q in _DOT_QUALITY_COLORS:
+                dots = [_DOT_QUALITY_COLORS[q]]
+        if not dots:
+            return
+        x = right_x - size - 2
         painter.save()
-        painter.setFont(self._badge_font)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(bg)
-        painter.setPen(QPen(border, 1) if border else Qt.NoPen)
-        painter.drawRoundedRect(rect, 3, 3)
-        painter.setPen(fg)
-        painter.drawText(rect, Qt.AlignCenter, text)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(dots[0])
+        painter.drawEllipse(QRectF(x, center_y - size / 2, size, size))
         painter.restore()
-        return bx - 2
-
-    def sizeHint(self, option, index):
-        sz = super().sizeHint(option, index)
-        return QSize(sz.width(), 46)
 
     def paint(self, painter, option, index):
         stream = index.data(Qt.UserRole)
-        hovered = (index.row() == self._hovered_row)
 
-        # Catchup-Icon immer anzeigen; Badges nur beim Hover
-        catchup_margin = 0
-        if stream is not None and getattr(stream, 'tv_archive', False):
-            px = _catchup_icon()
-            if not px.isNull():
-                catchup_margin = px.width() + 8
+        total_margin = self._right_margin(stream) if stream else 0
 
-        badge_margin = self._right_margin(stream) - catchup_margin if (hovered and stream) else 0
-        total_margin = catchup_margin + badge_margin
-
-        # super().paint() immer mit vollem option.rect → Hover/Selection-Hintergrund
-        # deckt die gesamte Zeile ab. Text kann in den Badge-Bereich laufen, wird
-        # aber von Badges/Icons die danach gezeichnet werden überdeckt.
-        super().paint(painter, option, index)
+        if total_margin > 0:
+            from PySide6.QtWidgets import QStyleOptionViewItem
+            opt = QStyleOptionViewItem(option)
+            opt.rect = option.rect.adjusted(0, 0, -total_margin, 0)
+            super().paint(painter, opt, index)
+        else:
+            super().paint(painter, option, index)
 
         if stream is None:
             return
@@ -249,29 +245,11 @@ class _CatchupDelegate(QStyledItemDelegate):
                 painter.restore()
                 right_x = icon_rect.left() - 4
 
-        # Badges nur beim Hover
-        if not hovered:
-            return
-
+        # Qualitäts-Dots (immer sichtbar wenn Daten vorhanden)
         cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
         measured = cache.get(str(getattr(stream, 'stream_id', None)))
         if isinstance(measured, dict):
-            if measured.get("offline"):
-                self._draw_badge(
-                    painter, right_x, center_y, "Offline",
-                    _OFFLINE_BADGE_BG, _OFFLINE_BADGE_TEXT, _OFFLINE_BADGE_BORDER
-                )
-            else:
-                q_label = measured.get("q", "")
-                a_label = measured.get("a", "")
-                if a_label:
-                    right_x = self._draw_badge(
-                        painter, right_x, center_y, a_label,
-                        _AUDIO_BADGE_BG, _AUDIO_BADGE_TEXT, _AUDIO_BADGE_BORDER
-                    )
-                if q_label and q_label in _QUALITY_BADGE_COLORS:
-                    bg, fg = _QUALITY_BADGE_COLORS[q_label]
-                    self._draw_badge(painter, right_x, center_y, q_label, bg, fg)
+            self._draw_quality_dots(painter, right_x, center_y, measured)
 
 
 class AnimatedButton(QPushButton):
@@ -1386,8 +1364,9 @@ class UiBuilderMixin:
             hint_lay = QHBoxLayout(hint_bar)
             hint_lay.setContentsMargins(12, 6, 8, 6)
             hint_lay.setSpacing(8)
-            hint_lbl = QLabel(_tr("Sender abspielen → App lernt Qualität & Audio"))
+            hint_lbl = QLabel(_tr("Sender abspielen → App misst Qualität und zeigt sie als Punkt: 4K = gold · FHD = lila · HD = blau · SD = grau"))
             hint_lbl.setStyleSheet("color: #5aaef0; font-size: 11px;")
+            hint_lbl.setWordWrap(True)
             hint_lay.addWidget(hint_lbl, stretch=1)
             dismiss_btn = QPushButton()
             dismiss_btn.setIcon(_pi("x.svg", 11))

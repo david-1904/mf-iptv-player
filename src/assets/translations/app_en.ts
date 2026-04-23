@@ -794,8 +794,8 @@
       <translation>Try again</translation>
     </message>
     <message>
-      <source>Sender abspielen → App lernt Qualität &amp; Audio</source>
-      <translation>Play channel → app learns quality &amp; audio</translation>
+      <source>Sender abspielen → App misst Qualität und zeigt sie als Punkt: 4K = gold · FHD = lila · HD = blau · SD = grau</source>
+      <translation>Play channel → app measures quality and shows it as a dot: 4K = gold · FHD = purple · HD = blue · SD = grey</translation>
     </message>
     <message>
       <source>EPG neu laden</source>
