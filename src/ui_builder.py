@@ -1133,9 +1133,16 @@ class UiBuilderMixin:
 
         # Favoriten-Filter-Leiste (nur im Favoriten-Modus sichtbar)
         self.fav_filter_row = QWidget()
-        self.fav_filter_row.setStyleSheet("background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6);")
-        _fav_layout = QHBoxLayout(self.fav_filter_row)
-        _fav_layout.setContentsMargins(8, 4, 8, 4)
+        self.fav_filter_row.setObjectName("favFilterRow")
+        self.fav_filter_row.setStyleSheet("#favFilterRow { background: rgba(255, 255, 255, 3); border-bottom: 1px solid rgba(255, 255, 255, 6); }")
+        _fav_outer = QVBoxLayout(self.fav_filter_row)
+        _fav_outer.setContentsMargins(8, 4, 8, 4)
+        _fav_outer.setSpacing(6)
+
+        # Zeile 1: Typ-Buttons
+        _fav_btn_container = QWidget()
+        _fav_layout = QHBoxLayout(_fav_btn_container)
+        _fav_layout.setContentsMargins(0, 0, 0, 0)
         _fav_layout.setSpacing(6)
 
         self._fav_filter_buttons = {}
@@ -1158,6 +1165,42 @@ class UiBuilderMixin:
 
         self._fav_filter_buttons[None].setProperty("active", "true")
         _fav_layout.addStretch()
+        _fav_outer.addWidget(_fav_btn_container)
+
+        # Zeile 2: Sortier-Dropdown (direkt unter den Typ-Buttons)
+        _fav_sort_container = QWidget()
+        _fav_sort_layout = QHBoxLayout(_fav_sort_container)
+        _fav_sort_layout.setContentsMargins(0, 0, 0, 0)
+        _fav_sort_layout.setSpacing(8)
+
+        _fav_sort_label = QLabel(_tr("Sortierung:"))
+        _fav_sort_label.setStyleSheet("color: #666; font-size: 12px; border: none;")
+        _fav_sort_layout.addWidget(_fav_sort_label)
+
+        self.fav_sort_combo = QComboBox()
+        self.fav_sort_combo.setCursor(Qt.PointingHandCursor)
+        self.fav_sort_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                background: transparent;
+                border: none;
+                color: #ccc;
+                font-size: 12px;
+            }
+            QComboBox:hover { color: white; }
+            QComboBox::drop-down { border: none; }
+            QComboBox QAbstractItemView {
+                background: #1e1e2e;
+                color: white;
+                selection-background-color: #0078d4;
+                border: 1px solid #2a2a3a;
+            }
+        """)
+        self.fav_sort_combo.currentIndexChanged.connect(self._on_fav_sort_changed)
+        _fav_sort_layout.addWidget(self.fav_sort_combo)
+        _fav_sort_layout.addStretch()
+        _fav_outer.addWidget(_fav_sort_container)
+
         self.fav_filter_row.hide()
         cl_layout.addWidget(self.fav_filter_row)
 

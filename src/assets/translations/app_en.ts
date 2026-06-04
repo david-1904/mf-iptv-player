@@ -304,6 +304,22 @@
       <translation>Probably offline – no audio during last playback</translation>
     </message>
     <message>
+      <source>Standard</source>
+      <translation>Default</translation>
+    </message>
+    <message>
+      <source>A – Z</source>
+      <translation>A – Z</translation>
+    </message>
+    <message>
+      <source>Z – A</source>
+      <translation>Z – A</translation>
+    </message>
+    <message>
+      <source>Bewertung (beste zuerst)</source>
+      <translation>Rating (best first)</translation>
+    </message>
+    <message>
       <source>Live TV</source>
       <translation>Live TV</translation>
     </message>
@@ -770,24 +786,8 @@
       <translation>Sort:</translation>
     </message>
     <message>
-      <source>Standard</source>
-      <translation>Default</translation>
-    </message>
-    <message>
       <source>Zuletzt hinzugefügt</source>
       <translation>Recently added</translation>
-    </message>
-    <message>
-      <source>Bewertung (beste zuerst)</source>
-      <translation>Rating (best first)</translation>
-    </message>
-    <message>
-      <source>A – Z</source>
-      <translation>A – Z</translation>
-    </message>
-    <message>
-      <source>Z – A</source>
-      <translation>Z – A</translation>
     </message>
     <message>
       <source>Erneut versuchen</source>

@@ -20,7 +20,52 @@ class FavoritesMixin:
             btn.setProperty("active", "true" if t == ftype else "false")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+        self._rebuild_fav_sort_combo(ftype)
         self._load_favorites()
+
+    def _rebuild_fav_sort_combo(self, ftype):
+        """Baut die Favoriten-Sortieroptionen passend zum Typ-Filter neu auf."""
+        combo = getattr(self, "fav_sort_combo", None)
+        if combo is None:
+            return
+        prev = combo.currentData() if combo.count() else self.app_settings.get("fav_sort_key", "default")
+        options = [("default", _tr("Standard")), ("az", _tr("A – Z")), ("za", _tr("Z – A"))]
+        # Bewertung nur sinnvoll fuer Filme/Serien (oder gemischt unter "Alle")
+        if ftype != "live":
+            options.append(("rating", _tr("Bewertung (beste zuerst)")))
+        combo.blockSignals(True)
+        combo.clear()
+        target_idx = 0
+        for i, (key, label) in enumerate(options):
+            combo.addItem(label, key)
+            if key == prev:
+                target_idx = i
+        combo.setCurrentIndex(target_idx)
+        combo.blockSignals(False)
+
+    def _on_fav_sort_changed(self):
+        """Favoriten-Sortierung geaendert - neu laden und merken."""
+        key = self.fav_sort_combo.currentData()
+        if key:
+            self.app_settings.set("fav_sort_key", key)
+        self._load_favorites()
+
+    def _sort_favorites(self, favorites):
+        """Sortiert Favoriten nach aktueller Auswahl im Sortier-Dropdown."""
+        combo = getattr(self, "fav_sort_combo", None)
+        key = combo.currentData() if combo and combo.count() else "default"
+        if key == "az":
+            return sorted(favorites, key=lambda f: f.name.lower())
+        if key == "za":
+            return sorted(favorites, key=lambda f: f.name.lower(), reverse=True)
+        if key == "rating":
+            def rating_key(f):
+                try:
+                    return float(f.rating) if getattr(f, "rating", "") else 0.0
+                except (ValueError, TypeError):
+                    return 0.0
+            return sorted(favorites, key=rating_key, reverse=True)
+        return favorites
 
     def _load_favorites(self):
         """Laedt und zeigt Favoriten an, gefiltert nach aktuellem Typ-Filter."""
@@ -57,6 +102,8 @@ class FavoritesMixin:
             favorites = self.favorites_manager.get_by_type(ftype, account.name)
         else:
             favorites = self.favorites_manager.get_all(account.name)
+
+        favorites = self._sort_favorites(favorites)
 
         type_icons = {"live": "📺", "vod": "🎬", "series": "📖"}
         cell_size = self.channel_list.gridSize()
@@ -122,7 +169,8 @@ class FavoritesMixin:
                 type="vod",
                 icon=data.stream_icon,
                 container_extension=data.container_extension,
-                account_name=account_name
+                account_name=account_name,
+                rating=data.rating
             )
         elif isinstance(data, Series):
             return Favorite(
@@ -130,7 +178,8 @@ class FavoritesMixin:
                 name=data.name,
                 type="series",
                 icon=data.cover,
-                account_name=account_name
+                account_name=account_name,
+                rating=data.rating
             )
         return None
 

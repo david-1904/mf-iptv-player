@@ -23,6 +23,7 @@ class Favorite:
     icon: str = ""
     container_extension: str = ""  # Fuer VOD/Series
     account_name: str = ""  # Zugehoeriger Account
+    rating: str = ""  # Bewertung (nur VOD/Series), fuer Sortierung
 
 
 class FavoritesManager:
