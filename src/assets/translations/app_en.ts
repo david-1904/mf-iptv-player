@@ -146,6 +146,14 @@
       <translation>Enabled categories will be shown in the list.</translation>
     </message>
     <message>
+      <source>Alle abwählen</source>
+      <translation>Deselect all</translation>
+    </message>
+    <message>
+      <source>Alle auswählen</source>
+      <translation>Select all</translation>
+    </message>
+    <message>
       <source>Übernehmen</source>
       <translation>Apply</translation>
     </message>

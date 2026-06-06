@@ -315,6 +315,18 @@ class CategoriesMixin:
         label.setStyleSheet("color: #999; font-size: 12px;")
         layout.addWidget(label)
 
+        toggle_all_btn = QPushButton()
+        toggle_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255,255,255,8);
+                border: 1px solid rgba(255,255,255,12);
+                color: #ccc;
+                padding: 6px 12px;
+            }
+            QPushButton:hover { background-color: rgba(255,255,255,14); }
+        """)
+        layout.addWidget(toggle_all_btn, alignment=Qt.AlignLeft)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll_widget = QWidget()
@@ -331,6 +343,21 @@ class CategoriesMixin:
         scroll_layout.addStretch()
         scroll.setWidget(scroll_widget)
         layout.addWidget(scroll)
+
+        def update_toggle_label():
+            all_checked = all(cb.isChecked() for cb, _, _ in checkboxes)
+            toggle_all_btn.setText(_tr("Alle abwählen") if all_checked else _tr("Alle auswählen"))
+
+        def toggle_all():
+            all_checked = all(cb.isChecked() for cb, _, _ in checkboxes)
+            for cb, _, _ in checkboxes:
+                cb.setChecked(not all_checked)
+            update_toggle_label()
+
+        for cb, _, _ in checkboxes:
+            cb.toggled.connect(update_toggle_label)
+        toggle_all_btn.clicked.connect(toggle_all)
+        update_toggle_label()
 
         btn_layout = QHBoxLayout()
         apply_btn = QPushButton(_tr("Übernehmen"))
