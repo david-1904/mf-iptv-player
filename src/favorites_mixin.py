@@ -29,7 +29,12 @@ class FavoritesMixin:
         if combo is None:
             return
         prev = combo.currentData() if combo.count() else self.app_settings.get("fav_sort_key", "default")
-        options = [("default", _tr("Standard")), ("az", _tr("A – Z")), ("za", _tr("Z – A"))]
+        options = [
+            ("default", _tr("Standard")),
+            ("recent", _tr("Zuletzt hinzugefügt")),
+            ("az", _tr("A – Z")),
+            ("za", _tr("Z – A")),
+        ]
         # Bewertung nur sinnvoll fuer Filme/Serien (oder gemischt unter "Alle")
         if ftype != "live":
             options.append(("rating", _tr("Bewertung (beste zuerst)")))
@@ -54,6 +59,10 @@ class FavoritesMixin:
         """Sortiert Favoriten nach aktueller Auswahl im Sortier-Dropdown."""
         combo = getattr(self, "fav_sort_combo", None)
         key = combo.currentData() if combo and combo.count() else "default"
+        if key == "recent":
+            # Nach Hinzufuege-Zeitstempel, neueste zuerst. Aeltere Favoriten ohne
+            # Zeitstempel (added_at == 0) behalten dank stabilem Sort ihre Reihenfolge.
+            return sorted(favorites, key=lambda f: getattr(f, "added_at", 0.0), reverse=True)
         if key == "az":
             return sorted(favorites, key=lambda f: f.name.lower())
         if key == "za":

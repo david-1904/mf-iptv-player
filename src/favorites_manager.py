@@ -2,6 +2,7 @@
 Favoriten-Verwaltung mit JSON-Speicherung
 """
 import json
+import time
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, asdict
@@ -24,6 +25,7 @@ class Favorite:
     container_extension: str = ""  # Fuer VOD/Series
     account_name: str = ""  # Zugehoeriger Account
     rating: str = ""  # Bewertung (nur VOD/Series), fuer Sortierung
+    added_at: float = 0.0  # Unix-Zeitstempel beim Hinzufuegen, fuer Sortierung
 
 
 class FavoritesManager:
@@ -63,6 +65,8 @@ class FavoritesManager:
         """Fuegt einen Favoriten hinzu. Gibt False zurueck wenn bereits vorhanden."""
         if self.is_favorite(favorite.id, favorite.type, favorite.account_name):
             return False
+        if not favorite.added_at:
+            favorite.added_at = time.time()
         self.favorites.append(favorite)
         self._save()
         return True

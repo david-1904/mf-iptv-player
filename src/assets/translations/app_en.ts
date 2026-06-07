@@ -316,6 +316,10 @@
       <translation>Default</translation>
     </message>
     <message>
+      <source>Zuletzt hinzugefügt</source>
+      <translation>Recently added</translation>
+    </message>
+    <message>
       <source>A – Z</source>
       <translation>A – Z</translation>
     </message>
@@ -792,10 +796,6 @@
     <message>
       <source>Sortierung:</source>
       <translation>Sort:</translation>
-    </message>
-    <message>
-      <source>Zuletzt hinzugefügt</source>
-      <translation>Recently added</translation>
     </message>
     <message>
       <source>Erneut versuchen</source>
