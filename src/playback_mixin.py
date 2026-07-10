@@ -140,6 +140,9 @@ class PlaybackMixin:
 
         self._current_stream_type = stream_type
         self._current_playing_stream_id = stream_id
+        # Ab hier bestimmt die Wiedergabe das Layout — ein evtl. vor einer
+        # Detailansicht gespeicherter Zustand ist damit hinfaellig.
+        self._detail_saved_layout = None
 
         # Logo sofort laden (oder aus Cache anzeigen) — kein Hover noetig
         if self._current_stream_icon:

@@ -19,6 +19,36 @@ from i18n import _tr
 
 class CategoriesMixin:
 
+    def _save_detail_layout(self):
+        """Speichert das aktuelle Player-/Spalten-Layout vor dem Oeffnen einer
+        VOD-/Serien-Detailansicht, damit es exakt wiederhergestellt werden kann."""
+        # Bei bereits offener Detailansicht nicht ueberschreiben, sonst ginge der
+        # urspruengliche Layout-Zustand (z.B. Live-TV side-by-side) verloren.
+        if getattr(self, "_detail_saved_layout", None):
+            return
+        self._detail_saved_layout = {
+            "min": self.channel_area.minimumWidth(),
+            "max": self.channel_area.maximumWidth(),
+            "channel_visible": self.channel_area.isVisible(),
+            "player_visible": self.player_area.isVisible(),
+        }
+
+    def _restore_detail_layout(self):
+        """Stellt das vor einer Detailansicht gespeicherte Layout wieder her.
+        No-op wenn keine Detailansicht offen war."""
+        saved = getattr(self, "_detail_saved_layout", None)
+        if not saved:
+            return
+        self._detail_saved_layout = None
+        self.channel_area.setMinimumWidth(saved["min"])
+        self.channel_area.setMaximumWidth(saved["max"])
+        if saved["channel_visible"]:
+            self.channel_area.show()
+        else:
+            self.channel_area.hide()
+        if saved["player_visible"]:
+            self.player_area.show()
+
     def _switch_mode(self, mode: str):
         if mode == "search" and self.current_mode != "search":
             self._last_mode_before_search = self.current_mode
@@ -28,6 +58,11 @@ class CategoriesMixin:
             account = self.account_manager.get_selected()
             if account:
                 self.session_manager.save_mode(account.name, mode)
+        # Falls eine VOD/Serien-Detailansicht offen war und der Nutzer sie NICHT
+        # ueber "Zurueck" verlaesst (sondern per Suche/Moduswechsel), das dort
+        # ausgeblendete Player-/Spalten-Layout wiederherstellen. Sonst bleibt der
+        # Player versteckt und die feste Spalte "schwebt" zentriert im Fenster.
+        self._restore_detail_layout()
         # Detailpanel schliessen bei Moduswechsel
         self._hide_channel_detail()
 

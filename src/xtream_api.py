@@ -78,6 +78,8 @@ class VodStream:
     added: str = ""
     category_id: str = ""
     container_extension: str = "mp4"
+    cast: str = ""
+    director: str = ""
 
 
 @dataclass
@@ -90,6 +92,8 @@ class Series:
     rating_5based: float = 0.0
     added: str = ""
     category_id: str = ""
+    cast: str = ""
+    director: str = ""
 
 
 @dataclass
@@ -206,7 +210,9 @@ class XtreamAPI:
                 rating_5based=float(s.get("rating_5based", 0) or 0),
                 added=str(s.get("added", "")),
                 category_id=str(s.get("category_id", "")),
-                container_extension=s.get("container_extension", "mp4")
+                container_extension=s.get("container_extension", "mp4"),
+                cast=str(s.get("cast", "") or ""),
+                director=str(s.get("director", "") or ""),
             )
             for s in (data or []) if isinstance(s, dict)
         ]
@@ -238,7 +244,9 @@ class XtreamAPI:
                 rating=str(s.get("rating", "")),
                 rating_5based=float(s.get("rating_5based", 0) or 0),
                 added=str(s.get("added", "")),
-                category_id=str(s.get("category_id", ""))
+                category_id=str(s.get("category_id", "")),
+                cast=str(s.get("cast", "") or ""),
+                director=str(s.get("director", "") or ""),
             )
             for s in (data or []) if isinstance(s, dict)
         ]

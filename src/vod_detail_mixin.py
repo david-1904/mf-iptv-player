@@ -40,6 +40,15 @@ class VodDetailMixin:
         self._clear_genre_tags()
         self._clear_cast_chips()
 
+        # Volle Fensterbreite fuer VOD-Detail: Zustand speichern + Player ausblenden,
+        # damit die Detailansicht nicht in der schmalen Spalte neben dem Live-TV klemmt.
+        self._save_detail_layout()
+        if self.player_area.isVisible():
+            self.player_area.hide()
+        self.channel_area.show()
+        self.channel_area.setMinimumWidth(0)
+        self.channel_area.setMaximumWidth(16777215)
+
         self.channel_stack.setCurrentIndex(2)
         asyncio.ensure_future(self._load_vod_detail(vod))
 
@@ -314,6 +323,8 @@ class VodDetailMixin:
     def _vod_back(self):
         """Zurueck zur Filmliste"""
         self.channel_stack.setCurrentIndex(0)
+        # Exakt gespeicherten Zustand wiederherstellen
+        self._restore_detail_layout()
 
     def _play_trailer(self):
         """Oeffnet den Trailer im Browser"""

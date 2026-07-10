@@ -105,6 +105,7 @@ class MainWindow(
         self._player_maximized = False
         self._was_maximized_before_fullscreen = False
         self._pip_mode = False
+        self._detail_saved_layout = None  # Layout-Zustand vor VOD/Serien-Detailansicht
         self._current_stream_type = None  # "live" oder "vod"
         self._current_playing_stream_id = None
         self._current_stream_icon: str = ""

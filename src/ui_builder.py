@@ -405,7 +405,7 @@ class UiBuilderMixin:
             }
             #searchFilterRow QPushButton {
                 text-align: center; margin: 0;
-                padding: 4px 11px; border-radius: 10px; font-size: 12px;
+                padding: 5px 2px; border-radius: 10px; font-size: 12px;
                 background: transparent; border: 1px solid #3a3a50; color: #888;
             }
             #searchFilterRow QPushButton:hover { border-color: #0078d4; color: #ccc; }
@@ -421,31 +421,23 @@ class UiBuilderMixin:
         """)
         _sf_layout = QHBoxLayout(self.search_filter_row)
         _sf_layout.setContentsMargins(8, 5, 8, 5)
-        _sf_layout.setSpacing(5)
+        _sf_layout.setSpacing(4)
 
-        _sf_label = QLabel("in:")
-        _sf_layout.addWidget(_sf_label)
-
+        # Vier gleich breite Chips, die die schmale Sidebar-Breite (220px)
+        # vollstaendig ausfuellen, damit nichts abgeschnitten wird.
         self._search_filter_buttons = {}
         for label, fkey in [(_tr("Alle"), "all"), (_tr("TV"), "live"), (_tr("Film"), "vod"), (_tr("Serie"), "series")]:
             btn = QPushButton(label)
             btn.setProperty("active", "false")
             btn.setCursor(Qt.PointingHandCursor)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.setMinimumWidth(0)
             btn.clicked.connect(lambda checked, k=fkey: self._set_search_filter(k))
             if fkey == "all":
                 btn.setObjectName("btnFilterAll")
-                _sf_layout.addWidget(btn)
-                # Visueller Trenner zwischen "Alle" und Typ-Filtern
-                sep = QFrame()
-                sep.setFrameShape(QFrame.VLine)
-                sep.setStyleSheet("background: #333; max-width: 1px; margin: 3px 2px;")
-                sep.setFixedWidth(1)
-                _sf_layout.addWidget(sep)
-            else:
-                _sf_layout.addWidget(btn)
+            _sf_layout.addWidget(btn)
             self._search_filter_buttons[fkey] = btn
         self._search_filter_buttons["all"].setProperty("active", "true")
-        _sf_layout.addStretch()
         self.search_filter_row.hide()
         layout.addWidget(self.search_filter_row)
 
