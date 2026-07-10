@@ -20,6 +20,24 @@ def _decode_base64(value: str) -> str:
         return value
 
 
+def _people_str(*values) -> str:
+    """Normalisiert Besetzungs-/Regie-Angaben. Anbieter liefern diese je nach
+    Panel als String ("A, B") oder als Liste (["A", "B"]) und unter
+    unterschiedlichen Feldnamen (cast/actors). Nimmt den ersten befuellten Wert."""
+    for value in values:
+        if not value:
+            continue
+        if isinstance(value, list):
+            joined = ", ".join(str(v).strip() for v in value if str(v).strip())
+            if joined:
+                return joined
+        else:
+            s = str(value).strip()
+            if s:
+                return s
+    return ""
+
+
 @dataclass
 class XtreamCredentials:
     server: str
@@ -211,8 +229,8 @@ class XtreamAPI:
                 added=str(s.get("added", "")),
                 category_id=str(s.get("category_id", "")),
                 container_extension=s.get("container_extension", "mp4"),
-                cast=str(s.get("cast", "") or ""),
-                director=str(s.get("director", "") or ""),
+                cast=_people_str(s.get("cast"), s.get("actors")),
+                director=_people_str(s.get("director")),
             )
             for s in (data or []) if isinstance(s, dict)
         ]
@@ -245,8 +263,8 @@ class XtreamAPI:
                 rating_5based=float(s.get("rating_5based", 0) or 0),
                 added=str(s.get("added", "")),
                 category_id=str(s.get("category_id", "")),
-                cast=str(s.get("cast", "") or ""),
-                director=str(s.get("director", "") or ""),
+                cast=_people_str(s.get("cast"), s.get("actors")),
+                director=_people_str(s.get("director")),
             )
             for s in (data or []) if isinstance(s, dict)
         ]

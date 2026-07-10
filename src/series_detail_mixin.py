@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from xtream_api import Series
+from vod_detail_mixin import _clean_title, _rounded_pixmap
 from i18n import _tr
 
 
@@ -24,7 +25,7 @@ class SeriesDetailMixin:
                 self.session_manager.save_series(
                     account.name, series.series_id, series.name, series.cover, series.category_id
                 )
-        self.series_title_label.setText(series.name)
+        self.series_title_label.setText(_clean_title(series.name))
         self.series_plot_label.setPlainText(series.plot or "")
         self.series_subtitle_label.setText("")
         rating = series.rating if series.rating and series.rating not in ("0", "") else ""
@@ -35,6 +36,7 @@ class SeriesDetailMixin:
             self.series_rating_label.hide()
         self.series_cover_label.clear()
         self.series_cover_label.setText("\u25B6")
+        self.series_hero.clear_backdrop()
         self.season_combo.clear()
         self.episode_list.clear()
         self._series_data = None
@@ -114,6 +116,11 @@ class SeriesDetailMixin:
             if cover_url:
                 asyncio.ensure_future(self._load_series_cover(cover_url))
 
+            # Backdrop (Szenenbild) fuer den Hero-Hintergrund laden
+            backdrop_url = self._extract_backdrop_url(info)
+            if backdrop_url:
+                asyncio.ensure_future(self._load_backdrop(backdrop_url, self.series_hero))
+
         except Exception as e:
             self._hide_loading(_tr("Fehler: {}").format(e))
 
@@ -122,8 +129,9 @@ class SeriesDetailMixin:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
             pixmap = await self._fetch_poster(session, url, 200, 300)
             if pixmap:
-                self.series_cover_label.setPixmap(pixmap)
+                self.series_cover_label.setPixmap(_rounded_pixmap(pixmap))
                 self.series_cover_label.setText("")
+                self._fade_in_widget(self.series_cover_label)
 
     @Slot(int)
     def _on_season_changed(self, index: int):

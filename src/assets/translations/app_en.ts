@@ -866,10 +866,6 @@
       <translation>▶  Play</translation>
     </message>
     <message>
-      <source>Handlung</source>
-      <translation>Plot</translation>
-    </message>
-    <message>
       <source>Regie</source>
       <translation>Director</translation>
     </message>
@@ -960,6 +956,10 @@
     <message>
       <source>Lade Film-Informationen...</source>
       <translation>Loading movie information...</translation>
+    </message>
+    <message>
+      <source>Handlung</source>
+      <translation type="obsolete">Plot</translation>
     </message>
   </context>
 </TS>

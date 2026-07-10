@@ -18,6 +18,7 @@ from PySide6.QtGui import QPixmap, QFont, QPainter, QPainterPath, QColor, QIcon
 from PySide6.QtSvg import QSvgRenderer
 
 from flow_layout import FlowLayout
+from backdrop_widget import BackdropHero
 from i18n import _tr
 
 _ICONS_DIR = os.path.join(os.path.dirname(__file__), "assets", "icons")
@@ -1025,12 +1026,15 @@ class UiBuilderMixin:
                 }
                 QScrollBar:vertical {
                     background: transparent;
-                    width: 6px;
+                    width: 10px;
                 }
                 QScrollBar::handle:vertical {
-                    background: rgba(255, 255, 255, 18);
-                    border-radius: 3px;
-                    min-height: 20px;
+                    background: rgba(255, 255, 255, 45);
+                    border-radius: 5px;
+                    min-height: 30px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background: rgba(255, 255, 255, 80);
                 }
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
             """)
@@ -1065,15 +1069,41 @@ class UiBuilderMixin:
                 }
                 QScrollBar:vertical {
                     background: transparent;
-                    width: 6px;
+                    width: 10px;
                 }
                 QScrollBar::handle:vertical {
-                    background: rgba(255, 255, 255, 18);
-                    border-radius: 3px;
-                    min-height: 20px;
+                    background: rgba(255, 255, 255, 45);
+                    border-radius: 5px;
+                    min-height: 30px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background: rgba(255, 255, 255, 80);
                 }
                 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
             """)
+
+    def _fade_in_widget(self, widget, duration: int = 350):
+        """Blendet ein Widget weich ein (z.B. frisch geladenes Poster)."""
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+        from PySide6.QtCore import QPropertyAnimation
+        # Laufende Vorgaenger-Animation stoppen bevor deren Effekt ersetzt wird
+        previous = getattr(widget, "_fade_anim", None)
+        if previous is not None:
+            try:
+                previous.stop()
+            except RuntimeError:
+                pass  # C++-Objekt bereits geloescht
+        effect = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity", widget)
+        widget._fade_anim = anim
+        anim.setDuration(duration)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.OutCubic)
+        # Effekt nach der Animation entfernen (vermeidet Render-Nebenwirkungen)
+        anim.finished.connect(lambda w=widget: w.setGraphicsEffect(None))
+        anim.start(QPropertyAnimation.DeleteWhenStopped)
 
     def _create_channel_area(self) -> QWidget:
         """Erstellt den Kanalbereich mit Liste, EPG-Panel und Serien-Detailansicht"""
@@ -1219,12 +1249,15 @@ class UiBuilderMixin:
             }
             QScrollBar:vertical {
                 background: transparent;
-                width: 6px;
+                width: 10px;
             }
             QScrollBar::handle:vertical {
-                background: rgba(255, 255, 255, 18);
-                border-radius: 3px;
-                min-height: 20px;
+                background: rgba(255, 255, 255, 45);
+                border-radius: 5px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255, 255, 255, 80);
             }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
@@ -2016,9 +2049,9 @@ class UiBuilderMixin:
         header_layout.addStretch()
         layout.addWidget(header)
 
-        # Hero: Cover links + Info rechts (volle Fensterbreite)
-        hero = QFrame()
-        hero.setStyleSheet("background-color: rgba(10, 10, 22, 215); border-bottom: 1px solid rgba(255, 255, 255, 7);")
+        # Hero: Backdrop-Szenenbild hinter Cover + Info (volle Fensterbreite)
+        hero = BackdropHero()
+        self.series_hero = hero
         hero_layout = QHBoxLayout(hero)
         hero_layout.setContentsMargins(28, 28, 28, 28)
         hero_layout.setSpacing(28)
@@ -2044,11 +2077,11 @@ class UiBuilderMixin:
 
         self.series_title_label = QLabel("")
         self.series_title_label.setWordWrap(True)
-        self.series_title_label.setStyleSheet("font-size: 22px; font-weight: bold; color: white;")
+        self.series_title_label.setStyleSheet("font-size: 30px; font-weight: bold; color: white;")
         info_col.addWidget(self.series_title_label)
 
         self.series_subtitle_label = QLabel("")
-        self.series_subtitle_label.setStyleSheet("font-size: 12px; color: #666;")
+        self.series_subtitle_label.setStyleSheet("font-size: 14px; color: #999;")
         self.series_subtitle_label.setWordWrap(True)
         info_col.addWidget(self.series_subtitle_label)
 
@@ -2071,7 +2104,7 @@ class UiBuilderMixin:
         self.series_plot_label.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.series_plot_label.setStyleSheet("""
             QTextEdit {
-                font-size: 14px; color: #aaa; background: transparent;
+                font-size: 15px; color: #bbb; background: transparent;
                 border: none; padding: 0px;
             }
             QScrollBar:vertical { background: #0f0f1a; width: 5px; }
@@ -2152,8 +2185,10 @@ class UiBuilderMixin:
 
     def _create_vod_detail_page(self) -> QWidget:
         """Erstellt die VOD-Detailansicht im Streaming-App-Style"""
-        page = QWidget()
-        page.setStyleSheet("background-color: transparent;")
+        # Ganze Seite als Backdrop-Flaeche: Szenenbild fuellt den kompletten
+        # Hintergrund, Inhalt liegt darueber (kein leerer Raum unter kurzen Infos)
+        page = BackdropHero(full_page=True)
+        self.vod_hero = page
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -2203,22 +2238,26 @@ class UiBuilderMixin:
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
 
+        # Viewport durchsichtig, damit das Seiten-Backdrop sichtbar bleibt
+        scroll.viewport().setAutoFillBackground(False)
+
         content = QWidget()
         content.setStyleSheet("background-color: transparent;")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        # === Hero-Bereich: Poster + Infos nebeneinander ===
+        # === Hero-Bereich: Poster + Infos nebeneinander (transparent,
+        # das Backdrop liegt auf der Seite selbst) ===
         hero = QFrame()
-        hero.setStyleSheet("background-color: rgba(255, 255, 255, 3);")
+        hero.setStyleSheet("background: transparent;")
         hero_layout = QHBoxLayout(hero)
-        hero_layout.setContentsMargins(24, 20, 24, 20)
-        hero_layout.setSpacing(24)
+        hero_layout.setContentsMargins(36, 28, 36, 20)
+        hero_layout.setSpacing(36)
 
         # Grosses Poster (links)
         self.vod_cover_label = QLabel()
-        self.vod_cover_label.setFixedSize(220, 330)
+        self.vod_cover_label.setFixedSize(260, 390)
         self.vod_cover_label.setStyleSheet("""
             background-color: rgba(255, 255, 255, 6);
             border-radius: 10px;
@@ -2233,15 +2272,15 @@ class UiBuilderMixin:
         info_layout = QVBoxLayout()
         info_layout.setSpacing(12)
 
-        # Filmtitel gross
+        # Filmtitel gross (Netflix/Plex-Massstab)
         self.vod_hero_title = QLabel("")
         self.vod_hero_title.setWordWrap(True)
-        self.vod_hero_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #fff;")
+        self.vod_hero_title.setStyleSheet("font-size: 36px; font-weight: bold; color: #fff;")
         info_layout.addWidget(self.vod_hero_title)
 
         # Untertitel-Zeile: Jahr, Dauer, Genre
         self.vod_subtitle_label = QLabel("")
-        self.vod_subtitle_label.setStyleSheet("font-size: 13px; color: #888;")
+        self.vod_subtitle_label.setStyleSheet("font-size: 15px; color: #bbb;")
         info_layout.addWidget(self.vod_subtitle_label)
 
         # Rating-Badges
@@ -2260,8 +2299,8 @@ class UiBuilderMixin:
         self.btn_play_vod.setStyleSheet("""
             QPushButton {
                 background-color: #0078d4; color: white; border: none;
-                padding: 12px 36px; border-radius: 8px;
-                font-size: 15px; font-weight: bold;
+                padding: 14px 48px; border-radius: 8px;
+                font-size: 16px; font-weight: bold;
             }
             QPushButton:hover { background-color: #1094e8; }
         """)
@@ -2271,32 +2310,50 @@ class UiBuilderMixin:
         self.btn_trailer = QPushButton(_tr("Trailer"))
         self.btn_trailer.setStyleSheet("""
             QPushButton {
-                background: transparent; color: #0078d4; border: 1px solid #0078d4;
-                padding: 12px 28px; border-radius: 8px; font-size: 15px;
+                background: rgba(255,255,255,14); color: #eee; border: 1px solid rgba(255,255,255,40);
+                padding: 14px 36px; border-radius: 8px; font-size: 16px;
             }
-            QPushButton:hover { background-color: #0078d4; color: white; }
+            QPushButton:hover { background-color: rgba(255,255,255,30); border-color: rgba(255,255,255,80); }
         """)
         self.btn_trailer.clicked.connect(self._play_trailer)
         self.btn_trailer.hide()
         btn_layout.addWidget(self.btn_trailer)
         btn_layout.addStretch()
         info_layout.addLayout(btn_layout)
+        info_layout.addSpacing(10)
+
+        # Handlung direkt neben dem Poster (Plex-Style) — begrenzte
+        # Zeilenbreite, sonst unlesbar lange Zeilen auf grossen Monitoren
+        self.vod_plot_label = QLabel("")
+        self.vod_plot_label.setWordWrap(True)
+        self.vod_plot_label.setMaximumWidth(980)
+        self.vod_plot_label.setStyleSheet("color: #ddd; font-size: 16px; line-height: 1.7;")
+        self.vod_plot_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        info_layout.addWidget(self.vod_plot_label)
+
+        # Regie inline unter der Handlung
+        self.vod_director_widget = QWidget()
+        self.vod_director_widget.hide()
+        dir_row = QHBoxLayout(self.vod_director_widget)
+        dir_row.setContentsMargins(0, 4, 0, 0)
+        dir_row.setSpacing(8)
+        dir_header = QLabel(_tr("Regie") + ":")
+        dir_header.setStyleSheet("font-size: 15px; font-weight: bold; color: #888;")
+        dir_row.addWidget(dir_header)
+        self.vod_director_label = QLabel("")
+        self.vod_director_label.setStyleSheet("color: #ccc; font-size: 15px;")
+        dir_row.addWidget(self.vod_director_label, stretch=1)
+        info_layout.addWidget(self.vod_director_widget)
 
         info_layout.addStretch()
         hero_layout.addLayout(info_layout, stretch=1)
         content_layout.addWidget(hero)
 
-        # === Trennlinie ===
-        sep = QFrame()
-        sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: rgba(255,255,255,6);")
-        content_layout.addWidget(sep)
-
         # === Details-Bereich ===
         details = QWidget()
         details.setStyleSheet("background-color: transparent;")
         details_layout = QVBoxLayout(details)
-        details_layout.setContentsMargins(24, 20, 24, 20)
+        details_layout.setContentsMargins(36, 12, 36, 24)
         details_layout.setSpacing(20)
 
         # Genre-Tags
@@ -2308,32 +2365,6 @@ class UiBuilderMixin:
         self.vod_genre_widget.hide()
         details_layout.addWidget(self.vod_genre_widget)
 
-        # Handlung
-        self.vod_plot_header = QLabel(_tr("Handlung"))
-        self.vod_plot_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
-        self.vod_plot_header.hide()
-        details_layout.addWidget(self.vod_plot_header)
-
-        self.vod_plot_label = QLabel("")
-        self.vod_plot_label.setWordWrap(True)
-        self.vod_plot_label.setStyleSheet("color: #ccc; font-size: 14px; line-height: 1.6;")
-        self.vod_plot_label.setAlignment(Qt.AlignTop)
-        details_layout.addWidget(self.vod_plot_label)
-
-        # Regie
-        self.vod_director_widget = QWidget()
-        self.vod_director_widget.hide()
-        dir_layout = QVBoxLayout(self.vod_director_widget)
-        dir_layout.setContentsMargins(0, 0, 0, 0)
-        dir_layout.setSpacing(8)
-        dir_header = QLabel(_tr("Regie"))
-        dir_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
-        dir_layout.addWidget(dir_header)
-        self.vod_director_label = QLabel("")
-        self.vod_director_label.setStyleSheet("color: #bbb; font-size: 14px;")
-        dir_layout.addWidget(self.vod_director_label)
-        details_layout.addWidget(self.vod_director_widget)
-
         # Besetzung
         self.vod_cast_widget = QWidget()
         self.vod_cast_widget.hide()
@@ -2341,7 +2372,7 @@ class UiBuilderMixin:
         cast_outer.setContentsMargins(0, 0, 0, 0)
         cast_outer.setSpacing(10)
         cast_header = QLabel(_tr("Besetzung"))
-        cast_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #eee;")
+        cast_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #eee;")
         cast_outer.addWidget(cast_header)
         # Flow-Layout fuer Schauspieler-Chips
         self.vod_cast_flow = QWidget()

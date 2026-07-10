@@ -2,13 +2,40 @@
 VOD-Details: Film-Detailansicht, Poster, Ratings, Besetzung
 """
 import asyncio
+import re
 import aiohttp
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
+from PySide6.QtGui import QPixmap, QPainter, QPainterPath
 
 from xtream_api import VodStream
 from i18n import _tr
+
+# Qualitaets-Praefixe die Anbieter vor Filmtitel setzen ("4K-TOP - Titel").
+# Bewusst konservativ: nur bekannte Aufloesungs-Tags direkt am Anfang,
+# gefolgt von einem Trenner — normale Titel ("Scooby-Doo - ...") bleiben unberuehrt.
+_QUALITY_PREFIX_RE = re.compile(r"^(?:4K|8K|UHD|FHD|HD|SD)(?:[-+.][A-Z0-9]+)*\s*[-–|]\s+")
+
+
+def _clean_title(name: str) -> str:
+    """Entfernt Anbieter-Qualitaetspraefixe fuer die Anzeige."""
+    cleaned = _QUALITY_PREFIX_RE.sub("", name or "").strip()
+    return cleaned or name
+
+
+def _rounded_pixmap(pixmap: QPixmap, radius: int = 10) -> QPixmap:
+    """Rundet die Ecken einer Pixmap (fuer Poster ueber dem Backdrop)."""
+    out = QPixmap(pixmap.size())
+    out.fill(Qt.transparent)
+    painter = QPainter(out)
+    painter.setRenderHint(QPainter.Antialiasing)
+    path = QPainterPath()
+    path.addRoundedRect(0, 0, pixmap.width(), pixmap.height(), radius, radius)
+    painter.setClipPath(path)
+    painter.drawPixmap(0, 0, pixmap)
+    painter.end()
+    return out
 
 
 class VodDetailMixin:
@@ -24,15 +51,15 @@ class VodDetailMixin:
                     vod.stream_icon, vod.container_extension, vod.category_id
                 )
         self.vod_title_label.setText(vod.name)
-        self.vod_hero_title.setText(vod.name)
+        self.vod_hero_title.setText(_clean_title(vod.name))
         self.vod_subtitle_label.setText("")
         self.vod_plot_label.setText("")
-        self.vod_plot_header.hide()
         self.vod_director_widget.hide()
         self.vod_cast_widget.hide()
         self.vod_genre_widget.hide()
         self.vod_cover_label.clear()
         self.vod_cover_label.setText("🎬")
+        self.vod_hero.clear_backdrop()
         self.vod_loading_bar.show()
         self.btn_trailer.hide()
         self._current_trailer_url = ""
@@ -71,10 +98,10 @@ class VodDetailMixin:
         chip = QLabel(f"  {genre.strip()}  ")
         chip.setStyleSheet("""
             background-color: #1a1a2a;
-            color: #0078d4;
-            font-size: 12px;
-            padding: 5px 12px;
-            border-radius: 12px;
+            color: #4da3e8;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 14px;
             border: 1px solid #0078d4;
         """)
         self.vod_genre_layout.insertWidget(self.vod_genre_layout.count() - 1, chip)
@@ -83,11 +110,11 @@ class VodDetailMixin:
         """Fuegt ein Rating-Badge hinzu"""
         badge = QLabel(f"  {source}  {score}  ")
         badge.setStyleSheet(f"""
-            background-color: #1a1a2a;
+            background-color: rgba(20, 20, 36, 200);
             color: {color};
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
-            padding: 6px 10px;
+            padding: 7px 12px;
             border-radius: 6px;
             border: 1px solid #2a2a3a;
         """)
@@ -105,33 +132,33 @@ class VodDetailMixin:
         """Fuegt einen Schauspieler-Chip mit Initialen-Kreis hinzu"""
         initials = "".join(w[0].upper() for w in actor.split()[:2] if w)
         chip = QWidget()
-        chip.setFixedHeight(34)
+        chip.setFixedHeight(38)
         chip.setStyleSheet(f"""
             QWidget {{
                 background-color: #1a1a2a;
                 border: 1px solid #2a2a3a;
-                border-radius: 17px;
+                border-radius: 19px;
             }}
         """)
         lay = QHBoxLayout(chip)
-        lay.setContentsMargins(3, 3, 12, 3)
-        lay.setSpacing(6)
+        lay.setContentsMargins(4, 4, 14, 4)
+        lay.setSpacing(8)
         # Initialen-Kreis
         circle = QLabel(initials)
-        circle.setFixedSize(26, 26)
+        circle.setFixedSize(30, 30)
         circle.setAlignment(Qt.AlignCenter)
         circle.setStyleSheet(f"""
             background-color: {color};
             color: white;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
-            border-radius: 13px;
+            border-radius: 15px;
             border: none;
         """)
         lay.addWidget(circle)
         # Name
         name = QLabel(actor)
-        name.setStyleSheet("color: #ccc; font-size: 13px; background: transparent; border: none;")
+        name.setStyleSheet("color: #ccc; font-size: 14px; background: transparent; border: none;")
         lay.addWidget(name)
         self.vod_cast_flow_layout.addWidget(chip)
 
@@ -156,9 +183,7 @@ class VodDetailMixin:
             duration = info.get("duration", "")
             if duration:
                 sub_parts.append(duration)
-            genre = info.get("genre", "")
-            if genre:
-                sub_parts.append(genre)
+            # Genre bewusst NICHT in der Meta-Zeile \u2014 es gibt bereits Genre-Chips
             self.vod_subtitle_label.setText("  \u2022  ".join(sub_parts))
 
             # Rating-Badges
@@ -201,10 +226,6 @@ class VodDetailMixin:
                         self._add_genre_tag(g)
                 self.vod_genre_widget.show()
 
-            # Plot sichtbar machen
-            if plot:
-                self.vod_plot_header.show()
-
             # Regie
             director = info.get("director", "")
             if director:
@@ -242,6 +263,11 @@ class VodDetailMixin:
             cover_url = info.get("cover_big", "") or info.get("movie_image", "") or vod.stream_icon
             if cover_url:
                 asyncio.ensure_future(self._load_vod_cover(cover_url))
+
+            # Backdrop (Szenenbild) fuer den Hero-Hintergrund laden
+            backdrop_url = self._extract_backdrop_url(info)
+            if backdrop_url:
+                asyncio.ensure_future(self._load_backdrop(backdrop_url, self.vod_hero))
 
         except Exception as e:
             self._hide_loading(_tr("Fehler: {}").format(e))
@@ -283,16 +309,41 @@ class VodDetailMixin:
         except Exception:
             pass
 
+    @staticmethod
+    def _extract_backdrop_url(info: dict) -> str:
+        """Liest die Backdrop-URL aus get_vod_info/get_series_info.
+        Anbieter liefern backdrop_path als Liste ODER String."""
+        backdrop = info.get("backdrop_path") or info.get("backdrop") or ""
+        if isinstance(backdrop, list):
+            backdrop = next((b for b in backdrop if isinstance(b, str) and b.strip()), "")
+        if not isinstance(backdrop, str):
+            return ""
+        backdrop = backdrop.strip()
+        return backdrop if backdrop.startswith("http") else ""
+
+    async def _load_backdrop(self, url: str, hero):
+        """Laedt das Backdrop-Szenenbild und setzt es (mit Fade-in) in den Hero."""
+        generation = hero.generation
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+                pixmap = await self._fetch_poster(session, url, 1600, 900)
+                # Nur setzen wenn inzwischen kein anderer Titel geoeffnet wurde
+                if pixmap and hero.generation == generation:
+                    hero.set_backdrop(pixmap)
+        except Exception:
+            pass  # Backdrop ist rein dekorativ — Fehler still ignorieren
+
     async def _load_vod_cover(self, url: str):
         """Laedt das VOD-Cover asynchron"""
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            pixmap = await self._fetch_poster(session, url, 220, 330)
+            pixmap = await self._fetch_poster(session, url, 260, 390)
             if pixmap:
                 scaled = pixmap.scaled(
-                    220, 330, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                    260, 390, Qt.KeepAspectRatio, Qt.SmoothTransformation
                 )
-                self.vod_cover_label.setPixmap(scaled)
+                self.vod_cover_label.setPixmap(_rounded_pixmap(scaled))
                 self.vod_cover_label.setText("")
+                self._fade_in_widget(self.vod_cover_label)
 
     def _play_current_vod(self):
         """Spielt den aktuellen VOD-Film ab"""
