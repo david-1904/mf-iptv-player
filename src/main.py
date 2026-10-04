@@ -187,6 +187,12 @@ def setup_dark_theme(app: QApplication):
 
 
 def main():
+    # Bei gebrochenen Skalierungsfaktoren (125%/150%, typisch bei kleinen
+    # Laptop-Displays) rundet Qt sonst plattformabhaengig unterschiedlich,
+    # was zu leicht verschobenen/unscharfen Fixed-Size-Widgets fuehrt.
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
     app.setApplicationName("MF IPTV Player")
     app.setOrganizationName("IPTVApp")

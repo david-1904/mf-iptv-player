@@ -41,37 +41,16 @@ def _parse_quality(name: str) -> str:
 _QUALITY_RANK = {"4K": 0, "FHD": 1, "HD": 2, "SD": 3, "": 4}
 
 
-def _build_item_tooltip(name: str, entry: dict | None) -> str:
-    """Erstellt den Tooltip-Text für einen Kanal-Listeneintrag."""
-    lines = [name]
-    if entry:
-        if entry.get("offline"):
-            lines.append("Wahrscheinlich offline – kein Audio beim letzten Abspielen")
-        else:
-            parts = []
-            if entry.get("q"):
-                parts.append(entry["q"])
-            if entry.get("a"):
-                parts.append(entry["a"])
-            if entry.get("fps"):
-                parts.append(entry["fps"])
-            if parts:
-                lines.append("Zuletzt geprüft: " + " · ".join(parts))
-    return "\n".join(lines)
-
 def _build_quality_style() -> dict:
     """Leitet CSS-Badge-Styles aus den zentralen Farben in ui_builder ab."""
     from ui_builder import _QUALITY_HEX
     result = {}
     for label, (bg, fg) in _QUALITY_HEX.items():
         r, g, b = int(bg[1:3], 16), int(bg[3:5], 16), int(bg[5:7], 16)
-        solid  = f"background:{bg}; color:{fg};"
-        dashed = f"background:rgba({r},{g},{b},0.35); color:{bg}; border:1px dashed {bg};"
-        result[label] = (solid, dashed)
+        result[label] = f"background:rgba({r},{g},{b},0.35); color:{bg}; border:1px solid {bg};"
     return result
 
 _QUALITY_STYLE = _build_quality_style()
-# Index 0 = gemessen (solid), Index 1 = geschätzt (dashed)
 
 
 class EpgSearchMixin:
@@ -80,8 +59,6 @@ class EpgSearchMixin:
 
     def _epg_search_open(self):
         """Beim Öffnen: EPG sofort laden, Eingabe gesperrt bis fertig."""
-        self._quality_cache_load()
-        self._rebuild_channel_tooltips()
         self._epg_search_filter = "all"
         self._epg_search_ready = False
         self._epg_search_generation = getattr(self, '_epg_search_generation', 0) + 1
@@ -166,70 +143,6 @@ class EpgSearchMixin:
                 json.dump({"saved_at": int(time.time()), "entries": entries}, f)
         except Exception:
             pass
-
-    # ── Quality-Cache ────────────────────────────────────────────────────────
-
-    def _quality_cache_path(self) -> Path:
-        from platform_utils import get_config_dir
-        return get_config_dir() / "stream_quality.json"
-
-    def _quality_cache_load(self):
-        if hasattr(self, '_stream_quality_cache'):
-            return
-        try:
-            with open(self._quality_cache_path(), "r", encoding="utf-8") as f:
-                self._stream_quality_cache = json.load(f)
-        except Exception:
-            self._stream_quality_cache = {}
-
-    def _quality_cache_save(self):
-        try:
-            with open(self._quality_cache_path(), "w", encoding="utf-8") as f:
-                json.dump(self._stream_quality_cache, f)
-        except Exception:
-            pass
-
-    def _save_stream_quality(self, stream_id: int, q_label: str, a_label: str, fps_str: str = ""):
-        """Speichert gemessene Qualität + Audio + FPS. Kein Audio = offline markieren."""
-        self._quality_cache_load()
-        key = str(stream_id)
-        offline = not a_label
-        entry = {"q": q_label, "a": a_label, "fps": fps_str, "offline": offline}
-        if self._stream_quality_cache.get(key) != entry:
-            self._stream_quality_cache[key] = entry
-            self._quality_cache_save()
-            self._update_channel_item_tooltip(stream_id, entry)
-            if hasattr(self, 'channel_list'):
-                self.channel_list.viewport().update()
-
-    def _update_channel_item_tooltip(self, stream_id: int, entry: dict):
-        """Setzt den Tooltip des passenden Listeneintrags neu."""
-        if not hasattr(self, 'channel_list'):
-            return
-        from PySide6.QtCore import Qt as _Qt
-        for i in range(self.channel_list.count()):
-            item = self.channel_list.item(i)
-            if not item:
-                continue
-            stream = item.data(_Qt.UserRole)
-            if getattr(stream, 'stream_id', None) == stream_id:
-                item.setToolTip(_build_item_tooltip(stream.name, entry))
-                return
-
-    def _rebuild_channel_tooltips(self):
-        """Setzt Tooltips für alle Items anhand des Quality-Caches neu (nach Cache-Load)."""
-        if not hasattr(self, 'channel_list'):
-            return
-        from PySide6.QtCore import Qt as _Qt
-        cache = getattr(self, '_stream_quality_cache', {})
-        for i in range(self.channel_list.count()):
-            item = self.channel_list.item(i)
-            if not item:
-                continue
-            stream = item.data(_Qt.UserRole)
-            key = str(getattr(stream, 'stream_id', None))
-            entry = cache.get(key)
-            item.setToolTip(_build_item_tooltip(stream.name, entry))
 
     # ── Laden ────────────────────────────────────────────────────────────────
 
@@ -443,15 +356,7 @@ class EpgSearchMixin:
                 results.append((stream, entry, status))
                 break  # pro Sender nur den relevantesten Eintrag
 
-        cache = getattr(self, '_stream_quality_cache', {})
-
         def _quality_rank(stream):
-            entry = cache.get(str(stream.stream_id))
-            if isinstance(entry, dict):
-                if entry.get("offline"):
-                    return 5  # ans Ende
-                if entry.get("q"):
-                    return _QUALITY_RANK.get(entry["q"], 4)
             return _QUALITY_RANK[_parse_quality(stream.name)]
 
         if getattr(self, '_epg_sort_by_quality', False):
@@ -558,43 +463,16 @@ class EpgSearchMixin:
 
         lay.addWidget(text_widget, stretch=1)
 
-        # Badge: Offline / gemessen (kombiniert) / geschätzt
-        cache = getattr(self, '_stream_quality_cache', {})
-        measured = cache.get(str(stream.stream_id))
-        if isinstance(measured, dict) and measured.get("offline"):
-            off_badge = QLabel("Offline")
-            off_badge.setAlignment(Qt.AlignCenter)
-            off_badge.setToolTip(_tr("Wahrscheinlich offline – kein Audio beim letzten Abspielen"))
-            off_badge.setStyleSheet(
-                "background: rgba(180,40,40,0.3); color: #e05555; border: 1px solid rgba(180,40,40,0.6);"
-                "font-size: 9px; font-weight: bold; border-radius: 3px; padding: 2px 6px;"
+        # Qualitäts-Badge aus dem Sendernamen (z.B. "RTL HD" -> HD)
+        quality = _parse_quality(stream.name)
+        if quality:
+            badge = QLabel(quality)
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setStyleSheet(
+                _QUALITY_STYLE.get(quality, _QUALITY_STYLE["HD"]) +
+                "font-size: 9px; font-weight: bold; border-radius: 3px; padding: 2px 5px;"
             )
-            lay.addWidget(off_badge, alignment=Qt.AlignVCenter)
-        else:
-            if isinstance(measured, dict):
-                quality   = measured.get("q", "")
-                audio_lbl = measured.get("a", "")
-                fps_lbl   = measured.get("fps", "")
-                style_idx = 0
-                # Kombiniertes Badge: "FHD · 5.1" oder nur "FHD"
-                label = f"{quality} · {audio_lbl}" if quality and audio_lbl else quality
-                tt_parts = [p for p in [quality, audio_lbl, fps_lbl] if p]
-                tooltip = "Zuletzt geprüft: " + " · ".join(tt_parts) if tt_parts else ""
-            else:
-                quality   = _parse_quality(stream.name)
-                audio_lbl = ""
-                style_idx = 1
-                label = quality
-                tooltip = "Geschätzt anhand Kanalname · Abspielen → App lernt echte Auflösung"
-            if label:
-                combo_badge = QLabel(label)
-                combo_badge.setAlignment(Qt.AlignCenter)
-                combo_badge.setToolTip(tooltip)
-                combo_badge.setStyleSheet(
-                    _QUALITY_STYLE.get(quality, _QUALITY_STYLE["HD"])[style_idx] +
-                    "font-size: 9px; font-weight: bold; border-radius: 3px; padding: 2px 5px;"
-                )
-                lay.addWidget(combo_badge, alignment=Qt.AlignVCenter)
+            lay.addWidget(badge, alignment=Qt.AlignVCenter)
 
         # Aktion: Jetzt=Abspielen, Bald=Aufnahme planen
         btn = QPushButton()

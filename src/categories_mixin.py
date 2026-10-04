@@ -15,6 +15,11 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QFontMetrics, QColor
 from xtream_api import LiveStream, VodStream, Series
 from favorites_manager import Favorite
 from i18n import _tr
+from layout_constants import (
+    LIVE_CHANNEL_AREA_MIN_WIDTH, LIVE_CHANNEL_AREA_CONTENT_MAX_WIDTH,
+    GRID_MIN_CELL_WIDTH, GRID_TARGET_CELL_WIDTH, GRID_POSTER_ASPECT_RATIO,
+    GRID_TITLE_AREA_HEIGHT, GRID_CELL_HORIZONTAL_PADDING,
+)
 
 
 class CategoriesMixin:
@@ -65,6 +70,7 @@ class CategoriesMixin:
         self._restore_detail_layout()
         # Detailpanel schliessen bei Moduswechsel
         self._hide_channel_detail()
+        self._update_live_idle_panel()
 
         # Buttons aktualisieren
         self.btn_live.setChecked(mode == "live")
@@ -112,7 +118,7 @@ class CategoriesMixin:
             elif self._current_stream_type == "vod":
                 # Film laeuft + Wechsel zu Live/etc: Kanalliste anzeigen, side-by-side
                 self.channel_area.show()
-                self.channel_area.setFixedWidth(360)
+                self.channel_area.setFixedWidth(self._live_channel_width())
                 if self._pip_mode:
                     self._exit_pip_mode()
             else:
@@ -557,10 +563,8 @@ class CategoriesMixin:
                     list_item.setData(Qt.UserRole, item)
                     list_item.setToolTip(item.name)
                     self.channel_list.addItem(list_item)
-                # Spaltenbreite an laengsten Namen anpassen; Tooltips mit Quality-Daten befüllen
+                # Spaltenbreite an laengsten Namen anpassen
                 if items:
-                    self._quality_cache_load()
-                    self._rebuild_channel_tooltips()
                     QTimer.singleShot(0, self._fit_live_channel_width)
 
             elif self.current_mode == "vod":
@@ -674,7 +678,10 @@ class CategoriesMixin:
             return
 
         # 1.15x Sicherheitsfaktor + 12px links + 14px Abstand + 16px Icon + 16px rechts + 6px Scrollbar
-        self._live_channel_area_w = max(300, min(560, int(max_w * 1.15) + 74))
+        self._live_channel_area_w = max(
+            LIVE_CHANNEL_AREA_MIN_WIDTH,
+            min(LIVE_CHANNEL_AREA_CONTENT_MAX_WIDTH, int(max_w * 1.15) + 74),
+        )
         self.channel_area.setFixedWidth(self._live_channel_area_w)
 
     def _update_grid_size(self):
@@ -693,15 +700,15 @@ class CategoriesMixin:
             available = self.channel_area.width()
         if available < 100:
             return  # Noch nicht bereit
-        # Spalten: mindestens 180px pro Zelle, maximal 8 Spalten
-        min_cell_w = 180
-        max_cols = 8
-        cols = max(1, min(max_cols, available // min_cell_w))
+        # Spaltenzahl an einer Ziel-Zellbreite ausrichten statt fester Spalten-
+        # obergrenze - sonst werden Poster auf Ultrawide-Fenstern riesig.
+        cols = max(1, round(available / GRID_TARGET_CELL_WIDTH))
+        while cols > 1 and available // cols < GRID_MIN_CELL_WIDTH:
+            cols -= 1
         cell_w = available // cols
-        # Poster füllt die Zelle mit je 8px Rand links/rechts
-        poster_w = cell_w - 16
-        poster_h = int(poster_w * 1.5)
-        cell_h = poster_h + 48
+        poster_w = cell_w - GRID_CELL_HORIZONTAL_PADDING
+        poster_h = int(poster_w * GRID_POSTER_ASPECT_RATIO)
+        cell_h = poster_h + GRID_TITLE_AREA_HEIGHT
         old_icon_w = self.channel_list.iconSize().width()
         self.channel_list.setIconSize(QSize(poster_w, poster_h))
         self.channel_list.setGridSize(QSize(cell_w, cell_h))

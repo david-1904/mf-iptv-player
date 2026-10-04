@@ -308,10 +308,6 @@
       <translation>No results</translation>
     </message>
     <message>
-      <source>Wahrscheinlich offline – kein Audio beim letzten Abspielen</source>
-      <translation>Probably offline – no audio during last playback</translation>
-    </message>
-    <message>
       <source>Standard</source>
       <translation>Default</translation>
     </message>
@@ -442,6 +438,38 @@
     <message>
       <source>⏺ Aufnahme: {} - seit {}</source>
       <translation>⏺ Recording: {} - for {}</translation>
+    </message>
+    <message>
+      <source>Weiterschauen</source>
+      <translation>Resume</translation>
+    </message>
+    <message>
+      <source>WEITERE ZULETZT GESEHENE SENDER</source>
+      <translation>MORE RECENT CHANNELS</translation>
+    </message>
+    <message>
+      <source>LIVE TV</source>
+      <translation>LIVE TV</translation>
+    </message>
+    <message>
+      <source>Kein Sender aktiv</source>
+      <translation>No channel playing</translation>
+    </message>
+    <message>
+      <source>Wähle links einen Sender aus, um die Wiedergabe zu starten.</source>
+      <translation>Pick a channel on the left to start watching.</translation>
+    </message>
+    <message>
+      <source>ZULETZT GESEHEN</source>
+      <translation>LAST WATCHED</translation>
+    </message>
+    <message>
+      <source>oder wähle links einen anderen Sender</source>
+      <translation>or pick another channel on the left</translation>
+    </message>
+    <message>
+      <source>Jetzt:</source>
+      <translation>Now:</translation>
     </message>
     <message>
       <source>Update v{}</source>
@@ -958,8 +986,8 @@
       <translation>Loading movie information...</translation>
     </message>
     <message>
-      <source>Handlung</source>
-      <translation type="obsolete">Plot</translation>
+      <source>Wahrscheinlich offline – kein Audio beim letzten Abspielen</source>
+      <translation type="obsolete">Probably offline – no audio during last playback</translation>
     </message>
   </context>
 </TS>

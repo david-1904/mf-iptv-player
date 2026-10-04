@@ -14,6 +14,7 @@ from xtream_api import LiveStream, VodStream, Series, EpgEntry
 from watch_history_manager import WatchEntry
 from favorites_manager import Favorite
 from i18n import _tr
+from layout_constants import FULLSCREEN_CONTROLS_MIN_HEIGHT, FULLSCREEN_CONTROLS_MAX_HEIGHT_RATIO
 
 
 class PlaybackMixin:
@@ -55,21 +56,7 @@ class PlaybackMixin:
             return
 
         if isinstance(data, LiveStream):
-            # Sender-State fuer EPG-Detail-Toggle merken
-            self._detail_stream_data = data
-            self._current_epg_stream_id = data.stream_id
-            self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
-            self.epg_channel_name.setText(data.name)
-            asyncio.ensure_future(self._load_epg(data.stream_id))
-            url = self.api.creds.stream_url(data.stream_id)
-            self._play_stream(url, data.name, "live", data.stream_id, icon=data.stream_icon)
-            QTimer.singleShot(350, self._show_info_overlay_zap)
-            if data.category_id:
-                account = self.account_manager.get_selected()
-                if account:
-                    self.session_manager.save_live(
-                        account.name, data.stream_id, data.name, data.stream_icon, data.category_id
-                    )
+            self._play_live_stream(data)
 
         elif isinstance(data, VodStream):
             self._show_vod_detail(data)
@@ -103,6 +90,23 @@ class PlaybackMixin:
             elif data.type == "series":
                 s = Series(series_id=data.id, name=data.name, cover=data.icon)
                 self._show_series_detail(s)
+
+    def _play_live_stream(self, data: LiveStream):
+        # Sender-State fuer EPG-Detail-Toggle merken
+        self._detail_stream_data = data
+        self._current_epg_stream_id = data.stream_id
+        self._current_epg_has_catchup = getattr(data, 'tv_archive', False)
+        self.epg_channel_name.setText(data.name)
+        asyncio.ensure_future(self._load_epg(data.stream_id))
+        url = self.api.creds.stream_url(data.stream_id)
+        self._play_stream(url, data.name, "live", data.stream_id, icon=data.stream_icon)
+        QTimer.singleShot(350, self._show_info_overlay_zap)
+        if data.category_id:
+            account = self.account_manager.get_selected()
+            if account:
+                self.session_manager.save_live(
+                    account.name, data.stream_id, data.name, data.stream_icon, data.category_id
+                )
 
     def _play_stream(self, url: str, title: str, stream_type: str = "live", stream_id: int = None, icon: str = "", container_extension: str = ""):
         """Spielt einen Stream im integrierten Player ab"""
@@ -169,12 +173,13 @@ class PlaybackMixin:
                 self.player_area.show()
             else:
                 # Live-TV: side-by-side mit Kanalliste
-                self.channel_area.setFixedWidth(360)
+                self.channel_area.setFixedWidth(self._live_channel_width())
                 self.player_area.show()
         elif is_vod_playback and self.channel_area.isVisible():
             self.channel_area.hide()
         elif self._pip_mode and not is_vod_playback:
             self._exit_pip_mode()
+        self._update_live_idle_panel()
 
         self._update_seek_controls_visibility()
         self._hide_channel_detail()
@@ -242,12 +247,7 @@ class PlaybackMixin:
         self.channel_area.show()
         self.channel_area.setMinimumWidth(0)
         self.channel_area.setMaximumWidth(16777215)
-
-    @Slot(int, int, str, str, str)
-    def _on_stream_specs_detected(self, w: int, h: int, q_label: str, a_label: str, fps_str: str):
-        """Speichert gemessene Auflösung + Audio + FPS eines Live-Streams in den Quality-Cache."""
-        if self._current_stream_type == "live" and self._current_playing_stream_id:
-            self._save_stream_quality(self._current_playing_stream_id, q_label, a_label, fps_str)
+        self._update_live_idle_panel()
 
     @Slot(bool)
     def _on_buffering(self, buffering: bool):
@@ -567,10 +567,18 @@ class PlaybackMixin:
             self._switch_mode("live")
 
     def _position_fullscreen_controls(self):
-        """Positioniert die Fullscreen-Kontrollleiste am unteren Rand"""
+        """Positioniert die Fullscreen-Kontrollleiste am unteren Rand.
+
+        Hoehe ergibt sich aus dem tatsaechlichen Inhalt (sizeHint), nicht aus
+        einem festen Pixelwert - sonst nimmt die Leiste auf kleinen Fenstern
+        (z.B. 1366x768) einen unverhaeltnismaessig grossen Anteil der Hoehe
+        ein, auf grossen/4K-Fenstern dagegen zu wenig.
+        """
         parent = self.fullscreen_controls.parentWidget()
         if parent:
-            ctrl_h = 260
+            ctrl_h = self.fullscreen_controls.sizeHint().height()
+            ctrl_h = max(FULLSCREEN_CONTROLS_MIN_HEIGHT,
+                         min(ctrl_h, int(parent.height() * FULLSCREEN_CONTROLS_MAX_HEIGHT_RATIO)))
             self.fullscreen_controls.setGeometry(0, parent.height() - ctrl_h, parent.width(), ctrl_h)
 
     def _show_info_overlay(self, force: bool = False):
@@ -843,6 +851,13 @@ class PlaybackMixin:
             self.fs_dur_label.setText(self._format_time(dur))
             if dur > 0 and not self._fs_seeking:
                 self.fs_seek_slider.setValue(int(pos / dur * 1000))
+
+        # Sichtbarkeit einzelner Zeilen kann sich laufend aendern (z.B. Seek-Zeile
+        # bei VOD, Skip-Buttons bei Timeshift) - Hoehe der Leiste bei bereits
+        # sichtbarem Overlay daher neu berechnen, sonst bleibt sie auf dem
+        # zuletzt berechneten (ggf. zu kleinen) Wert stehen.
+        if self.fullscreen_controls.isVisible():
+            self._position_fullscreen_controls()
 
     def _fs_play_von_anfang(self):
         """Spielt die aktuelle Sendung ab Beginn via Catchup ab (aus Vollbild)"""
@@ -1147,5 +1162,6 @@ class PlaybackMixin:
                     if self.fullscreen_controls.isVisible():
                         self.fs_channel_logo.setPixmap(pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                         self.fs_channel_logo.show()
+                        self._position_fullscreen_controls()
         except Exception:
             pass

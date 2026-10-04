@@ -328,7 +328,7 @@ class EpgMixin:
 
         # 2-Spalten: Senderliste ausblenden, Detail einblenden (Slide)
         self.channel_nav_widget.hide()
-        if self.player_area.isVisible() and not self._pip_mode:
+        if (self.player_area.isVisible() and not self._pip_mode) or self.live_idle_panel.isVisible():
             ca_width = min(480, max(360, int(self.main_page.width() * 0.32)))
             self.channel_area.setFixedWidth(ca_width)
         self._slide_in(self.channel_detail_panel)
@@ -392,9 +392,8 @@ class EpgMixin:
         self.channel_detail_panel.hide()
         self.channel_detail_panel.setMaximumWidth(16777215)
         self.channel_nav_widget.show()
-        if self.player_area.isVisible() and not self._pip_mode:
-            self.channel_area.setFixedWidth(360)
-        pass
+        if (self.player_area.isVisible() and not self._pip_mode) or self.live_idle_panel.isVisible():
+            self.channel_area.setFixedWidth(self._live_channel_width())
 
     def _update_detail_epg(self, epg_data: list):
         """Befuellt den DAVOR/JETZT/DANACH-Bereich im Detailpanel mit EPG-Daten."""

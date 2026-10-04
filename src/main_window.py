@@ -38,7 +38,11 @@ from app_settings import AppSettings
 from schedule_manager import ScheduleManager
 from schedule_mixin import ScheduleMixin
 from epg_search_mixin import EpgSearchMixin
+from live_idle_mixin import LiveIdleMixin
 from i18n import _tr
+from layout_constants import (
+    LIVE_CHANNEL_AREA_DEFAULT_WIDTH, LIVE_CHANNEL_AREA_MIN_WIDTH, LIVE_CHANNEL_AREA_MAX_WIDTH,
+)
 
 class MainWindow(
     UiBuilderMixin,
@@ -56,12 +60,12 @@ class MainWindow(
     ChannelContextMixin,
     ScheduleMixin,
     EpgSearchMixin,
+    LiveIdleMixin,
     QMainWindow,
 ):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MF IPTV Player")
-        self.setMinimumSize(1400, 800)
 
         self.account_manager = AccountManager()
         self.app_settings = AppSettings()
@@ -136,7 +140,14 @@ class MainWindow(
         self._update_release_info = None
 
         self.setMinimumSize(920, 600)
-        self.resize(1400, 900)  # Vernuenftige Restore-Groesse fuer Fensterleisten-Doppelklick
+        # Restore-Groesse fuer Fensterleisten-Doppelklick - auf kleinen Displays
+        # (z.B. 1366x768) auf den verfuegbaren Platz begrenzen
+        screen = QApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen else None
+        if avail:
+            self.resize(min(1400, int(avail.width() * 0.9)), min(900, int(avail.height() * 0.9)))
+        else:
+            self.resize(1400, 900)
         self._setup_ui()
         self._setup_statusbar()
         self._load_initial_account()
@@ -207,7 +218,6 @@ class MainWindow(
             if obj is self.channel_list.viewport():
                 from PySide6.QtWidgets import QToolTip
                 from PySide6.QtGui import QCursor
-                from ui_builder import _quality_dot_tooltip
                 global_pos = QCursor.pos()
                 local_pos = self.channel_list.viewport().mapFromGlobal(global_pos)
                 item = self.channel_list.itemAt(local_pos)
@@ -216,22 +226,13 @@ class MainWindow(
                     rect = self.channel_list.visualItemRect(item)
                     delegate = self.channel_list.itemDelegate()
                     right_margin = delegate._right_margin(stream) if (delegate and stream) else 0
-                    # Maus im Dot-Bereich (rechts)? → Qualitäts-Tooltip
-                    if right_margin > 0 and local_pos.x() >= rect.right() - right_margin - 4:
-                        cache = getattr(self, '_stream_quality_cache', {})
-                        entry = cache.get(str(getattr(stream, 'stream_id', None)))
-                        if isinstance(entry, dict):
-                            tip = _quality_dot_tooltip(entry)
-                            QToolTip.showText(global_pos, tip) if tip else QToolTip.hideText()
-                        else:
-                            QToolTip.hideText()
+                    # Nur bei abgeschnittenem Namen den vollen Namen zeigen
+                    text = item.text()
+                    available = rect.width() - right_margin - 20
+                    if self.channel_list.fontMetrics().horizontalAdvance(text) > available:
+                        QToolTip.showText(global_pos, text)
                     else:
-                        text = item.text()
-                        available = rect.width() - right_margin - 20
-                        if self.channel_list.fontMetrics().horizontalAdvance(text) > available:
-                            QToolTip.showText(global_pos, text)
-                        else:
-                            QToolTip.hideText()
+                        QToolTip.hideText()
                 return True
         elif event.type() == QEvent.MouseButtonRelease:
             if obj is getattr(self, '_epg_content_widget', None):
@@ -291,11 +292,18 @@ class MainWindow(
             return
         # Im Live-Modus: gespeicherte Content-Breite bevorzugen
         if self.current_mode == "live" and getattr(self, '_live_channel_area_w', 0) > 0:
-            w = max(300, min(500, self._live_channel_area_w))
+            w = self._live_channel_width()
         else:
             # Breite proportional anpassen: 30% fuer Kanalliste, min 300, max 440
-            w = max(300, min(440, int(available * 0.30)))
+            w = max(LIVE_CHANNEL_AREA_MIN_WIDTH, min(440, int(available * 0.30)))
         self.channel_area.setFixedWidth(w)
+
+    def _live_channel_width(self) -> int:
+        """Breite der Live-Kanalliste: am Inhalt gemessen, sonst Standardwert."""
+        measured = getattr(self, '_live_channel_area_w', 0)
+        if measured <= 0:
+            return LIVE_CHANNEL_AREA_DEFAULT_WIDTH
+        return max(LIVE_CHANNEL_AREA_MIN_WIDTH, min(LIVE_CHANNEL_AREA_MAX_WIDTH, measured))
 
     def closeEvent(self, event):
         self._save_current_position()

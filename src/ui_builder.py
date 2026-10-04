@@ -117,43 +117,13 @@ def _catchup_icon() -> QPixmap:
     return _CATCHUP_PX
 
 
-# Zentrale Qualitäts-Farben — werden von Delegate (QColor) und EPG-Suche (CSS) genutzt
+# Zentrale Qualitäts-Farben für die Badges der EPG-Suche
 _QUALITY_HEX = {
     "4K":  ("#d4a017", "#ffffff"),
     "FHD": ("#6a3fa0", "#ffffff"),
     "HD":  ("#0078d4", "#ffffff"),
     "SD":  ("#444444", "#aaaaaa"),
 }
-_QUALITY_BADGE_COLORS = {
-    k: (QColor(bg), QColor(fg)) for k, (bg, fg) in _QUALITY_HEX.items()
-}
-_AUDIO_BADGE_BG    = QColor(232, 105, 26, 60)
-_AUDIO_BADGE_BORDER= QColor(232, 105, 26, 130)
-_AUDIO_BADGE_TEXT  = QColor("#e8691a")
-_OFFLINE_BADGE_BG  = QColor(180, 40, 40, 80)
-_OFFLINE_BADGE_BORDER = QColor(180, 40, 40, 160)
-_OFFLINE_BADGE_TEXT   = QColor("#e05555")
-
-# Dot-Indikatoren für Qualität in der Senderliste
-_DOT_SIZE = 7
-_DOT_AREA_W = 20  # feste Breite der Dot-Spalte
-_DOT_QUALITY_COLORS = {k: QColor(bg) for k, (bg, _) in _QUALITY_HEX.items()}
-_DOT_OFFLINE_COLOR = QColor("#cc3333")
-_DOT_AUDIO_COLOR   = QColor("#e8691a")
-
-
-def _quality_dot_tooltip(entry: dict) -> str:
-    if entry.get("offline"):
-        return "Offline"
-    parts = []
-    q = entry.get("q", "")
-    a = entry.get("a", "")
-    if q:
-        parts.append(q)
-    if a:
-        parts.append(a)
-    return " · ".join(parts)
-
 
 class ClickSlider(QSlider):
     """QSlider that jumps directly to the clicked position on click."""
@@ -177,38 +147,12 @@ class _CatchupDelegate(QStyledItemDelegate):
         self._hovered_row = -1
 
     def _right_margin(self, stream) -> int:
-        """Feste Breite der Icon-Spalte rechts (Catchup + Dots)."""
-        margin = 0
+        """Feste Breite der Catchup-Icon-Spalte rechts."""
         if getattr(stream, 'tv_archive', False):
             px = _catchup_icon()
             if not px.isNull():
-                margin += px.width() + 8
-        cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
-        measured = cache.get(str(getattr(stream, 'stream_id', None)))
-        if isinstance(measured, dict):
-            margin += _DOT_AREA_W
-        return margin
-
-    def _draw_quality_dots(self, painter, right_x, center_y, measured):
-        from PySide6.QtCore import QRectF
-        size = _DOT_SIZE
-        gap = 3
-        dots = []
-        if measured.get("offline"):
-            dots = [_DOT_OFFLINE_COLOR]
-        else:
-            q = measured.get("q", "")
-            if q in _DOT_QUALITY_COLORS:
-                dots = [_DOT_QUALITY_COLORS[q]]
-        if not dots:
-            return
-        x = right_x - size - 2
-        painter.save()
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(dots[0])
-        painter.drawEllipse(QRectF(x, center_y - size / 2, size, size))
-        painter.restore()
+                return px.width() + 8
+        return 0
 
     def paint(self, painter, option, index):
         stream = index.data(Qt.UserRole)
@@ -226,9 +170,6 @@ class _CatchupDelegate(QStyledItemDelegate):
         if stream is None:
             return
 
-        right_x = option.rect.right() - 4
-        center_y = option.rect.center().y()
-
         # Catchup-Icon (ganz rechts, immer sichtbar)
         if getattr(stream, 'tv_archive', False):
             px = _catchup_icon()
@@ -244,13 +185,6 @@ class _CatchupDelegate(QStyledItemDelegate):
                 painter.setOpacity(0.7)
                 painter.drawPixmap(icon_rect.topLeft(), px)
                 painter.restore()
-                right_x = icon_rect.left() - 4
-
-        # Qualitäts-Dots (immer sichtbar wenn Daten vorhanden)
-        cache = getattr(self._mw, '_stream_quality_cache', {}) if self._mw else {}
-        measured = cache.get(str(getattr(stream, 'stream_id', None)))
-        if isinstance(measured, dict):
-            self._draw_quality_dots(painter, right_x, center_y, measured)
 
 
 class AnimatedButton(QPushButton):
@@ -992,6 +926,10 @@ class UiBuilderMixin:
         self.player_area = self._create_player_area()
         layout.addWidget(self.player_area)
         self.player_area.hide()
+
+        # Rechts im Live-Modus ohne Wiedergabe: Platzhalter statt leerer Flaeche
+        self.live_idle_panel = self._create_live_idle_panel()
+        layout.addWidget(self.live_idle_panel)
 
         # Event-Filter fuer PiP-Positionierung bei Resize
         page.installEventFilter(self)
@@ -2573,7 +2511,6 @@ class UiBuilderMixin:
 
         self.player.stream_ended.connect(self._on_stream_ended)
         self.player.gl_context_recreated.connect(self._on_gl_context_recreated)
-        self.player.stream_specs_detected.connect(self._on_stream_specs_detected)
 
         player_container.setMouseTracking(True)
         self.player.setMouseTracking(True)
