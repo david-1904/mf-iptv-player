@@ -2,6 +2,8 @@
 Serien-Details: Staffeln, Episoden, Cover-Laden
 """
 import asyncio
+import re
+
 import aiohttp
 
 from PySide6.QtCore import Qt, Slot, QTimer, QSize
@@ -12,6 +14,25 @@ from PySide6.QtWidgets import (
 from xtream_api import Series
 from vod_detail_mixin import _clean_title, _rounded_pixmap
 from i18n import _tr
+
+_EPISODE_PREFIX = re.compile(r"^.*?\bS\d+\s*E\d+\s*[-–:]?\s*", re.IGNORECASE)
+
+
+def _episode_display_title(title: str) -> str:
+    """Entfernt 'Serienname - S01E05 - ' vor dem eigentlichen Episodentitel."""
+    stripped = _EPISODE_PREFIX.sub("", title, count=1).strip()
+    return stripped or title
+
+
+def _format_episode_duration(duration: str) -> str:
+    """'00:45:04' -> '45 Min.', '01:05:00' -> '1 Std. 5 Min.'"""
+    parts = duration.split(":")
+    if len(parts) != 3 or not all(p.isdigit() for p in parts):
+        return duration
+    h, m = int(parts[0]), int(parts[1])
+    if h:
+        return _tr("{} Std. {} Min.").format(h, m)
+    return _tr("{} Min.").format(max(m, 1))
 
 
 class SeriesDetailMixin:
@@ -56,7 +77,7 @@ class SeriesDetailMixin:
 
     async def _load_series_detail(self, series: Series):
         """Laedt Serien-Details asynchron"""
-        self._show_loading(_tr("Lade Serien-Informationen..."))
+        self._show_loading(_tr("Lade Serien-Informationen…"))
         try:
             data = await self.api.get_series_info_parsed(series.series_id)
             self._series_data = data
@@ -96,7 +117,8 @@ class SeriesDetailMixin:
             if data["seasons"]:
                 self._populate_episodes(data["seasons"][0])
 
-            self._hide_loading(_tr("{} Staffeln geladen").format(len(data['seasons'])))
+            n = len(data['seasons'])
+            self._hide_loading((_tr("1 Staffel geladen") if n == 1 else _tr("{} Staffeln geladen").format(n)))
 
             # Trailer
             import urllib.parse
@@ -200,14 +222,14 @@ class SeriesDetailMixin:
             text_col.setContentsMargins(0, 0, 0, 0)
 
             title_color = "#666" if is_watched else "#ccc"
-            title_lbl = QLabel(ep.title)
+            title_lbl = QLabel(_episode_display_title(ep.title))
             title_lbl.setStyleSheet(f"color: {title_color}; font-size: 13px; background: transparent;")
             title_lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             text_col.addWidget(title_lbl)
 
             if has_duration:
-                dur_lbl = QLabel(ep.duration)
-                dur_lbl.setStyleSheet("color: #444; font-size: 11px; background: transparent;")
+                dur_lbl = QLabel(_format_episode_duration(ep.duration))
+                dur_lbl.setStyleSheet("color: #8a8aa0; font-size: 11px; background: transparent;")
                 text_col.addWidget(dur_lbl)
 
             card_layout.addLayout(text_col, stretch=1)

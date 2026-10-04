@@ -60,7 +60,7 @@ class AccountMixin:
 
     async def _load_m3u_and_categories(self):
         """Laedt M3U-Playlist und dann die Kategorien"""
-        self._show_loading(_tr("Lade M3U-Playlist..."))
+        self._show_loading(_tr("Lade M3U-Playlist…"))
         try:
             await self.api.load()
             await self._load_categories()
@@ -272,7 +272,7 @@ class AccountMixin:
 
     async def _test_and_update_account(self, index: int, entry: AccountEntry):
         """Verbindung testen und bestehenden Account aktualisieren"""
-        self._show_loading(_tr("Teste Verbindung..."))
+        self._show_loading(_tr("Teste Verbindung…"))
         self.btn_add_account.setEnabled(False)
         try:
             if entry.type == "m3u":
@@ -312,7 +312,7 @@ class AccountMixin:
             self.btn_add_account.setEnabled(True)
 
     async def _test_and_add_account(self, entry: AccountEntry):
-        self._show_loading(_tr("Teste Verbindung..."))
+        self._show_loading(_tr("Teste Verbindung…"))
         self.btn_add_account.setEnabled(False)
 
         try:

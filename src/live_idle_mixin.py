@@ -352,7 +352,7 @@ class LiveIdleMixin:
         icon = round(16 * s)
         self.idle_resume_btn.setIcon(_pi("play.svg", icon))
         self.idle_resume_btn.setIconSize(QSize(icon, icon))
-        self.idle_hint.setStyleSheet(f"color: #666; font-size: {px(12)};")
+        self.idle_hint.setStyleSheet(f"color: #8a8aa0; font-size: {px(12)};")
         self.idle_recent_caption.setStyleSheet(
             f"color: #8a8ab0; font-size: {px(11)}; font-weight: 600; letter-spacing: 2px;")
         self._idle_recent_row.setSpacing(round(12 * s))
@@ -366,7 +366,8 @@ class LiveIdleMixin:
             tile.setStyleSheet(f"font-size: {round(12 * s)}px; padding: {round(8 * s)}px;")
             tile.ensurePolished()
             fm = tile.fontMetrics()
-            tile.setText(fm.elidedText(tile.property("full_title"), Qt.ElideRight, tile_w - 16))
+            pad = round(8 * s)
+            tile.setText(fm.elidedText(tile.property("full_title"), Qt.ElideRight, tile_w - 2 * pad - 6))
 
     def _layout_live_idle_panel(self, force: bool = False):
         """Passt Groesse und Informationsmenge an den verfuegbaren Platz an:

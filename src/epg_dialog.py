@@ -106,7 +106,7 @@ class EpgDialog(QDialog):
 
         if not epg_data:
             empty = QLabel(_tr("Keine Programmdaten verfügbar"))
-            empty.setStyleSheet("color: #555; padding: 48px; font-size: 14px;")
+            empty.setStyleSheet("color: #8a8aa0; padding: 48px; font-size: 14px;")
             empty.setAlignment(Qt.AlignCenter)
             content_layout.addWidget(empty)
         else:
@@ -158,7 +158,7 @@ class EpgDialog(QDialog):
         line_l.setStyleSheet("color: #1e1e30;")
 
         lbl = QLabel(day_str)
-        lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;")
+        lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #8a8aa0; text-transform: uppercase;")
         lbl.setFixedWidth(lbl.sizeHint().width() + 8)
 
         line_r = QFrame()

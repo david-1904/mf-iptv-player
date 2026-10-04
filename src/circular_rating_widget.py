@@ -100,7 +100,7 @@ def create_rating_indicator(source: str, score: float, vote_count: int = 0) -> Q
             count_text = str(vote_count)
         count_label = QLabel(count_text)
         count_label.setAlignment(Qt.AlignCenter)
-        count_label.setStyleSheet("color: #666; font-size: 10px; background: transparent;")
+        count_label.setStyleSheet("color: #8a8aa0; font-size: 10px; background: transparent;")
         layout.addWidget(count_label)
 
     return container

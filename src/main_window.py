@@ -150,6 +150,7 @@ class MainWindow(
             self.resize(1400, 900)
         self._setup_ui()
         self._setup_statusbar()
+        self._setup_playback_shortcuts()
         self._load_initial_account()
         self.showMaximized()
 
@@ -185,6 +186,7 @@ class MainWindow(
         if event.type() == QEvent.Resize:
             if self.buffering_overlay.parentWidget() is obj:
                 self.buffering_overlay.setGeometry(0, 0, obj.width(), obj.height())
+                self.stream_error_overlay.setGeometry(0, 0, obj.width(), obj.height())
                 if self.fullscreen_controls.isVisible():
                     self._position_fullscreen_controls()
                 if self.info_overlay.isVisible():
@@ -256,9 +258,17 @@ class MainWindow(
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
+        # Pfeiltasten kommen nur hier an, wenn kein Listen-/Textwidget sie verbraucht
+        # (also bei Fokus auf dem Player bzw. im Vollbild)
+        key = event.key()
+        if event.modifiers() == Qt.NoModifier and self._has_active_stream():
+            if key in (Qt.Key_Up, Qt.Key_Down) and self._current_stream_type == "live":
+                self._zap(-1 if key == Qt.Key_Up else 1)
+                return
+            if key in (Qt.Key_Left, Qt.Key_Right):
+                self._skip_seconds(-10 if key == Qt.Key_Left else 10)
+                return
         if event.key() == Qt.Key_Escape and self._player_maximized:
-            self._toggle_player_maximized()
-        elif event.key() == Qt.Key_F and event.modifiers() == Qt.NoModifier and self.player.is_playing:
             self._toggle_player_maximized()
         elif event.key() == Qt.Key_F and event.modifiers() == Qt.ControlModifier:
             self.content_stack.setCurrentWidget(self.main_page)

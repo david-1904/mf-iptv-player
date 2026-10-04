@@ -87,7 +87,7 @@ class EpgSearchMixin:
         lbl = QLabel(msg)
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet("color: #555; font-size: 13px; padding: 20px 8px;")
+        lbl.setStyleSheet("color: #8a8aa0; font-size: 13px; padding: 20px 8px;")
         lay.addWidget(lbl)
         lay.addStretch()
 
@@ -387,7 +387,7 @@ class EpgSearchMixin:
         else:
             lbl = QLabel(_tr("Keine Treffer"))
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("color: #444; font-size: 13px; padding: 40px;")
+            lbl.setStyleSheet("color: #8a8aa0; font-size: 13px; padding: 40px;")
             lay.addWidget(lbl)
 
         lay.addStretch()
@@ -425,7 +425,7 @@ class EpgSearchMixin:
         badge.setFixedWidth(42)
         badge.setAlignment(Qt.AlignCenter)
         if status == "now":
-            badge.setText("JETZT")
+            badge.setText(_tr("JETZT"))
             badge.setStyleSheet(
                 "background: #27ae60; color: #fff; font-size: 9px; font-weight: bold; "
                 "border-radius: 3px; padding: 2px 4px;"
@@ -457,7 +457,7 @@ class EpgSearchMixin:
         s = datetime.fromtimestamp(entry.start_timestamp).strftime("%H:%M")
         e = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
         meta_lbl = QLabel(f"{stream.name}  ·  {s}–{e}")
-        meta_lbl.setStyleSheet("color: #555; font-size: 11px;")
+        meta_lbl.setStyleSheet("color: #8a8aa0; font-size: 11px;")
         meta_lbl.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         text_col.addWidget(meta_lbl)
 

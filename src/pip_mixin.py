@@ -91,7 +91,7 @@ class PipMixin:
         self.player_area.move(max(0, x), max(0, y))
 
     def _show_loading(self, message: str):
-        self.status_bar.showMessage(message)
+        self.status_bar.showMessage(message, 0)
         self.loading_bar.show()
         # Kanalliste verstecken, Overlay zeigen (nur auf Seite 0)
         if self.channel_stack.currentIndex() == 0:
@@ -113,7 +113,7 @@ class PipMixin:
     def _show_loading_error(self, error: str):
         """Zeigt Fehler im Loading-Overlay mit Retry-Button"""
         self.loading_bar.hide()
-        self.status_bar.showMessage(_tr("Fehler: {}").format(error))
+        self.status_bar.showMessage(_tr("Fehler: {}").format(error), 8000)
         if self.channel_stack.currentIndex() == 0:
             self._loading_spinner.hide()
             self._loading_text.setText(_tr("Verbindungsfehler\n{}").format(error))

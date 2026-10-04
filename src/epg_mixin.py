@@ -484,7 +484,7 @@ class EpgMixin:
                 time_row = QHBoxLayout()
                 time_row.setSpacing(6)
                 time_lbl = QLabel(f"{s} \u2013 {e_time}")
-                time_lbl.setStyleSheet("font-size: 12px; color: #555;")
+                time_lbl.setStyleSheet("font-size: 12px; color: #8a8aa0;")
                 time_row.addWidget(time_lbl, stretch=1)
                 rec_btn = QPushButton()
                 rec_btn.setIcon(_pi("record.svg", 14))

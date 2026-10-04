@@ -70,6 +70,7 @@ class CategoriesMixin:
         self._restore_detail_layout()
         # Detailpanel schliessen bei Moduswechsel
         self._hide_channel_detail()
+        self.status_bar.clearMessage()
         self._update_live_idle_panel()
 
         # Buttons aktualisieren
@@ -314,7 +315,7 @@ class CategoriesMixin:
     def _on_category_context_menu(self, pos):
         """Kontextmenue fuer Kategorie-Liste (Ausblenden)"""
         menu = QMenu(self)
-        action = menu.addAction("Kategorien ausblenden...")
+        action = menu.addAction(_tr("Kategorien ausblenden…"))
         result = menu.exec(self.category_list.mapToGlobal(pos))
         if result == action:
             self._show_hide_categories_dialog()

@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Slot, QTimer
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QKeySequence, QShortcut
 from PySide6.QtWidgets import QListWidgetItem
 
 from xtream_api import LiveStream, VodStream, Series, EpgEntry
@@ -120,6 +120,8 @@ class PlaybackMixin:
         self._buffering_watchdog.stop()
         self._buffering_accumulated = 0.0
         self._buffering_since = None
+        self._buffering_text = _tr("Laden")
+        self._hide_stream_error()
         # Vorherige Position speichern
         self._save_current_position()
 
@@ -187,7 +189,7 @@ class PlaybackMixin:
         self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         self.player_info_label.setText("")
         self.controls_timer.start(1000)
-        self.status_bar.showMessage(_tr("Spiele: {}").format(title))
+        self.status_bar.showMessage(_tr("Wiedergabe: {}").format(title), 4000)
 
         # Verlaufseintrag anlegen
         account = self.account_manager.get_selected()
@@ -215,6 +217,7 @@ class PlaybackMixin:
             self._update_record_button()
         self.player.stop()
         self.buffering_overlay.hide()
+        self._hide_stream_error()
         self.info_overlay.hide()
         self._info_overlay_timer.stop()
         self.stream_info_timer.stop()
@@ -271,6 +274,8 @@ class PlaybackMixin:
             self._buffering_show_timer.stop()
             self._buffering_timer.stop()
             self.buffering_overlay.hide()
+            self._hide_stream_error()
+            self._buffering_text = _tr("Laden")
             self._buffering_watchdog.stop()
             self._reconnect_timer.stop()
             self._stream_start_timer.stop()
@@ -301,7 +306,7 @@ class PlaybackMixin:
         """Animiert den Buffering-Text"""
         self._buffering_dots = (self._buffering_dots + 1) % 4
         dots = "." * self._buffering_dots
-        self.buffering_overlay.setText(_tr("Laden") + dots)
+        self.buffering_overlay.setText(self._buffering_text + dots)
 
     def _toggle_play_pause(self):
         """Play/Pause umschalten - mit Timeshift fuer Catchup-Sender"""
@@ -546,6 +551,7 @@ class PlaybackMixin:
             self.status_bar.hide()
             self._player_maximized = True
             self.showFullScreen()
+            self.player.setFocus()
             # Windows: showFullScreen() kann Relayout triggern der Widgets wieder einblendet
             # → nochmals verstecken nach der Zustandsänderung
             QTimer.singleShot(100, self._enforce_fullscreen_hidden)
@@ -818,6 +824,8 @@ class PlaybackMixin:
         self.fs_btn_skip_forward.setVisible(is_vod or timeshift)
         # LIVE-Button: nur im Timeshift
         self.fs_btn_go_live.setVisible(timeshift)
+        self.fs_btn_zap_prev.setVisible(is_live)
+        self.fs_btn_zap_next.setVisible(is_live)
         # EPG-Seek-Slider Wert laufend aktualisieren
         if (self.fs_epg_seek_slider.isVisible()
                 and not getattr(self, '_fs_epg_seeking', False)):
@@ -961,6 +969,14 @@ class PlaybackMixin:
         if current_entry:
             duration = current_entry.stop_timestamp - current_entry.start_timestamp
             if duration > 0:
+                title = self.live_epg_title
+                title.setText(title.fontMetrics().elidedText(
+                    current_entry.title, Qt.ElideRight, title.maximumWidth()))
+                title.setToolTip(current_entry.title)
+                self.live_epg_start_lbl.setText(
+                    datetime.fromtimestamp(current_entry.start_timestamp).strftime("%H:%M"))
+                self.live_epg_stop_lbl.setText(
+                    datetime.fromtimestamp(current_entry.stop_timestamp).strftime("%H:%M"))
                 if has_catchup:
                     if self._timeshift_active:
                         pos = self.player.position or 0
@@ -1016,7 +1032,7 @@ class PlaybackMixin:
             # Vollbild-Verlassen und Cleanup verzögert ausführen (nach Signal-Handler-Rückkehr),
             # damit kein Render-Deadlock zwischen mpv-Event-Thread und Qt-Main-Thread entsteht
             QTimer.singleShot(0, self._handle_vod_end)
-            self.status_bar.showMessage("Gesehen ✓")
+            self.status_bar.showMessage(_tr("Als gesehen markiert"), 4000)
             return
         # Absichtlich gestoppt oder noch im Verbindungsaufbau → kein Reconnect
         if reason in ('stop', 'quit'):
@@ -1026,8 +1042,10 @@ class PlaybackMixin:
         if self._current_stream_type == "live" and reason in ('error', 'eof', 'unknown'):
             self._schedule_reconnect()
         elif self._current_stream_type == "vod" and reason == 'error':
-            self.buffering_overlay.hide()
-            self.status_bar.showMessage(_tr("Fehler: Video konnte nicht geladen werden"))
+            self._show_stream_error(
+                _tr("Video konnte nicht geladen werden"),
+                _tr("Der Anbieter hat die Datei nicht ausgeliefert. Versuche es erneut oder später."),
+            )
 
     def _handle_vod_end(self):
         """Cleanup nach VOD-Ende: Player stoppen, Vollbild verlassen, zur Detailansicht zurück.
@@ -1065,9 +1083,11 @@ class PlaybackMixin:
             return
         self._reconnect_attempt += 1
         delay = min(3000 * self._reconnect_attempt, 10000)
-        self.status_bar.showMessage(
-            _tr("Stream unterbrochen \u2013 Verbindungsversuch {}/{}").format(self._reconnect_attempt, self._max_reconnect_attempts)
-        )
+        self._buffering_text = _tr("Verbindung wird wiederhergestellt {}/{}").format(
+            self._reconnect_attempt, self._max_reconnect_attempts)
+        self.buffering_overlay.setText(self._buffering_text)
+        if not self.buffering_overlay.isVisible():
+            self._show_buffering_overlay()
         self._reconnect_timer.start(delay)
 
     def _clear_stream_starting(self):
@@ -1095,9 +1115,41 @@ class PlaybackMixin:
     def _on_stream_error_final(self):
         """Alle Reconnect-Versuche gescheitert"""
         self._reconnect_attempt = 0
+        self._show_stream_error(
+            _tr("Sender nicht erreichbar"),
+            _tr("Die Verbindung konnte nach mehreren Versuchen nicht hergestellt werden."),
+        )
+
+    def _show_stream_error(self, title: str, text: str):
         self.buffering_overlay.hide()
         self._buffering_timer.stop()
-        self.status_bar.showMessage(_tr("Stream nicht erreichbar \u2013 bitte anderen Sender w\u00e4hlen"))
+        self._buffering_show_timer.stop()
+        self._buffering_watchdog.stop()
+        self.stream_error_title.setText(title)
+        self.stream_error_text.setText(text)
+        self.stream_error_other_btn.setVisible(self._current_stream_type == "live")
+        parent = self.stream_error_overlay.parentWidget()
+        self.stream_error_overlay.setGeometry(0, 0, parent.width(), parent.height())
+        self.stream_error_overlay.raise_()
+        self.stream_error_overlay.show()
+        if self.fullscreen_controls.isVisible():
+            self.fullscreen_controls.raise_()
+
+    def _hide_stream_error(self):
+        self.stream_error_overlay.hide()
+
+    def _retry_stream(self):
+        self._hide_stream_error()
+        self._reconnect_attempt = 0
+        self._buffering_text = _tr("Laden")
+        self._show_buffering_overlay()
+        self._do_reconnect()
+
+    def _choose_other_channel(self):
+        self._hide_stream_error()
+        if self._player_maximized:
+            self._toggle_player_maximized()
+        self.channel_list.setFocus()
 
     @Slot()
     def _on_gl_context_recreated(self):
@@ -1143,6 +1195,38 @@ class PlaybackMixin:
     def _show_info_overlay_zap(self):
         self._show_info_overlay(force=True)
         self._info_overlay_timer.start(5000)
+
+    def _has_active_stream(self) -> bool:
+        return bool(self._current_stream_url) and self.player_area.isVisible()
+
+    def _setup_playback_shortcuts(self):
+        """Globale Tastenkuerzel. Textfelder behalten ihre Tasten (ShortcutOverride)."""
+        def when_playing(fn):
+            return lambda: fn() if self._has_active_stream() else None
+
+        def live_zap(offset):
+            if self._has_active_stream() and self._current_stream_type == "live":
+                self._zap(offset)
+
+        def volume_step(delta):
+            if self._has_active_stream():
+                self._on_volume_changed(max(0, min(100, self.volume_slider.value() + delta)))
+
+        bindings = [
+            ((Qt.Key_Space, Qt.Key_K), when_playing(self._toggle_play_pause)),
+            ((Qt.Key_F,), when_playing(self._toggle_player_maximized)),
+            ((Qt.Key_M,), when_playing(self._toggle_mute)),
+            ((Qt.Key_PageUp,), lambda: live_zap(-1)),
+            ((Qt.Key_PageDown,), lambda: live_zap(1)),
+            ((Qt.Key_Plus, Qt.Key_Equal), lambda: volume_step(5)),
+            ((Qt.Key_Minus,), lambda: volume_step(-5)),
+        ]
+        self._playback_shortcuts = []
+        for keys, handler in bindings:
+            for key in keys:
+                sc = QShortcut(QKeySequence(key), self)
+                sc.activated.connect(handler)
+                self._playback_shortcuts.append(sc)
 
     def _zap_prev(self):
         self._zap(-1)

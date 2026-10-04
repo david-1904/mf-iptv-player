@@ -125,6 +125,12 @@ _QUALITY_HEX = {
     "SD":  ("#444444", "#aaaaaa"),
 }
 
+class _TransientStatusBar(QStatusBar):
+    """Meldungen verschwinden standardmaessig; nur explizit timeout=0 bleibt stehen."""
+    def showMessage(self, text: str, timeout: int = 5000):
+        super().showMessage(text, timeout)
+
+
 class ClickSlider(QSlider):
     """QSlider that jumps directly to the clicked position on click."""
     def mousePressEvent(self, event):
@@ -336,7 +342,7 @@ class UiBuilderMixin:
                 border-bottom: 1px solid rgba(255,255,255,6);
             }
             #searchFilterRow QLabel {
-                font-size: 11px; color: #666;
+                font-size: 11px; color: #8a8aa0;
             }
             #searchFilterRow QPushButton {
                 text-align: center; margin: 0;
@@ -386,7 +392,7 @@ class UiBuilderMixin:
             lbl = QLabel(text)
             lbl.setStyleSheet("""
                 QLabel {
-                    color: rgba(255,255,255,70);
+                    color: #8a8aa0;
                     font-size: 10px;
                     font-weight: bold;
                     letter-spacing: 1.5px;
@@ -456,7 +462,7 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_recordings)
 
         layout.addSpacing(10)
-        layout.addWidget(_section_label(_tr("TOOLS")))
+        layout.addWidget(_section_label(_tr("WERKZEUGE")))
         layout.addSpacing(4)
 
         # Programm-Suche
@@ -484,7 +490,7 @@ class UiBuilderMixin:
                 border: 1px solid transparent;
                 border-radius: 8px;
                 background: transparent;
-                color: #666;
+                color: #8a8aa0;
                 font-size: 15px;
             }
             QPushButton:hover {
@@ -530,7 +536,7 @@ class UiBuilderMixin:
         _version_label.setAlignment(Qt.AlignCenter)
         _version_label.setStyleSheet("""
             QLabel {
-                color: rgba(255, 255, 255, 25);
+                color: #6a6a80;
                 font-size: 11px;
                 padding: 6px 0;
             }
@@ -787,7 +793,7 @@ class UiBuilderMixin:
         card3, c3 = _card()
 
         ls_row = QHBoxLayout()
-        ls_title = QLabel(_tr("Line-Status"))
+        ls_title = QLabel(_tr("Anschluss-Status"))
         ls_title.setStyleSheet(
             "font-size: 13px; font-weight: 600; color: #b0b0cc; background: transparent;"
         )
@@ -818,7 +824,7 @@ class UiBuilderMixin:
                 border: 1px solid #1a1a2c;
                 border-radius: 8px;
                 padding: 12px 14px;
-                color: #666;
+                color: #8a8aa0;
                 font-size: 13px;
                 line-height: 1.6;
             }
@@ -1068,7 +1074,7 @@ class UiBuilderMixin:
         _cat_row_layout.setSpacing(8)
 
         _cat_label = QLabel(_tr("Kategorie:"))
-        _cat_label.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        _cat_label.setStyleSheet("color: #8a8aa0; font-size: 12px; border: none; background: transparent;")
         _cat_row_layout.addWidget(_cat_label)
 
         self.category_btn = QPushButton("W\u00e4hlen  \u25BE")
@@ -1134,7 +1140,7 @@ class UiBuilderMixin:
         _fav_sort_layout.setSpacing(8)
 
         _fav_sort_label = QLabel(_tr("Sortierung:"))
-        _fav_sort_label.setStyleSheet("color: #666; font-size: 12px; border: none;")
+        _fav_sort_label.setStyleSheet("color: #8a8aa0; font-size: 12px; border: none;")
         _fav_sort_layout.addWidget(_fav_sort_label)
 
         self.fav_sort_combo = QComboBox()
@@ -1222,7 +1228,7 @@ class UiBuilderMixin:
                 border: none;
                 border-radius: 0;
                 background: transparent;
-                color: #666;
+                color: #8a8aa0;
                 font-size: 13px;
             }
             QPushButton:hover { background: rgba(255,255,255,6); color: #aaa; }
@@ -1240,7 +1246,7 @@ class UiBuilderMixin:
         sort_layout.setSpacing(8)
 
         sort_label = QLabel(_tr("Sortierung:"))
-        sort_label.setStyleSheet("color: #666; font-size: 12px; border: none;")
+        sort_label.setStyleSheet("color: #8a8aa0; font-size: 12px; border: none;")
         sort_layout.addWidget(sort_label)
 
         self.sort_combo = QComboBox()
@@ -1354,49 +1360,6 @@ class UiBuilderMixin:
         self._epg_splitter.addWidget(self.epg_panel)
         self._epg_splitter.setSizes([99999, 0])
         self.epg_panel.hide()
-
-        # ── Quality-Hinweis-Banner (einmalig) ────────────────────────────────
-        from platform_utils import get_config_dir
-        _hint_flag = get_config_dir() / "epg_quality_hint_dismissed"
-        if not _hint_flag.exists():
-            hint_bar = QWidget()
-            hint_bar.setObjectName("epgQualityHint")
-            hint_bar.setStyleSheet("""
-                #epgQualityHint {
-                    background: rgba(0,120,212,12);
-                    border-bottom: 1px solid rgba(0,120,212,40);
-                }
-            """)
-            hint_lay = QHBoxLayout(hint_bar)
-            hint_lay.setContentsMargins(12, 6, 8, 6)
-            hint_lay.setSpacing(8)
-            hint_lbl = QLabel(_tr("Sender abspielen → App misst Qualität und zeigt sie als Punkt: 4K = gold · FHD = lila · HD = blau · SD = grau"))
-            hint_lbl.setStyleSheet("color: #5aaef0; font-size: 11px;")
-            hint_lbl.setWordWrap(True)
-            hint_lay.addWidget(hint_lbl, stretch=1)
-            dismiss_btn = QPushButton()
-            dismiss_btn.setIcon(_pi("x.svg", 11))
-            dismiss_btn.setIconSize(QSize(11, 11))
-            dismiss_btn.setFixedSize(20, 20)
-            dismiss_btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(255,255,255,15);
-                    border: 1px solid rgba(255,255,255,30);
-                    border-radius: 4px;
-                }
-                QPushButton:hover {
-                    background: rgba(255,255,255,30);
-                }
-            """)
-            def _dismiss_hint(_checked=False, bar=hint_bar, flag=_hint_flag):
-                bar.hide()
-                try:
-                    flag.touch()
-                except Exception:
-                    pass
-            dismiss_btn.clicked.connect(_dismiss_hint)
-            hint_lay.addWidget(dismiss_btn, alignment=Qt.AlignVCenter)
-            cl_layout.addWidget(hint_bar)
 
         cl_layout.addWidget(self._epg_splitter, stretch=1)
 
@@ -1524,7 +1487,7 @@ class UiBuilderMixin:
         loading_lay.setSpacing(4)
 
         self.epg_search_status_lbl = QLabel("")
-        self.epg_search_status_lbl.setStyleSheet("color: #666; font-size: 11px;")
+        self.epg_search_status_lbl.setStyleSheet("color: #8a8aa0; font-size: 11px;")
         loading_lay.addWidget(self.epg_search_status_lbl)
 
         self.epg_search_progress = QProgressBar()
@@ -1636,7 +1599,7 @@ class UiBuilderMixin:
         self.detail_logo.setStyleSheet("""
             background-color: #1a1a2a;
             border-radius: 12px;
-            color: #444;
+            color: #8a8aa0;
             font-size: 26px;
         """)
         self.detail_logo.setText("\U0001F4FA")
@@ -1678,7 +1641,7 @@ class UiBuilderMixin:
         prev_row = QHBoxLayout()
         prev_row.setSpacing(8)
         self.detail_prev_title = QLabel("")
-        self.detail_prev_title.setStyleSheet("font-size: 16px; color: #555;")
+        self.detail_prev_title.setStyleSheet("font-size: 16px; color: #8a8aa0;")
         self.detail_prev_title.setWordWrap(True)
         prev_row.addWidget(self.detail_prev_title, stretch=1)
         self.detail_prev_play_btn = QPushButton("\u25B6")
@@ -1690,7 +1653,7 @@ class UiBuilderMixin:
         prev_lay.addLayout(prev_row)
 
         self.detail_prev_time = QLabel("")
-        self.detail_prev_time.setStyleSheet("font-size: 12px; color: #444;")
+        self.detail_prev_time.setStyleSheet("font-size: 12px; color: #8a8aa0;")
         prev_lay.addWidget(self.detail_prev_time)
 
         self.detail_prev_widget.hide()
@@ -1722,7 +1685,7 @@ class UiBuilderMixin:
         now_time_row = QHBoxLayout()
         now_time_row.setSpacing(8)
         self.detail_now_time = QLabel("")
-        self.detail_now_time.setStyleSheet("font-size: 14px; color: #666;")
+        self.detail_now_time.setStyleSheet("font-size: 14px; color: #8a8aa0;")
         now_time_row.addWidget(self.detail_now_time, stretch=1)
         self.detail_now_rec_btn = QPushButton()
         self.detail_now_rec_btn.setIcon(_pi("record.svg", 16))
@@ -1774,7 +1737,7 @@ class UiBuilderMixin:
 
         danach_lbl = QLabel(_tr("DANACH"))
         danach_lbl.setStyleSheet(
-            "font-size: 10px; font-weight: bold; color: #444; letter-spacing: 2px;"
+            "font-size: 10px; font-weight: bold; color: #8a8aa0; letter-spacing: 2px;"
         )
         future_outer.addWidget(danach_lbl)
 
@@ -1917,7 +1880,7 @@ class UiBuilderMixin:
         right_col.addWidget(self.epg_now_desc)
 
         self.epg_next_label = QLabel(_tr("DANACH"))
-        self.epg_next_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #555; letter-spacing: 1px;")
+        self.epg_next_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #8a8aa0; letter-spacing: 1px;")
         right_col.addWidget(self.epg_next_label)
 
         self.epg_next_title = QLabel("")
@@ -2389,7 +2352,7 @@ class UiBuilderMixin:
         pc_layout.addWidget(self.player)
 
         # Buffering-Overlay
-        self.buffering_overlay = QLabel(_tr("Laden..."))
+        self.buffering_overlay = QLabel(_tr("Laden…"))
         self.buffering_overlay.setAlignment(Qt.AlignCenter)
         self.buffering_overlay.setStyleSheet("""
             QLabel {
@@ -2401,6 +2364,9 @@ class UiBuilderMixin:
         """)
         self.buffering_overlay.hide()
         self.buffering_overlay.setParent(player_container)
+        self._buffering_text = _tr("Laden")
+
+        self.stream_error_overlay = self._create_stream_error_overlay(player_container)
 
         player_container.setMouseTracking(True)
         self.player_container = player_container
@@ -2458,7 +2424,7 @@ class UiBuilderMixin:
         _now_row = QHBoxLayout()
         _now_row.setSpacing(10)
         _now_row.setContentsMargins(0, 0, 0, 0)
-        _now_lbl = QLabel("JETZT")
+        _now_lbl = QLabel(_tr("JETZT"))
         _now_lbl.setStyleSheet(
             "color: #e8691a; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
         )
@@ -2475,7 +2441,7 @@ class UiBuilderMixin:
         _next_row = QHBoxLayout()
         _next_row.setSpacing(10)
         _next_row.setContentsMargins(0, 0, 0, 0)
-        _next_lbl = QLabel("DANACH")
+        _next_lbl = QLabel(_tr("DANACH"))
         _next_lbl.setStyleSheet(
             "color: #888; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
         )
@@ -2617,27 +2583,21 @@ class UiBuilderMixin:
         layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(8)
 
-        # Exakt derselbe Stil wie aktiver Sidebar-Button (blauer Gradient + linker Akzent)
+        # Ghost-Buttons: Aktionen, nicht mit dem aktiven Sidebar-Tab verwechselbar
         _epg_btn_style = """
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(0, 120, 212, 55), stop:1 rgba(80, 40, 200, 28));
-                border: none;
-                border-left: 3px solid #0078d4;
-                border-radius: 8px;
-                padding: 0px 14px;
-                color: white;
+                background: rgba(255, 255, 255, 15);
+                border: 1px solid rgba(255, 255, 255, 25);
+                border-radius: 14px;
+                padding: 0px 12px;
+                color: #ddd;
                 font-size: 12px; font-weight: 600;
-                text-align: center;
             }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(0, 120, 212, 80), stop:1 rgba(80, 40, 200, 50));
-            }
+            QPushButton:hover { background: rgba(255, 255, 255, 30); color: white; }
         """
         _epg_icon_size = QSize(16, 16)
 
-        self.live_epg_von_anfang_btn = QPushButton(" " + _tr("Anfang"))
+        self.live_epg_von_anfang_btn = QPushButton(" " + _tr("Von Anfang"))
         self.live_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 16))
         self.live_epg_von_anfang_btn.setIconSize(_epg_icon_size)
         self.live_epg_von_anfang_btn.setFixedHeight(28)
@@ -2646,7 +2606,7 @@ class UiBuilderMixin:
         self.live_epg_von_anfang_btn.hide()
         layout.addWidget(self.live_epg_von_anfang_btn)
 
-        self.live_epg_catchup_btn = QPushButton(" " + _tr("Catchup"))
+        self.live_epg_catchup_btn = QPushButton(" " + _tr("Verpasste Sendungen"))
         self.live_epg_catchup_btn.setIcon(_pi("catchup.svg", 16))
         self.live_epg_catchup_btn.setIconSize(_epg_icon_size)
         self.live_epg_catchup_btn.setFixedHeight(28)
@@ -2662,6 +2622,16 @@ class UiBuilderMixin:
         self.live_epg_epg_btn.setStyleSheet(_epg_btn_style)
         self.live_epg_epg_btn.clicked.connect(self._toggle_channel_detail)
         layout.addWidget(self.live_epg_epg_btn)
+
+        layout.addSpacing(6)
+        self.live_epg_title = QLabel()
+        self.live_epg_title.setMaximumWidth(340)
+        self.live_epg_title.setStyleSheet("color: #ddd; font-size: 13px; font-weight: 600; background: transparent; border: none;")
+        layout.addWidget(self.live_epg_title)
+        _time_style = "color: #a6a6b8; font-size: 11px; background: transparent; border: none;"
+        self.live_epg_start_lbl = QLabel()
+        self.live_epg_start_lbl.setStyleSheet(_time_style)
+        layout.addWidget(self.live_epg_start_lbl)
 
         self.live_epg_seek_slider = ClickSlider(Qt.Horizontal)
         self.live_epg_seek_slider.setRange(0, 1000)
@@ -2690,6 +2660,10 @@ class UiBuilderMixin:
         """)
         self.live_epg_progress.hide()
         layout.addWidget(self.live_epg_progress, stretch=1)
+
+        self.live_epg_stop_lbl = QLabel()
+        self.live_epg_stop_lbl.setStyleSheet(_time_style)
+        layout.addWidget(self.live_epg_stop_lbl)
 
         bar.hide()
         return bar
@@ -2731,7 +2705,7 @@ class UiBuilderMixin:
         self.btn_play_pause.setIcon(self._icon_play)
         self.btn_play_pause.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_play_pause.setFixedSize(36, 36)
-        self.btn_play_pause.setToolTip(_tr("Play / Pause  (Leertaste)"))
+        self.btn_play_pause.setToolTip(_tr("Wiedergabe / Pause  (Leertaste)"))
         self.btn_play_pause.clicked.connect(self._toggle_play_pause)
         layout.addWidget(self.btn_play_pause)
 
@@ -2740,7 +2714,7 @@ class UiBuilderMixin:
         self.btn_stop_controls.setIcon(_pi("square.svg", _CTRL_ICON))
         self.btn_stop_controls.setIconSize(QSize(_CTRL_ICON, _CTRL_ICON))
         self.btn_stop_controls.setFixedSize(36, 36)
-        self.btn_stop_controls.setToolTip("Stop")
+        self.btn_stop_controls.setToolTip(_tr("Stopp"))
         self.btn_stop_controls.clicked.connect(self._stop_playback)
         layout.addWidget(self.btn_stop_controls)
 
@@ -2926,7 +2900,7 @@ class UiBuilderMixin:
         self.btn_zoom.setIcon(_pi("crop.svg", _SIDE_ICON))
         self.btn_zoom.setIconSize(QSize(_SIDE_ICON, _SIDE_ICON))
         self.btn_zoom.setFixedSize(32, 32)
-        self.btn_zoom.setToolTip(_tr("Seitenverh\u00e4ltnis: Normal \u2192 Fill \u2192 Stretch"))
+        self.btn_zoom.setToolTip(_tr("Bildgröße: Normal \u2192 Füllen \u2192 Strecken"))
         self.btn_zoom.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }
             QPushButton:hover { background: rgba(255,255,255,10); }
@@ -2948,6 +2922,66 @@ class UiBuilderMixin:
         layout.addWidget(self.btn_fullscreen)
 
         return bar
+
+    def _create_stream_error_overlay(self, parent: QWidget) -> QWidget:
+        """Fehlermeldung direkt im Video (auch im Vollbild sichtbar)"""
+        overlay = QFrame(parent)
+        overlay.setObjectName("streamErrorOverlay")
+        overlay.setStyleSheet("""
+            #streamErrorOverlay { background-color: rgba(8, 8, 20, 225); }
+            QLabel { background: transparent; }
+            QPushButton {
+                border-radius: 8px; padding: 8px 18px;
+                font-size: 14px; font-weight: 600;
+            }
+            QPushButton#errRetryBtn { background: #0078d4; color: white; border: none; }
+            QPushButton#errRetryBtn:hover { background: #1a8ae4; }
+            QPushButton#errOtherBtn {
+                background: rgba(255, 255, 255, 15); color: #ddd;
+                border: 1px solid rgba(255, 255, 255, 30);
+            }
+            QPushButton#errOtherBtn:hover { background: rgba(255, 255, 255, 30); }
+        """)
+        lay = QVBoxLayout(overlay)
+        lay.setContentsMargins(24, 24, 24, 24)
+        lay.setSpacing(8)
+        lay.addStretch(1)
+
+        icon = QLabel()
+        icon.setPixmap(_pi_colored("x.svg", 40, "#e5484d").pixmap(QSize(40, 40), QIcon.Normal, QIcon.On))
+        icon.setAlignment(Qt.AlignCenter)
+        lay.addWidget(icon)
+
+        self.stream_error_title = QLabel()
+        self.stream_error_title.setAlignment(Qt.AlignCenter)
+        self.stream_error_title.setWordWrap(True)
+        self.stream_error_title.setStyleSheet("color: white; font-size: 18px; font-weight: 600;")
+        lay.addWidget(self.stream_error_title)
+
+        self.stream_error_text = QLabel()
+        self.stream_error_text.setAlignment(Qt.AlignCenter)
+        self.stream_error_text.setWordWrap(True)
+        self.stream_error_text.setStyleSheet("color: #aaa; font-size: 14px;")
+        lay.addWidget(self.stream_error_text)
+
+        lay.addSpacing(10)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(10)
+        btn_row.addStretch(1)
+        retry_btn = QPushButton(_tr("Erneut versuchen"))
+        retry_btn.setObjectName("errRetryBtn")
+        retry_btn.clicked.connect(self._retry_stream)
+        btn_row.addWidget(retry_btn)
+        self.stream_error_other_btn = QPushButton(_tr("Anderer Sender"))
+        self.stream_error_other_btn.setObjectName("errOtherBtn")
+        self.stream_error_other_btn.clicked.connect(self._choose_other_channel)
+        btn_row.addWidget(self.stream_error_other_btn)
+        btn_row.addStretch(1)
+        lay.addLayout(btn_row)
+        lay.addStretch(1)
+
+        overlay.hide()
+        return overlay
 
     def _create_fullscreen_controls_overlay(self, parent: QWidget) -> QWidget:
         """Vollbild-Kontrollleiste als Auto-Hide-Overlay"""
@@ -3037,7 +3071,7 @@ class UiBuilderMixin:
         self.fs_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 15))
         self.fs_epg_von_anfang_btn.setIconSize(QSize(15, 15))
         self.fs_epg_von_anfang_btn.setFixedHeight(32)
-        self.fs_epg_von_anfang_btn.setToolTip(_tr("Sendung von Anfang abspielen (Catchup)"))
+        self.fs_epg_von_anfang_btn.setToolTip(_tr("Sendung von Anfang abspielen"))
         self.fs_epg_von_anfang_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -3146,16 +3180,31 @@ class UiBuilderMixin:
         self.fs_btn_play_pause.setIcon(self._icon_play_fs)
         self.fs_btn_play_pause.setIconSize(QSize(_FS, _FS))
         self.fs_btn_play_pause.setFixedSize(48, 48)
-        self.fs_btn_play_pause.setToolTip("Play / Pause")
+        self.fs_btn_play_pause.setToolTip(_tr("Wiedergabe / Pause  (Leertaste)"))
         self.fs_btn_play_pause.clicked.connect(self._toggle_play_pause)
+
+        self.fs_btn_zap_prev = QPushButton()
+        self.fs_btn_zap_prev.setIcon(_pi("chevron-left.svg", _FS))
+        self.fs_btn_zap_prev.setIconSize(QSize(_FS, _FS))
+        self.fs_btn_zap_prev.setFixedSize(44, 44)
+        self.fs_btn_zap_prev.setToolTip(_tr("Vorheriger Sender (Bild↑ / ↑)"))
+        self.fs_btn_zap_prev.clicked.connect(self._zap_prev)
+        btn_row.addWidget(self.fs_btn_zap_prev)
         btn_row.addWidget(self.fs_btn_play_pause)
+        self.fs_btn_zap_next = QPushButton()
+        self.fs_btn_zap_next.setIcon(_pi("chevron-right.svg", _FS))
+        self.fs_btn_zap_next.setIconSize(QSize(_FS, _FS))
+        self.fs_btn_zap_next.setFixedSize(44, 44)
+        self.fs_btn_zap_next.setToolTip(_tr("Nächster Sender (Bild↓ / ↓)"))
+        self.fs_btn_zap_next.clicked.connect(self._zap_next)
+        btn_row.addWidget(self.fs_btn_zap_next)
 
         self.fs_btn_skip_back = QPushButton()
         self.fs_btn_skip_back.setIcon(_pi("rewind.svg", _FS))
         self.fs_btn_skip_back.setIconSize(QSize(_FS, _FS))
         self.fs_btn_skip_back.setFixedSize(44, 44)
         self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-30))
-        self.fs_btn_skip_back.setToolTip(_tr("30s zur\u00fcck"))
+        self.fs_btn_skip_back.setToolTip(_tr("30 Sekunden zur\u00fcck"))
         self.fs_btn_skip_back.hide()
         btn_row.addWidget(self.fs_btn_skip_back)
 
@@ -3164,7 +3213,7 @@ class UiBuilderMixin:
         self.fs_btn_skip_forward.setIconSize(QSize(_FS, _FS))
         self.fs_btn_skip_forward.setFixedSize(44, 44)
         self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(30))
-        self.fs_btn_skip_forward.setToolTip(_tr("30s vor"))
+        self.fs_btn_skip_forward.setToolTip(_tr("30 Sekunden vor"))
         self.fs_btn_skip_forward.hide()
         btn_row.addWidget(self.fs_btn_skip_forward)
 
@@ -3186,7 +3235,7 @@ class UiBuilderMixin:
         self.fs_btn_stop.setIcon(_pi("square.svg", _FS))
         self.fs_btn_stop.setIconSize(QSize(_FS, _FS))
         self.fs_btn_stop.setFixedSize(44, 44)
-        self.fs_btn_stop.setToolTip("Stop")
+        self.fs_btn_stop.setToolTip(_tr("Stopp"))
         self.fs_btn_stop.clicked.connect(self._stop_playback)
         btn_row.addWidget(self.fs_btn_stop)
 
@@ -3241,7 +3290,7 @@ class UiBuilderMixin:
         self.fs_btn_zoom.setIcon(_pi("crop.svg", _FS_SM))
         self.fs_btn_zoom.setIconSize(QSize(_FS_SM, _FS_SM))
         self.fs_btn_zoom.setFixedSize(40, 40)
-        self.fs_btn_zoom.setToolTip(_tr("Seitenverh\u00e4ltnis: Normal \u2192 Fill \u2192 Stretch"))
+        self.fs_btn_zoom.setToolTip(_tr("Bildgröße: Normal \u2192 Füllen \u2192 Strecken"))
         self.fs_btn_zoom.setStyleSheet(_fs_icon_btn_style)
         self.fs_btn_zoom.clicked.connect(self._cycle_zoom_mode)
         btn_row.addWidget(self.fs_btn_zoom)
@@ -3301,7 +3350,7 @@ class UiBuilderMixin:
                 border-radius: 12px;
             }
             QLabel[role="header"] {
-                color: #556;
+                color: #8a8aa0;
                 font-size: 9px;
                 font-weight: bold;
                 letter-spacing: 1.5px;
@@ -3322,7 +3371,7 @@ class UiBuilderMixin:
         def _header(text):
             lbl = QLabel(text)
             lbl.setProperty("role", "header")
-            lbl.setStyleSheet("color: #556; font-size: 9px; font-weight: bold; "
+            lbl.setStyleSheet("color: #8a8aa0; font-size: 9px; font-weight: bold; "
                               "letter-spacing: 1.5px; background: transparent;")
             return lbl
 
@@ -3346,7 +3395,7 @@ class UiBuilderMixin:
         return panel
 
     def _setup_statusbar(self):
-        self.status_bar = QStatusBar()
+        self.status_bar = _TransientStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.setFixedHeight(28)
         self.status_bar.setStyleSheet("""

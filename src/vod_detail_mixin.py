@@ -164,7 +164,7 @@ class VodDetailMixin:
 
     async def _load_vod_detail(self, vod: VodStream):
         """Laedt VOD-Details asynchron"""
-        self._show_loading(_tr("Lade Film-Informationen..."))
+        self._show_loading(_tr("Lade Film-Informationen…"))
         try:
             data = await self.api.get_vod_info(vod.stream_id)
             info = data.get("info", {}) or {}
@@ -199,9 +199,9 @@ class VodDetailMixin:
                         color = "#f0c040"
                     else:
                         color = "#f44336"
-                    self._add_rating_badge("\u2605 Rating", f"{score:.1f}", color)
+                    self._add_rating_badge("\u2605 " + _tr("Bewertung"), f"{score:.1f}".replace(".", ","), color)
                 except ValueError:
-                    self._add_rating_badge("\u2605 Rating", rating)
+                    self._add_rating_badge("\u2605 " + _tr("Bewertung"), str(rating).replace(".", ","))
 
             rating_5 = info.get("rating_5based", "")
             if rating_5 and str(rating_5) not in ("0", "0.0", ""):

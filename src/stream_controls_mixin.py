@@ -110,11 +110,11 @@ class StreamControlsMixin:
             fs_btn.setChecked(False)
 
     def _cycle_zoom_mode(self):
-        """Wechselt zwischen Normal / Fill / Stretch"""
+        """Wechselt zwischen Normal / Füllen / Strecken"""
         _ZOOM_MODES = [
-            ("Normal",  0.0, True),   # panscan=0, keepaspect=yes
-            ("Fill",    1.0, True),   # panscan=1 (zoom+crop), keepaspect=yes
-            ("Stretch", 0.0, False),  # panscan=0, keepaspect=no (strecken)
+            (_tr("Normal"),   0.0, True),   # panscan=0, keepaspect=yes
+            (_tr("Füllen"),   1.0, True),   # panscan=1 (zoom+crop), keepaspect=yes
+            (_tr("Strecken"), 0.0, False),  # panscan=0, keepaspect=no
         ]
         idx = getattr(self, "_zoom_mode_index", 0)
         idx = (idx + 1) % len(_ZOOM_MODES)
@@ -125,10 +125,10 @@ class StreamControlsMixin:
             self.player.player["keepaspect"] = keepaspect
         except Exception:
             pass
-        self.btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Fill / Stretch").format(name))
+        self.btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Füllen / Strecken").format(name))
         if hasattr(self, "fs_btn_zoom"):
-            self.fs_btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Fill / Stretch").format(name))
-        self.status_bar.showMessage(_tr("Bildgröße: {}").format(name))
+            self.fs_btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Füllen / Strecken").format(name))
+        self.status_bar.showMessage(_tr("Bildgröße: {}").format(name), 3000)
 
     def _update_stream_info(self):
         """Update stream info panel with current stream data"""

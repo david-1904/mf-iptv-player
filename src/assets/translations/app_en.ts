@@ -4,8 +4,8 @@
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Lade M3U-Playlist...</source>
-      <translation>Loading M3U playlist...</translation>
+      <source>Lade M3U-Playlist…</source>
+      <translation>Loading M3U playlist…</translation>
     </message>
     <message>
       <source>Lade Kategorien…</source>
@@ -84,8 +84,8 @@
       <translation>Please fill in all fields</translation>
     </message>
     <message>
-      <source>Teste Verbindung...</source>
-      <translation>Testing connection...</translation>
+      <source>Teste Verbindung…</source>
+      <translation>Testing connection…</translation>
     </message>
     <message>
       <source>Account gespeichert</source>
@@ -136,6 +136,10 @@
     <message>
       <source>Keine Kategorien</source>
       <translation>No categories</translation>
+    </message>
+    <message>
+      <source>Kategorien ausblenden…</source>
+      <translation>Hide categories…</translation>
     </message>
     <message>
       <source>Kategorien verwalten</source>
@@ -518,7 +522,11 @@
       <translation>Cancel recording?</translation>
     </message>
     <message>
-      <source>Spiele: {}</source>
+      <source>Laden</source>
+      <translation>Loading</translation>
+    </message>
+    <message>
+      <source>Wiedergabe: {}</source>
       <translation>Playing: {}</translation>
     </message>
     <message>
@@ -526,20 +534,28 @@
       <translation>Connected: {}</translation>
     </message>
     <message>
-      <source>Laden</source>
-      <translation>Loading</translation>
+      <source>Als gesehen markiert</source>
+      <translation>Marked as watched</translation>
     </message>
     <message>
-      <source>Fehler: Video konnte nicht geladen werden</source>
-      <translation>Error: Video could not be loaded</translation>
+      <source>Video konnte nicht geladen werden</source>
+      <translation>Video could not be loaded</translation>
     </message>
     <message>
-      <source>Stream unterbrochen – Verbindungsversuch {}/{}</source>
-      <translation>Stream interrupted – connection attempt {}/{}</translation>
+      <source>Der Anbieter hat die Datei nicht ausgeliefert. Versuche es erneut oder später.</source>
+      <translation>The provider did not deliver the file. Try again or later.</translation>
     </message>
     <message>
-      <source>Stream nicht erreichbar – bitte anderen Sender wählen</source>
-      <translation>Stream unreachable – please select another channel</translation>
+      <source>Verbindung wird wiederhergestellt {}/{}</source>
+      <translation>Reconnecting {}/{}</translation>
+    </message>
+    <message>
+      <source>Sender nicht erreichbar</source>
+      <translation>Channel unavailable</translation>
+    </message>
+    <message>
+      <source>Die Verbindung konnte nach mehreren Versuchen nicht hergestellt werden.</source>
+      <translation>Could not connect after several attempts.</translation>
     </message>
     <message>
       <source>⏺ Geplante Aufnahme gestartet: {}</source>
@@ -578,8 +594,8 @@
       <translation>Recording scheduled: {} at {}</translation>
     </message>
     <message>
-      <source>Suche läuft...</source>
-      <translation>Searching...</translation>
+      <source>Suche läuft…</source>
+      <translation>Searching…</translation>
     </message>
     <message>
       <source>{} Treffer für &quot;{}&quot;</source>
@@ -590,8 +606,16 @@
       <translation>Search error: {}</translation>
     </message>
     <message>
-      <source>Lade Serien-Informationen...</source>
-      <translation>Loading series information...</translation>
+      <source>{} Std. {} Min.</source>
+      <translation>{} h {} min</translation>
+    </message>
+    <message>
+      <source>{} Min.</source>
+      <translation>{} min</translation>
+    </message>
+    <message>
+      <source>Lade Serien-Informationen…</source>
+      <translation>Loading series info…</translation>
     </message>
     <message>
       <source>{} Staffel</source>
@@ -604,6 +628,10 @@
     <message>
       <source>Staffel {}</source>
       <translation>Season {}</translation>
+    </message>
+    <message>
+      <source>1 Staffel geladen</source>
+      <translation>1 season loaded</translation>
     </message>
     <message>
       <source>{} Staffeln geladen</source>
@@ -626,8 +654,20 @@
       <translation>Off</translation>
     </message>
     <message>
-      <source>Bildgröße: {}  →  Normal / Fill / Stretch</source>
-      <translation>Image size: {}  →  Normal / Fill / Stretch</translation>
+      <source>Normal</source>
+      <translation>Normal</translation>
+    </message>
+    <message>
+      <source>Füllen</source>
+      <translation>Fill</translation>
+    </message>
+    <message>
+      <source>Strecken</source>
+      <translation>Stretch</translation>
+    </message>
+    <message>
+      <source>Bildgröße: {}  →  Normal / Füllen / Strecken</source>
+      <translation>Picture size: {}  →  Normal / Fill / Stretch</translation>
     </message>
     <message>
       <source>Bildgröße: {}</source>
@@ -678,7 +718,7 @@
       <translation>Recordings</translation>
     </message>
     <message>
-      <source>TOOLS</source>
+      <source>WERKZEUGE</source>
       <translation>TOOLS</translation>
     </message>
     <message>
@@ -754,7 +794,7 @@
       <translation>Delete</translation>
     </message>
     <message>
-      <source>Line-Status</source>
+      <source>Anschluss-Status</source>
       <translation>Line status</translation>
     </message>
     <message>
@@ -830,10 +870,6 @@
       <translation>Try again</translation>
     </message>
     <message>
-      <source>Sender abspielen → App misst Qualität und zeigt sie als Punkt: 4K = gold · FHD = lila · HD = blau · SD = grau</source>
-      <translation>Play channel → app measures quality and shows it as a dot: 4K = gold · FHD = purple · HD = blue · SD = grey</translation>
-    </message>
-    <message>
       <source>EPG neu laden</source>
       <translation>Reload EPG</translation>
     </message>
@@ -902,8 +938,8 @@
       <translation>Cast</translation>
     </message>
     <message>
-      <source>Laden...</source>
-      <translation>Loading...</translation>
+      <source>Laden…</source>
+      <translation>Loading…</translation>
     </message>
     <message>
       <source>Vergrößern</source>
@@ -914,16 +950,20 @@
       <translation>Stop playback</translation>
     </message>
     <message>
-      <source>Anfang</source>
+      <source>Von Anfang</source>
       <translation>From start</translation>
     </message>
     <message>
-      <source>Catchup</source>
-      <translation>Catchup</translation>
+      <source>Verpasste Sendungen</source>
+      <translation>Missed shows</translation>
     </message>
     <message>
-      <source>Play / Pause  (Leertaste)</source>
+      <source>Wiedergabe / Pause  (Leertaste)</source>
       <translation>Play / Pause  (Space)</translation>
+    </message>
+    <message>
+      <source>Stopp</source>
+      <translation>Stop</translation>
     </message>
     <message>
       <source>Aufnahme starten / stoppen</source>
@@ -950,28 +990,40 @@
       <translation>Stream Info</translation>
     </message>
     <message>
-      <source>Seitenverhältnis: Normal → Fill → Stretch</source>
-      <translation>Aspect ratio: Normal → Fill → Stretch</translation>
+      <source>Bildgröße: Normal → Füllen → Strecken</source>
+      <translation>Picture size: Normal → Fill → Stretch</translation>
     </message>
     <message>
       <source>Vollbild  (F / Doppelklick)</source>
       <translation>Fullscreen  (F / Double-click)</translation>
     </message>
     <message>
+      <source>Anderer Sender</source>
+      <translation>Other channel</translation>
+    </message>
+    <message>
       <source> Anfang</source>
       <translation> From start</translation>
     </message>
     <message>
-      <source>Sendung von Anfang abspielen (Catchup)</source>
-      <translation>Play from beginning (Catchup)</translation>
+      <source>Sendung von Anfang abspielen</source>
+      <translation>Play show from the beginning</translation>
     </message>
     <message>
-      <source>30s zurück</source>
-      <translation>30s back</translation>
+      <source>Vorheriger Sender (Bild↑ / ↑)</source>
+      <translation>Previous channel (PgUp / ↑)</translation>
     </message>
     <message>
-      <source>30s vor</source>
-      <translation>30s forward</translation>
+      <source>Nächster Sender (Bild↓ / ↓)</source>
+      <translation>Next channel (PgDn / ↓)</translation>
+    </message>
+    <message>
+      <source>30 Sekunden zurück</source>
+      <translation>Back 30 seconds</translation>
+    </message>
+    <message>
+      <source>30 Sekunden vor</source>
+      <translation>Forward 30 seconds</translation>
     </message>
     <message>
       <source>Vollbild verlassen  (Esc / F)</source>
@@ -982,12 +1034,12 @@
       <translation>Ready</translation>
     </message>
     <message>
-      <source>Lade Film-Informationen...</source>
-      <translation>Loading movie information...</translation>
+      <source>Lade Film-Informationen…</source>
+      <translation>Loading movie info…</translation>
     </message>
     <message>
-      <source>Wahrscheinlich offline – kein Audio beim letzten Abspielen</source>
-      <translation type="obsolete">Probably offline – no audio during last playback</translation>
+      <source>Bewertung</source>
+      <translation>Rating</translation>
     </message>
   </context>
 </TS>

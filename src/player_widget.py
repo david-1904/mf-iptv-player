@@ -317,8 +317,6 @@ class MpvPlayerWidget(QOpenGLWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.escape_pressed.emit()
-        elif event.key() == Qt.Key_Space:
-            self.pause()
         else:
             super().keyPressEvent(event)
 

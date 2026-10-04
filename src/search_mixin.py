@@ -48,6 +48,8 @@ class SearchMixin:
             return
         if self.current_mode != "search":
             self._switch_mode("search")
+        if hasattr(self, "_search_debounce_timer"):
+            self._search_debounce_timer.stop()
         asyncio.ensure_future(self._perform_search(query))
 
     @staticmethod
@@ -96,7 +98,9 @@ class SearchMixin:
         # sichtbar und die Treffer landen unsichtbar dahinter).
         self._restore_detail_layout()
         self.channel_stack.setCurrentIndex(0)
-        self._show_loading(_tr("Suche läuft..."))
+        self._search_generation = getattr(self, "_search_generation", 0) + 1
+        gen = self._search_generation
+        self._show_loading(_tr("Suche läuft…"))
         self.channel_list.clear()
         words = query.lower().split()
 
@@ -110,6 +114,11 @@ class SearchMixin:
                 except Exception:
                     self._search_cache_series = []
                 self._search_cache_loaded = True
+
+            # Neuere Suche gestartet, waehrend hier noch geladen wurde
+            if gen != self._search_generation:
+                return
+            self.channel_list.clear()
 
             sf = getattr(self, "_search_filter", "all")
 
