@@ -2475,6 +2475,15 @@ class UiBuilderMixin:
         self._fs_controls_timer = QTimer()
         self._fs_controls_timer.setSingleShot(True)
         self._fs_controls_timer.timeout.connect(self._hide_fullscreen_controls)
+        # Watchdog: prueft periodisch die echte Cursorposition, damit die Leiste
+        # auch dann verschwindet, wenn Enter/Leave-Events durch das Ein-/Ausblenden
+        # des Overlays unter einem stillstehenden Cursor ausbleiben (Bug: Leiste
+        # bleibt stecken, wenn man die Maus nach dem Vollbildwechsel nicht bewegt).
+        self._fs_cursor_watch_timer = QTimer()
+        self._fs_cursor_watch_timer.setInterval(500)
+        self._fs_cursor_watch_timer.timeout.connect(self._check_fs_controls_idle)
+        self._fs_last_cursor_pos = None
+        self._fs_idle_since = None
 
         # Info-Overlay: groß Logo + aktuelle Sendung, erscheint beim Hover
         self.info_overlay = QWidget(player_container)

@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 
 from PySide6.QtCore import Qt, Slot, QTimer
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QListWidgetItem
 
 from xtream_api import LiveStream, VodStream, Series, EpgEntry
@@ -608,6 +609,9 @@ class PlaybackMixin:
         self.fullscreen_controls.show()
         self.unsetCursor()
         self._fs_controls_timer.start(3000)
+        self._fs_last_cursor_pos = QCursor.pos()
+        self._fs_idle_since = time.monotonic()
+        self._fs_cursor_watch_timer.start()
 
     def _update_fs_info(self):
         """Befüllt die Info-Sektion im Fullscreen-Overlay (Kanal, EPG)"""
@@ -753,8 +757,26 @@ class PlaybackMixin:
     def _hide_fullscreen_controls(self):
         """Versteckt die Fullscreen-Kontrollleiste und blendet Cursor aus"""
         self.fullscreen_controls.hide()
+        self._fs_cursor_watch_timer.stop()
         if self._player_maximized:
             self.setCursor(Qt.BlankCursor)
+
+    def _check_fs_controls_idle(self):
+        """Watchdog gegen haengenbleibende Fullscreen-Leiste bei fehlenden
+        Enter/Leave-Events (Cursor steht bereits beim Einblenden auf der Leiste
+        und bewegt sich danach nicht mehr -> ohne diese Pruefung wuerde der
+        Auto-Hide-Timer dauerhaft gestoppt bleiben)."""
+        if not self._player_maximized or not self.fullscreen_controls.isVisible():
+            self._fs_cursor_watch_timer.stop()
+            return
+        pos = QCursor.pos()
+        if pos != self._fs_last_cursor_pos:
+            self._fs_last_cursor_pos = pos
+            self._fs_idle_since = time.monotonic()
+            return
+        if time.monotonic() - self._fs_idle_since >= 3.0:
+            self._fs_controls_timer.stop()
+            self._hide_fullscreen_controls()
 
     def _on_fs_seek_released(self):
         """Seek-Slider im Fullscreen-Overlay losgelassen"""
