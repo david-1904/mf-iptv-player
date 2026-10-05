@@ -5,7 +5,7 @@ import asyncio
 import re
 import aiohttp
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QWidget, QHBoxLayout
 from PySide6.QtGui import QPixmap, QPainter, QPainterPath
 
@@ -362,10 +362,8 @@ class VodDetailMixin:
 
         self._play_stream(url, vod.name, "vod", vod.stream_id,
                           icon=getattr(vod, 'stream_icon', ''),
-                          container_extension=vod.container_extension)
-
-        if resume_pos > 0:
-            QTimer.singleShot(500, lambda: self.player.seek(resume_pos, relative=False))
+                          container_extension=vod.container_extension,
+                          start=resume_pos)
 
         # Vollbild beim VOD-Start
         if not self._player_maximized:

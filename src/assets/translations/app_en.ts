@@ -216,18 +216,6 @@
       <translation>Add to favorites</translation>
     </message>
     <message>
-      <source>Programm – {}</source>
-      <translation>Program – {}</translation>
-    </message>
-    <message>
-      <source>Schließen</source>
-      <translation>Close</translation>
-    </message>
-    <message>
-      <source>Keine Programmdaten verfügbar</source>
-      <translation>No program data available</translation>
-    </message>
-    <message>
       <source>Heute</source>
       <translation>Today</translation>
     </message>
@@ -240,20 +228,32 @@
       <translation>Yesterday</translation>
     </message>
     <message>
-      <source>JETZT</source>
-      <translation>NOW</translation>
+      <source>Mo</source>
+      <translation>Mon</translation>
     </message>
     <message>
-      <source>Von Anfang abspielen</source>
-      <translation>Play from beginning</translation>
+      <source>Di</source>
+      <translation>Tue</translation>
     </message>
     <message>
-      <source>Abspielen</source>
-      <translation>Play</translation>
+      <source>Mi</source>
+      <translation>Wed</translation>
     </message>
     <message>
-      <source>Aufnahme planen</source>
-      <translation>Schedule recording</translation>
+      <source>Do</source>
+      <translation>Thu</translation>
+    </message>
+    <message>
+      <source>Fr</source>
+      <translation>Fri</translation>
+    </message>
+    <message>
+      <source>Sa</source>
+      <translation>Sat</translation>
+    </message>
+    <message>
+      <source>So</source>
+      <translation>Sun</translation>
     </message>
     <message>
       <source>Lade Programm…</source>
@@ -268,8 +268,28 @@
       <translation>Select a channel</translation>
     </message>
     <message>
-      <source>Lade vollständiges Programm…</source>
-      <translation>Loading full program…</translation>
+      <source>Keine Programmdaten verfügbar</source>
+      <translation>No program data available</translation>
+    </message>
+    <message>
+      <source>Läuft gerade</source>
+      <translation>Now playing</translation>
+    </message>
+    <message>
+      <source>bis {} · noch {} Min.</source>
+      <translation>until {} · {} min left</translation>
+    </message>
+    <message>
+      <source>Von Anfang abspielen</source>
+      <translation>Play from beginning</translation>
+    </message>
+    <message>
+      <source>Abspielen</source>
+      <translation>Play</translation>
+    </message>
+    <message>
+      <source>Aufnahme planen</source>
+      <translation>Schedule recording</translation>
     </message>
     <message>
       <source>EPG wird geladen…</source>
@@ -310,6 +330,10 @@
     <message>
       <source>Keine Treffer</source>
       <translation>No results</translation>
+    </message>
+    <message>
+      <source>JETZT</source>
+      <translation>NOW</translation>
     </message>
     <message>
       <source>Standard</source>
@@ -534,6 +558,10 @@
       <translation>Connected: {}</translation>
     </message>
     <message>
+      <source>LÄUFT</source>
+      <translation>PLAYING</translation>
+    </message>
+    <message>
       <source>Als gesehen markiert</source>
       <translation>Marked as watched</translation>
     </message>
@@ -738,6 +766,10 @@
       <translation>Update available</translation>
     </message>
     <message>
+      <source>Schließen</source>
+      <translation>Close</translation>
+    </message>
+    <message>
       <source>Account</source>
       <translation>Account</translation>
     </message>
@@ -898,16 +930,12 @@
       <translation>Channel list</translation>
     </message>
     <message>
-      <source>DAVOR</source>
-      <translation>BEFORE</translation>
+      <source>PROGRAMM</source>
+      <translation>SCHEDULE</translation>
     </message>
     <message>
       <source>DANACH</source>
       <translation>NEXT</translation>
-    </message>
-    <message>
-      <source>Vollständiges EPG</source>
-      <translation>Full EPG</translation>
     </message>
     <message>
       <source>EPG</source>

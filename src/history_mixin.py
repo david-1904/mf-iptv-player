@@ -250,10 +250,6 @@ class HistoryMixin:
         tip = _tr("Aufnahme stoppen") if recording else _tr("Aufnahme starten")
         self.btn_record.setChecked(recording)
         self.btn_record.setToolTip(tip)
-        fs_btn = getattr(self, 'fs_btn_record', None)
-        if fs_btn:
-            fs_btn.setChecked(recording)
-            fs_btn.setToolTip(tip)
 
     def _update_record_button(self):
         """Aktualisiert das Aussehen des Aufnahme-Buttons"""

@@ -83,13 +83,9 @@ class StreamControlsMixin:
 
     def _toggle_stream_info(self):
         """Toggle stream info panel visibility"""
-        # Sender kann btn_stream_info oder fs_btn_stream_info sein — beide sync halten
         btn = self.sender()
         checked = btn.isChecked() if btn else self.btn_stream_info.isChecked()
         self.btn_stream_info.setChecked(checked)
-        fs_btn = getattr(self, 'fs_btn_stream_info', None)
-        if fs_btn:
-            fs_btn.setChecked(checked)
         if checked:
             self._update_stream_info()
             self._position_stream_info_panel()
@@ -105,9 +101,6 @@ class StreamControlsMixin:
         self.stream_info_panel.hide()
         self.stream_info_timer.stop()
         self.btn_stream_info.setChecked(False)
-        fs_btn = getattr(self, 'fs_btn_stream_info', None)
-        if fs_btn:
-            fs_btn.setChecked(False)
 
     def _cycle_zoom_mode(self):
         """Wechselt zwischen Normal / Füllen / Strecken"""
@@ -126,8 +119,6 @@ class StreamControlsMixin:
         except Exception:
             pass
         self.btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Füllen / Strecken").format(name))
-        if hasattr(self, "fs_btn_zoom"):
-            self.fs_btn_zoom.setToolTip(_tr("Bildgröße: {}  →  Normal / Füllen / Strecken").format(name))
         self.status_bar.showMessage(_tr("Bildgröße: {}").format(name), 3000)
 
     def _update_stream_info(self):

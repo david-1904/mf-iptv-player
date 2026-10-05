@@ -54,6 +54,8 @@ class MpvPlayerWidget(QOpenGLWidget):
         self.ctx = None
         self._proc_addr_wrapper = None
         self._pending_url = None
+        self._seekable = False
+        self._start = 0.0
         self._player_initialized = False
         self._is_buffering = False
         self._screensaver_inhibitions = []  # [(service, path, iface_name, cookie), ...]
@@ -99,7 +101,8 @@ class MpvPlayerWidget(QOpenGLWidget):
         self.player = mpv.MPV(vo='libmpv', hwdec=hwdec)
         _ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         self.player['user-agent'] = _ua
-        self.player['stream-lavf-o'] = f'headers=User-Agent: {_ua}\r\n,icy=0,seekable=0,multiple_requests=1'
+        self._user_agent = _ua
+        self._apply_stream_options()
         self.player['http-header-fields'] = f'User-Agent: {_ua}'
         # Netzwerk-Timeout: verhindert endloses Hängen bei schlechter Verbindung
         self.player['network-timeout'] = '10'
@@ -188,6 +191,7 @@ class MpvPlayerWidget(QOpenGLWidget):
             self._stream_ended_signal.emit(reason)
 
         if self._pending_url:
+            self._apply_stream_options()
             self.player.play(self._pending_url)
             self._pending_url = None
 
@@ -411,8 +415,21 @@ class MpvPlayerWidget(QOpenGLWidget):
                 pass
             self._logind_fd = None
 
-    def play(self, url: str):
-        """Spielt eine URL ab"""
+    def _apply_stream_options(self):
+        # seekable=0 verhindert bei Live-Streams haengende Range-Requests; bei Filmen
+        # wuerde es Spruenge ausserhalb des Puffers unmoeglich machen.
+        seekable = "" if self._seekable else ",seekable=0"
+        self.player['stream-lavf-o'] = (
+            f'headers=User-Agent: {self._user_agent}\r\n,icy=0{seekable},multiple_requests=1')
+        # Startposition direkt beim Laden statt nachtraeglichem Sprung (der vor dem
+        # Laden ins Leere laeuft); gilt nur fuer die naechste Datei
+        self.player['start'] = f"{self._start:.3f}" if self._start > 0 else "none"
+
+    def play(self, url: str, seekable: bool = False, start: float = 0.0):
+        """Spielt eine URL ab. seekable=True fuer Dateien mit fester Laenge (Filme),
+        start = Startposition in Sekunden (Fortsetzen)."""
+        self._seekable = seekable
+        self._start = start if seekable else 0.0
         self._buffering_signal.emit(True)
         self._inhibit_screensaver()
         # Freeze-Watchdog: Uhr zurücksetzen (mpv braucht Zeit zum Verbinden)
@@ -421,6 +438,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         if not self._player_initialized:
             self._pending_url = url
         else:
+            self._apply_stream_options()
             self.player.play(url)
 
     def stop(self):

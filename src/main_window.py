@@ -98,8 +98,8 @@ class MainWindow(
         self._xmltv_epg = None           # XmltvEpg-Instanz wenn externe URL konfiguriert
         self._stream_epg_channel_map: dict[int, str] = {}  # stream_id → tvg-id
         self._current_epg_has_catchup: bool = False
-        self._detail_prev_entry = None
         self._detail_now_entry = None
+        self._playing_catchup_entry = None
         self._detail_next_entry = None
 
         # Favoriten-Filter
@@ -189,7 +189,7 @@ class MainWindow(
                 self.stream_error_overlay.setGeometry(0, 0, obj.width(), obj.height())
                 if self.fullscreen_controls.isVisible():
                     self._position_fullscreen_controls()
-                if self.info_overlay.isVisible():
+                if self.info_overlay.isVisible() and not self._player_maximized:
                     h = 165
                     self.info_overlay.setGeometry(0, obj.height() - h, obj.width(), h)
                 if self.stream_info_panel.isVisible():

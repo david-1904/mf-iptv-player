@@ -5,15 +5,43 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve, QSize
-from PySide6.QtWidgets import QListWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PySide6.QtCore import Qt, Slot, QPropertyAnimation, QEasingCurve, QSize, QTimer, QPoint, Signal
+from PySide6.QtWidgets import (
+    QListWidgetItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QProgressBar,
+)
 from PySide6.QtGui import QPixmap
-from ui_builder import _pi
+from ui_builder import _pi, _pi_colored
 
-from xtream_api import LiveStream, EpgEntry
+from xtream_api import LiveStream, EpgEntry, dedupe_epg
 from favorites_manager import Favorite
-from epg_dialog import EpgDialog
 from i18n import _tr
+
+_FUTURE_WINDOW = 2 * 86400          # wie weit das Programm nach vorne reicht
+_MAX_PAST_DAYS = 2                   # mehr Zeilen machen den Aufbau spuerbar traege
+
+
+class _ProgrammeRow(QFrame):
+    """Programmzeile; Klick auf die Zeile klappt die Beschreibung auf."""
+    clicked = Signal()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+
+def _day_label(ts: float) -> str:
+    day = datetime.fromtimestamp(ts).date()
+    today = datetime.now().date()
+    diff = (day - today).days
+    if diff == 0:
+        return _tr("Heute")
+    if diff == 1:
+        return _tr("Morgen")
+    if diff == -1:
+        return _tr("Gestern")
+    weekdays = [_tr("Mo"), _tr("Di"), _tr("Mi"), _tr("Do"), _tr("Fr"), _tr("Sa"), _tr("So")]
+    return f"{weekdays[day.weekday()]}, {day.strftime('%d.%m.')}"
 
 
 class EpgMixin:
@@ -197,72 +225,47 @@ class EpgMixin:
         self._current_epg_stream_id = None
 
     def _show_full_epg(self):
-        """Show full EPG dialog - laedt bei Catchup-Sendern den vollen EPG"""
-        if self._current_epg_stream_id is None:
+        """Oeffnet das Programm des aktuellen Senders im Detailpanel."""
+        if self._current_epg_stream_id is None or not self._detail_stream_data:
             return
+        # Programm lebt in der Kanalspalte, die im Vollbild versteckt ist
+        if self._player_maximized:
+            self._toggle_player_maximized()
+        if not self.channel_detail_panel.isVisible():
+            self._show_channel_detail(self._detail_stream_data)
 
-        has_catchup = self._current_epg_has_catchup
-        if has_catchup:
-            asyncio.ensure_future(self._show_full_epg_async(has_catchup))
-        else:
-            epg_data = self._epg_cache.get(self._current_epg_stream_id, [])
-            self._open_epg_dialog(epg_data, has_catchup)
-
-    async def _show_full_epg_async(self, has_catchup: bool):
-        """Laedt vollen EPG asynchron und oeffnet den Dialog"""
-        stream_id = self._current_epg_stream_id
-        if stream_id is None or not self.api:
-            return
-
+    async def _fetch_full_epg(self, stream_id: int) -> list[EpgEntry]:
+        """Komplettes Programm (vergangen + kommend) aus Provider bzw. XMLTV."""
         from m3u_provider import M3uProvider
-        is_m3u = isinstance(self.api, M3uProvider)
         xmltv = getattr(self, '_xmltv_epg', None)
 
-        # Für M3U: externen EPG bevorzugen (vollständig, kein API-Call nötig)
-        if is_m3u and xmltv and xmltv.loaded:
-            tvg_id = self._stream_epg_channel_map.get(stream_id, "")
-            if tvg_id:
-                full_epg = xmltv.get_full_epg(tvg_id)
-                if full_epg:
-                    self._open_epg_dialog(full_epg, has_catchup)
-                    return
+        def from_xmltv():
+            if xmltv and xmltv.loaded:
+                tvg_id = self._stream_epg_channel_map.get(stream_id, "")
+                if tvg_id:
+                    return xmltv.get_full_epg(tvg_id) or []
+            return []
 
-        self._show_loading(_tr("Lade vollständiges Programm…"))
+        if isinstance(self.api, M3uProvider):
+            data = from_xmltv()
+            if data:
+                return dedupe_epg(data)
         try:
-            epg_data = await self.api.get_full_epg(stream_id)
-            if not epg_data:
-                # Fallback: externer EPG (auch für Xtream wenn Provider leer)
-                if xmltv and xmltv.loaded:
-                    tvg_id = self._stream_epg_channel_map.get(stream_id, "")
-                    if tvg_id:
-                        epg_data = xmltv.get_full_epg(tvg_id)
-            if not epg_data:
-                epg_data = self._epg_cache.get(stream_id, [])
-            if self._current_epg_stream_id == stream_id:
-                self._open_epg_dialog(epg_data, has_catchup)
+            data = await self.api.get_full_epg(stream_id)
         except Exception:
-            epg_data = self._epg_cache.get(stream_id, [])
-            self._open_epg_dialog(epg_data, has_catchup)
-        finally:
-            self._hide_loading()
+            data = []
+        if not data:
+            data = from_xmltv()
+        return dedupe_epg(data)
 
-    def _open_epg_dialog(self, epg_data: list[EpgEntry], has_catchup: bool):
-        """Oeffnet den EPG-Dialog (non-blocking mit open())"""
-        channel_name = self.epg_channel_name.text()
-        self._epg_dialog = EpgDialog(
-            channel_name, epg_data, has_catchup=has_catchup,
-            schedule_callback=self._schedule_from_epg,
-            parent=self,
-        )
-        self._epg_dialog.finished.connect(self._on_epg_dialog_finished)
-        self._epg_dialog.open()
+    async def _load_detail_full_epg(self, stream_id: int):
+        data = await self._fetch_full_epg(stream_id)
+        if data and self.channel_detail_panel.isVisible() and self._detail_stream_id() == stream_id:
+            self._update_detail_epg(data, full=True)
 
-    def _on_epg_dialog_finished(self):
-        """Wird aufgerufen wenn der EPG-Dialog geschlossen wird"""
-        dialog = self._epg_dialog
-        self._epg_dialog = None
-        if dialog and dialog.selected_catchup_entry is not None:
-            self._play_catchup(dialog.selected_catchup_entry)
+    def _detail_stream_id(self):
+        d = self._detail_stream_data
+        return getattr(d, 'stream_id', None) or getattr(d, 'id', None)
 
     def _play_catchup(self, entry: EpgEntry):
         """Spielt eine vergangene/aktuelle Sendung via Catchup ab (EPG bleibt sichtbar)."""
@@ -275,26 +278,24 @@ class EpgMixin:
         url = self.api.creds.catchup_url(stream_id, start, duration_min)
 
         channel_name = self.epg_channel_name.text()
+        self._playing_channel_name = channel_name
         start_str = start.strftime("%H:%M")
         end_str = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
         title = f"{channel_name} \u2013 {entry.title} ({start_str}\u2013{end_str})"
 
-        # Als Live-Stream abspielen damit EPG-Panel (3-Spalten) sichtbar bleibt
-        self._play_stream(url, title, "live", stream_id)
+        # Als Live-Stream abspielen; Programmliste bleibt offen
+        self._keep_detail_open = True
+        try:
+            self._play_stream(url, title, "live", stream_id)
+        finally:
+            self._keep_detail_open = False
+        self._playing_catchup_entry = entry
+        if self.channel_detail_panel.isVisible() and getattr(self, '_detail_epg_entries', None):
+            self._update_detail_epg(self._detail_epg_entries, full=self._detail_epg_full)
         # Timeshift aktiv: Seek-Controls einblenden
         self._timeshift_active = True
         self._timeshift_start_ts = entry.start_timestamp
         self._update_seek_controls_visibility()
-
-    def _play_detail_prev(self):
-        """Spielt die vorherige Sendung via Catchup ab."""
-        if self._detail_prev_entry:
-            self._play_catchup(self._detail_prev_entry)
-
-    def _play_detail_now_catchup(self):
-        """Spielt die aktuelle Sendung ab Beginn via Catchup ab."""
-        if self._detail_now_entry:
-            self._play_catchup(self._detail_now_entry)
 
     # ── Kanal-Detailpanel ─────────────────────────────────────────────
 
@@ -310,17 +311,13 @@ class EpgMixin:
         self.detail_logo.setText("\U0001F4FA")
         self.detail_logo.setPixmap(QPixmap())
 
-        # EPG-Platzhalter
-        self.detail_prev_widget.hide()
-        self.detail_now_title.setText(_tr("Lade Programm…"))
-        self.detail_now_time.setText("")
-        self.detail_now_progress.hide()
-        self.detail_now_desc.hide()
-        self.detail_future_section.hide()
-        self.detail_epg_action_btn.setEnabled(False)
-        self._detail_prev_entry = None
-        self._detail_now_entry = None
-        self._detail_next_entry = None
+        # Programm-Platzhalter
+        self._detail_epg_entries = []
+        self._detail_epg_full = False
+        self._clear_detail_programme()
+        loading = QLabel(_tr("Lade Programm…"))
+        loading.setStyleSheet("color: #8a8aa0; font-size: 13px; padding: 12px 0;")
+        self.detail_programme_layout.addWidget(loading)
 
         # EPG-Panel-Zeile verstecken, Senderliste bleibt immer sichtbar
         self._epg_splitter.setSizes([99999, 0])
@@ -340,6 +337,7 @@ class EpgMixin:
         stream_id = getattr(stream_data, 'stream_id', None) or getattr(stream_data, 'id', None)
         if stream_id:
             asyncio.ensure_future(self._load_epg(stream_id))
+            asyncio.ensure_future(self._load_detail_full_epg(stream_id))
 
     def _hide_channel_detail(self):
         """Versteckt das Kanal-Detailpanel mit Slide-Animation."""
@@ -351,6 +349,8 @@ class EpgMixin:
 
     def _toggle_channel_detail(self):
         """Toggle-Button: Detail-Panel auf- oder zuschieben."""
+        if self._player_maximized:
+            self._toggle_player_maximized()
         if self.channel_detail_panel.isVisible():
             self._hide_channel_detail()
         elif self._detail_stream_data:
@@ -395,121 +395,172 @@ class EpgMixin:
         if (self.player_area.isVisible() and not self._pip_mode) or self.live_idle_panel.isVisible():
             self.channel_area.setFixedWidth(self._live_channel_width())
 
-    def _update_detail_epg(self, epg_data: list):
-        """Befuellt den DAVOR/JETZT/DANACH-Bereich im Detailpanel mit EPG-Daten."""
-        if not self.channel_detail_panel.isVisible():
-            return
-
-        now = datetime.now().timestamp()
-        prev = None
-        current = None
-        future = []
-        for entry in sorted(epg_data, key=lambda e: e.start_timestamp):
-            if entry.stop_timestamp <= now:
-                prev = entry  # letzten vergangenen Eintrag merken
-            elif entry.start_timestamp <= now < entry.stop_timestamp:
-                current = entry
-            elif entry.start_timestamp > now:
-                future.append(entry)
-
-        future = future[:3]
-
-        # Eintraege fuer Play-Button-Callbacks speichern
-        self._detail_prev_entry = prev
-        self._detail_now_entry = current
-        self._detail_next_entry = future[0] if future else None
-
-        # DAVOR-Bereich
-        if prev:
-            s = datetime.fromtimestamp(prev.start_timestamp).strftime("%H:%M")
-            e = datetime.fromtimestamp(prev.stop_timestamp).strftime("%H:%M")
-            self.detail_prev_title.setText(prev.title)
-            self.detail_prev_time.setText(f"{s} \u2013 {e}")
-            self.detail_prev_play_btn.setVisible(self._current_epg_has_catchup)
-            self.detail_prev_widget.show()
-        else:
-            self.detail_prev_widget.hide()
-
-        if current:
-            s = datetime.fromtimestamp(current.start_timestamp).strftime("%H:%M")
-            e = datetime.fromtimestamp(current.stop_timestamp).strftime("%H:%M")
-            self.detail_now_title.setText(current.title)
-            self.detail_now_time.setText(f"{s} \u2013 {e}")
-            dur = current.stop_timestamp - current.start_timestamp
-            if dur > 0:
-                prog = max(0, min(100, int((now - current.start_timestamp) / dur * 100)))
-                self.detail_now_progress.setValue(prog)
-                self.detail_now_progress.show()
-            if current.description:
-                self.detail_now_desc.setText(current.description)
-                self.detail_now_desc.show()
-            else:
-                self.detail_now_desc.hide()
-            # 📹-Button fuer JETZT verdrahten
-            try:
-                self.detail_now_rec_btn.clicked.disconnect()
-            except RuntimeError:
-                pass
-            self.detail_now_rec_btn.clicked.connect(
-                lambda checked=False, e=current: self._schedule_from_epg(e)
-            )
-            self.detail_now_rec_btn.show()
-        else:
-            self.detail_now_title.setText(_tr("Keine EPG-Daten"))
-            self.detail_now_time.setText("")
-            self.detail_now_progress.hide()
-            self.detail_now_desc.hide()
-            self.detail_now_rec_btn.hide()
-
-        # DANACH: bis zu 3 zukuenftige Eintraege dynamisch aufbauen
-        while self.detail_future_layout.count():
-            item = self.detail_future_layout.takeAt(0)
+    def _clear_detail_programme(self):
+        while self.detail_programme_layout.count():
+            item = self.detail_programme_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        if future:
-            for entry in future:
-                s = datetime.fromtimestamp(entry.start_timestamp).strftime("%H:%M")
-                e_time = datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M")
-                entry_w = QWidget()
-                entry_w.setStyleSheet("background: transparent;")
-                entry_lay = QVBoxLayout(entry_w)
-                entry_lay.setContentsMargins(0, 0, 0, 0)
-                entry_lay.setSpacing(2)
-                title_lbl = QLabel(entry.title)
-                title_lbl.setStyleSheet("font-size: 15px; color: #aaa;")
-                title_lbl.setWordWrap(True)
-                entry_lay.addWidget(title_lbl)
-                # Zeitzeile + 📹-Button
-                time_row = QHBoxLayout()
-                time_row.setSpacing(6)
-                time_lbl = QLabel(f"{s} \u2013 {e_time}")
-                time_lbl.setStyleSheet("font-size: 12px; color: #8a8aa0;")
-                time_row.addWidget(time_lbl, stretch=1)
-                rec_btn = QPushButton()
-                rec_btn.setIcon(_pi("record.svg", 14))
-                rec_btn.setIconSize(QSize(14, 14))
-                rec_btn.setToolTip(_tr("Aufnahme planen"))
-                rec_btn.setFixedSize(26, 26)
-                rec_btn.setStyleSheet("""
-                    QPushButton {
-                        background: transparent;
-                        border: 1px solid #333; border-radius: 3px;
-                        padding: 0;
-                    }
-                    QPushButton:hover { background: #c0392b; border-color: #c0392b; }
-                """)
-                rec_btn.clicked.connect(
-                    lambda checked=False, e=entry: self._schedule_from_epg(e)
-                )
-                time_row.addWidget(rec_btn, alignment=Qt.AlignVCenter)
-                entry_lay.addLayout(time_row)
-                self.detail_future_layout.addWidget(entry_w)
-            self.detail_future_section.show()
-        else:
-            self.detail_future_section.hide()
+    def _update_detail_epg(self, epg_data: list, full: bool = False):
+        """Baut die Programmliste im Detailpanel (nach Tagen gegliedert)."""
+        if not self.channel_detail_panel.isVisible():
+            return
+        # Kurz-EPG darf ein bereits geladenes Voll-EPG nicht ueberschreiben
+        if not full and getattr(self, '_detail_epg_full', False):
+            return
+        self._detail_epg_entries = list(epg_data)
+        self._detail_epg_full = full
 
-        self.detail_epg_action_btn.setEnabled(True)
+        now = datetime.now().timestamp()
+        stream = self._detail_stream_data
+        has_catchup = bool(getattr(stream, 'tv_archive', False)) or self._current_epg_has_catchup
+        archive_days = min(getattr(stream, 'tv_archive_duration', 0) or _MAX_PAST_DAYS, _MAX_PAST_DAYS)
+        oldest = now - archive_days * 86400 if has_catchup else now
+        newest = now + _FUTURE_WINDOW
+        entries = [e for e in dedupe_epg(epg_data)
+                   if e.stop_timestamp > oldest and e.start_timestamp < newest]
+
+        self._clear_detail_programme()
+        if not entries:
+            empty = QLabel(_tr("Keine Programmdaten verfügbar"))
+            empty.setStyleSheet("color: #8a8aa0; font-size: 13px; padding: 12px 0;")
+            self.detail_programme_layout.addWidget(empty)
+            return
+
+        playing = getattr(self, '_playing_catchup_entry', None)
+        scroll_target = None
+        playing_row = None
+        last_day = None
+        for entry in entries:
+            day = datetime.fromtimestamp(entry.start_timestamp).date()
+            if day != last_day:
+                last_day = day
+                self.detail_programme_layout.addWidget(self._make_day_header(entry.start_timestamp))
+            is_current = entry.start_timestamp <= now < entry.stop_timestamp
+            is_playing = (playing is not None and playing.start_timestamp == entry.start_timestamp
+                          and playing.title == entry.title)
+            row = self._make_programme_row(entry, now, is_current, is_playing, has_catchup)
+            self.detail_programme_layout.addWidget(row)
+            if is_playing:
+                playing_row = row
+            if is_current or (scroll_target is None and entry.start_timestamp > now):
+                scroll_target = row
+        target = playing_row or scroll_target
+        if target is not None:
+            # Erst nach Layout bzw. Einfahr-Animation ist die Zeilenposition final
+            for delay in (0, 300):
+                QTimer.singleShot(delay, lambda t=target: self._scroll_detail_to(t))
+
+    def _scroll_detail_to(self, row: QWidget):
+        try:
+            content = self.detail_scroll.widget()
+            content.layout().activate()
+            content.resize(content.width(), content.layout().sizeHint().height())
+            y = row.mapTo(content, QPoint(0, 0)).y()
+        except RuntimeError:
+            return
+        # Eine Zeile Kontext oberhalb der laufenden Sendung lassen
+        self.detail_scroll.verticalScrollBar().setValue(max(0, y - 90))
+
+    def _make_day_header(self, ts: float) -> QWidget:
+        lbl = QLabel(_day_label(ts).upper())
+        lbl.setStyleSheet(
+            "color: #a6a6b8; font-size: 11px; font-weight: bold; letter-spacing: 1px;"
+            "padding: 14px 0 6px 0; border-bottom: 1px solid rgba(255,255,255,8);"
+        )
+        return lbl
+
+    def _make_programme_row(self, entry: EpgEntry, now: float, is_current: bool,
+                            is_playing: bool, has_catchup: bool) -> QWidget:
+        is_past = entry.stop_timestamp <= now
+        row = _ProgrammeRow()
+        row.setObjectName("progRow")
+        accent = "#0078d4" if is_playing else "#e8691a" if is_current else "transparent"
+        bg = "rgba(232,105,26,18)" if is_current else "rgba(0,120,212,22)" if is_playing else "transparent"
+        row.setStyleSheet(f"""
+            #progRow {{ background: {bg}; border-left: 3px solid {accent};
+                        border-bottom: 1px solid rgba(255,255,255,5); }}
+            #progRow:hover {{ background: rgba(255,255,255,10); }}
+            QLabel {{ background: transparent; border: none; }}
+        """)
+        outer = QVBoxLayout(row)
+        outer.setContentsMargins(8, 8, 4, 8)
+        outer.setSpacing(4)
+
+        line = QHBoxLayout()
+        line.setSpacing(10)
+        time_lbl = QLabel(datetime.fromtimestamp(entry.start_timestamp).strftime("%H:%M"))
+        time_color = "#e8691a" if is_current else "#8a8aa0" if is_past else "#a6a6b8"
+        time_lbl.setStyleSheet(f"color: {time_color}; font-size: 13px; font-weight: 600;")
+        time_lbl.setFixedWidth(42)
+        time_lbl.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        line.addWidget(time_lbl, alignment=Qt.AlignTop)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(4)
+        title_color = "white" if (is_current or is_playing) else "#8a8aa0" if is_past else "#ddd"
+        weight = "600" if (is_current or is_playing) else "normal"
+        title = QLabel(entry.title)
+        title.setWordWrap(True)
+        title.setStyleSheet(f"color: {title_color}; font-size: 14px; font-weight: {weight};")
+        title_col.addWidget(title)
+        if is_playing:
+            tag = QLabel(_tr("Läuft gerade"))
+            tag.setStyleSheet("color: #5aaef0; font-size: 11px; font-weight: 600;")
+            title_col.addWidget(tag)
+        if is_current:
+            dur = entry.stop_timestamp - entry.start_timestamp
+            bar = QProgressBar()
+            bar.setFixedHeight(3)
+            bar.setTextVisible(False)
+            bar.setRange(0, 1000)
+            bar.setValue(int((now - entry.start_timestamp) / dur * 1000) if dur > 0 else 0)
+            bar.setStyleSheet("""
+                QProgressBar { background: rgba(255,255,255,20); border: none; border-radius: 1px; }
+                QProgressBar::chunk { background: #e8691a; border-radius: 1px; }
+            """)
+            title_col.addWidget(bar)
+            left = max(0, int((entry.stop_timestamp - now) // 60))
+            rest = QLabel(_tr("bis {} · noch {} Min.").format(
+                datetime.fromtimestamp(entry.stop_timestamp).strftime("%H:%M"), left))
+            rest.setStyleSheet("color: #a6a6b8; font-size: 11px;")
+            title_col.addWidget(rest)
+        line.addLayout(title_col, stretch=1)
+
+        btn_ss = """
+            QPushButton { background: transparent; border: 1px solid rgba(255,255,255,25); border-radius: 14px; }
+            QPushButton:hover { background: rgba(255,255,255,30); }
+        """
+        if has_catchup and (is_past or is_current):
+            play = QPushButton()
+            play.setIcon(_pi("play.svg", 13))
+            play.setIconSize(QSize(13, 13))
+            play.setFixedSize(28, 28)
+            play.setStyleSheet(btn_ss)
+            play.setToolTip(_tr("Von Anfang abspielen") if is_current else _tr("Abspielen"))
+            play.clicked.connect(lambda _=False, e=entry: self._play_catchup(e))
+            line.addWidget(play, alignment=Qt.AlignTop)
+        if not is_past:
+            rec = QPushButton()
+            rec.setIcon(_pi_colored("record.svg", 13, "#e5484d"))
+            rec.setIconSize(QSize(13, 13))
+            rec.setFixedSize(28, 28)
+            rec.setStyleSheet(btn_ss.replace("rgba(255,255,255,30)", "rgba(229,72,77,60)"))
+            rec.setToolTip(_tr("Aufnahme planen"))
+            rec.clicked.connect(lambda _=False, e=entry: self._schedule_from_epg(e))
+            line.addWidget(rec, alignment=Qt.AlignTop)
+        outer.addLayout(line)
+
+        desc = (entry.description or "").strip()
+        if desc:
+            desc_lbl = QLabel(desc)
+            desc_lbl.setWordWrap(True)
+            desc_lbl.setStyleSheet("color: #a6a6b8; font-size: 13px; padding-left: 52px;")
+            desc_lbl.setVisible(is_current)
+            outer.addWidget(desc_lbl)
+            row.setCursor(Qt.PointingHandCursor)
+            row.clicked.connect(lambda d=desc_lbl: d.setVisible(not d.isVisible()))
+        return row
 
     async def _load_detail_logo(self, url: str):
         """Laedt das Senderlogo und setzt es als 80x80 Icon."""
@@ -519,7 +570,7 @@ class EpgMixin:
             ) as session:
                 pixmap = await self._fetch_poster(session, url, 160, 160)
                 if pixmap and self.channel_detail_panel.isVisible():
-                    scaled = pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    scaled = pixmap.scaled(56, 56, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     self.detail_logo.setPixmap(scaled)
                     self.detail_logo.setText("")
         except Exception:

@@ -133,6 +133,36 @@ class EpgEntry:
     description: str = ""
 
 
+def dedupe_epg(entries: list[EpgEntry]) -> list[EpgEntry]:
+    """Bereinigt EPG-Listen, in denen der Anbieter mehrere leicht versetzte
+    Programmfassungen mischt (gleicher Titel, Zeiten um Minuten verschoben).
+
+    Ueberlappen zwei Eintraege mit gleichem Titel um mehr als die Haelfte der
+    kuerzeren Dauer, bleibt nur der spaeter beginnende - so entsteht eine
+    durchgehende Zeitleiste ohne Doppelungen. Ergebnis ist nach Start sortiert.
+    """
+    result: list[EpgEntry] = []
+    for entry in sorted(entries, key=lambda e: (e.start_timestamp, e.stop_timestamp)):
+        dup_idx = None
+        for i in range(len(result) - 1, -1, -1):
+            other = result[i]
+            if other.stop_timestamp <= entry.start_timestamp - 6 * 3600:
+                break
+            if other.title != entry.title:
+                continue
+            overlap = min(other.stop_timestamp, entry.stop_timestamp) - max(other.start_timestamp, entry.start_timestamp)
+            shorter = min(other.stop_timestamp - other.start_timestamp, entry.stop_timestamp - entry.start_timestamp)
+            if overlap > 0 and overlap * 2 >= max(shorter, 1):
+                dup_idx = i
+                break
+        if dup_idx is None:
+            result.append(entry)
+        else:
+            result[dup_idx] = entry
+    result.sort(key=lambda e: e.start_timestamp)
+    return result
+
+
 class XtreamAPI:
     def __init__(self, credentials: XtreamCredentials):
         self.creds = credentials
@@ -309,7 +339,7 @@ class XtreamAPI:
         """Holt EPG-Daten fuer einen Stream (aktuell + kommend)"""
         data = await self._get("get_short_epg", stream_id=stream_id, limit=limit, _session=session)
         listings = data.get("epg_listings", []) if isinstance(data, dict) else []
-        return [
+        return dedupe_epg([
             EpgEntry(
                 title=_decode_base64(e.get("title", "")),
                 start_timestamp=int(e.get("start_timestamp", 0)),
@@ -317,13 +347,13 @@ class XtreamAPI:
                 description=_decode_base64(e.get("description", ""))
             )
             for e in listings
-        ]
+        ])
 
     async def get_full_epg(self, stream_id: int) -> list[EpgEntry]:
         """Holt vollstaendige EPG-Daten inkl. vergangener Sendungen"""
         data = await self._get("get_simple_data_table", stream_id=stream_id)
         listings = data.get("epg_listings", []) if isinstance(data, dict) else []
-        return [
+        return dedupe_epg([
             EpgEntry(
                 title=_decode_base64(e.get("title", "")),
                 start_timestamp=int(e.get("start_timestamp", 0)),
@@ -331,4 +361,4 @@ class XtreamAPI:
                 description=_decode_base64(e.get("description", ""))
             )
             for e in listings
-        ]
+        ])

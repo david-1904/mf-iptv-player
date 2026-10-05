@@ -6,7 +6,7 @@ import re
 
 import aiohttp
 
-from PySide6.QtCore import Qt, Slot, QTimer, QSize
+from PySide6.QtCore import Qt, Slot, QSize
 from PySide6.QtWidgets import (
     QListWidgetItem, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QSizePolicy
 )
@@ -254,10 +254,8 @@ class SeriesDetailMixin:
             self._exit_pip_mode()
 
         self._play_stream(url, title, "vod", ep.id,
-                          container_extension=ep.container_extension)
-
-        if resume_pos > 0:
-            QTimer.singleShot(500, lambda: self.player.seek(resume_pos, relative=False))
+                          container_extension=ep.container_extension,
+                          start=resume_pos)
 
     def _play_series_trailer(self):
         """Oeffnet den Serien-Trailer im Browser"""

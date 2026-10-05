@@ -1572,29 +1572,20 @@ class UiBuilderMixin:
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
 
+        self.detail_scroll = scroll
         content = QWidget()
         content.setStyleSheet("background: transparent;")
         lay = QVBoxLayout(content)
-        lay.setContentsMargins(24, 16, 24, 16)
+        lay.setContentsMargins(16, 16, 12, 16)
         lay.setSpacing(10)
         lay.setAlignment(Qt.AlignTop)
-
-        # Catchup-Button-Stil (genutzt in Header + DAVOR-Bereich)
-        _catchup_btn_ss = """
-            QPushButton {
-                background: transparent; color: #e8691a;
-                border: 1px solid #e8691a; border-radius: 8px;
-                font-size: 13px; font-weight: bold; padding: 0 16px;
-            }
-            QPushButton:hover { background: rgba(232, 105, 26, 30); color: #ffab6e; border-color: #ffab6e; }
-        """
 
         # ── Header: Logo + Kanalname ──────────────────────────────
         header_row = QHBoxLayout()
         header_row.setSpacing(16)
 
         self.detail_logo = QLabel()
-        self.detail_logo.setFixedSize(80, 80)
+        self.detail_logo.setFixedSize(56, 56)
         self.detail_logo.setAlignment(Qt.AlignCenter)
         self.detail_logo.setStyleSheet("""
             background-color: #1a1a2a;
@@ -1610,7 +1601,7 @@ class UiBuilderMixin:
 
         self.detail_channel_name = QLabel("")
         self.detail_channel_name.setStyleSheet(
-            "font-size: 26px; font-weight: bold; color: #ffffff;"
+            "font-size: 20px; font-weight: bold; color: #ffffff;"
         )
         self.detail_channel_name.setWordWrap(True)
         self.detail_channel_name.setAlignment(Qt.AlignLeft | Qt.AlignTop)
@@ -1619,157 +1610,19 @@ class UiBuilderMixin:
         header_row.addLayout(name_block, stretch=1)
         lay.addLayout(header_row)
 
-        # ── Trennlinie ────────────────────────────────────────────
-        sep = QFrame()
-        sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: rgba(255,255,255,6); margin: 0;")
-        lay.addWidget(sep)
-
-        # ── DAVOR-Bereich ─────────────────────────────────────────
-        self.detail_prev_widget = QWidget()
-        self.detail_prev_widget.setStyleSheet("background: transparent;")
-        prev_lay = QVBoxLayout(self.detail_prev_widget)
-        prev_lay.setContentsMargins(0, 0, 0, 0)
-        prev_lay.setSpacing(4)
-
-        davor_lbl = QLabel(_tr("DAVOR"))
-        davor_lbl.setStyleSheet(
-            "font-size: 10px; font-weight: bold; color: #333; letter-spacing: 2px;"
+        # ── Programm: komplette Sendungsliste (vergangen / jetzt / kommend) ──
+        prog_head = QLabel(_tr("PROGRAMM"))
+        prog_head.setStyleSheet(
+            "font-size: 10px; font-weight: bold; color: #8a8aa0; letter-spacing: 2px; padding-top: 6px;"
         )
-        prev_lay.addWidget(davor_lbl)
+        lay.addWidget(prog_head)
 
-        prev_row = QHBoxLayout()
-        prev_row.setSpacing(8)
-        self.detail_prev_title = QLabel("")
-        self.detail_prev_title.setStyleSheet("font-size: 16px; color: #8a8aa0;")
-        self.detail_prev_title.setWordWrap(True)
-        prev_row.addWidget(self.detail_prev_title, stretch=1)
-        self.detail_prev_play_btn = QPushButton("\u25B6")
-        self.detail_prev_play_btn.setFixedHeight(28)
-        self.detail_prev_play_btn.setStyleSheet(_catchup_btn_ss)
-        self.detail_prev_play_btn.clicked.connect(self._play_detail_prev)
-        self.detail_prev_play_btn.hide()
-        prev_row.addWidget(self.detail_prev_play_btn, alignment=Qt.AlignVCenter)
-        prev_lay.addLayout(prev_row)
-
-        self.detail_prev_time = QLabel("")
-        self.detail_prev_time.setStyleSheet("font-size: 12px; color: #8a8aa0;")
-        prev_lay.addWidget(self.detail_prev_time)
-
-        self.detail_prev_widget.hide()
-        lay.addWidget(self.detail_prev_widget)
-
-        # ── JETZT-Bereich ─────────────────────────────────────────
-        self.detail_now_section = QWidget()
-        self.detail_now_section.setStyleSheet("background: transparent;")
-        now_lay = QVBoxLayout(self.detail_now_section)
-        now_lay.setContentsMargins(0, 0, 0, 0)
-        now_lay.setSpacing(8)
-
-        jetzt_lbl = QLabel(_tr("JETZT"))
-        jetzt_lbl.setStyleSheet(
-            "font-size: 10px; font-weight: bold; color: #e8691a; letter-spacing: 2px;"
-        )
-        now_lay.addWidget(jetzt_lbl)
-
-        now_title_row = QHBoxLayout()
-        now_title_row.setSpacing(8)
-        self.detail_now_title = QLabel("\u2013")
-        self.detail_now_title.setStyleSheet(
-            "font-size: 22px; font-weight: bold; color: #eeeeee;"
-        )
-        self.detail_now_title.setWordWrap(True)
-        now_title_row.addWidget(self.detail_now_title, stretch=1)
-        now_lay.addLayout(now_title_row)
-
-        now_time_row = QHBoxLayout()
-        now_time_row.setSpacing(8)
-        self.detail_now_time = QLabel("")
-        self.detail_now_time.setStyleSheet("font-size: 14px; color: #8a8aa0;")
-        now_time_row.addWidget(self.detail_now_time, stretch=1)
-        self.detail_now_rec_btn = QPushButton()
-        self.detail_now_rec_btn.setIcon(_pi("record.svg", 16))
-        self.detail_now_rec_btn.setIconSize(QSize(16, 16))
-        self.detail_now_rec_btn.setToolTip(_tr("Aufnahme planen"))
-        self.detail_now_rec_btn.setFixedSize(30, 30)
-        self.detail_now_rec_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent; color: #888;
-                border: 1px solid #444; border-radius: 4px;
-                padding: 0;
-            }
-            QPushButton:hover { background: #c0392b; border-color: #c0392b; }
-        """)
-        self.detail_now_rec_btn.hide()
-        now_time_row.addWidget(self.detail_now_rec_btn, alignment=Qt.AlignVCenter)
-        now_lay.addLayout(now_time_row)
-
-        self.detail_now_progress = QProgressBar()
-        self.detail_now_progress.setFixedHeight(4)
-        self.detail_now_progress.setTextVisible(False)
-        self.detail_now_progress.setStyleSheet("""
-            QProgressBar {
-                background: #1e1e2e; border: none; border-radius: 2px;
-            }
-            QProgressBar::chunk {
-                background: #e8691a; border-radius: 2px;
-            }
-        """)
-        self.detail_now_progress.hide()
-        now_lay.addWidget(self.detail_now_progress)
-
-        self.detail_now_desc = QLabel("")
-        self.detail_now_desc.setStyleSheet(
-            "font-size: 15px; color: #888; line-height: 1.6;"
-        )
-        self.detail_now_desc.setWordWrap(True)
-        self.detail_now_desc.hide()
-        now_lay.addWidget(self.detail_now_desc)
-
-        lay.addWidget(self.detail_now_section)
-
-        # ── DANACH-Bereich (dynamisch, bis zu 3 Eintraege) ────────────────────────
-        self.detail_future_section = QWidget()
-        self.detail_future_section.setStyleSheet("background: transparent;")
-        future_outer = QVBoxLayout(self.detail_future_section)
-        future_outer.setContentsMargins(0, 0, 0, 0)
-        future_outer.setSpacing(6)
-
-        danach_lbl = QLabel(_tr("DANACH"))
-        danach_lbl.setStyleSheet(
-            "font-size: 10px; font-weight: bold; color: #8a8aa0; letter-spacing: 2px;"
-        )
-        future_outer.addWidget(danach_lbl)
-
-        self.detail_future_container = QWidget()
-        self.detail_future_container.setStyleSheet("background: transparent;")
-        self.detail_future_layout = QVBoxLayout(self.detail_future_container)
-        self.detail_future_layout.setContentsMargins(0, 0, 0, 0)
-        self.detail_future_layout.setSpacing(8)
-        future_outer.addWidget(self.detail_future_container)
-
-        self.detail_future_section.hide()
-        lay.addWidget(self.detail_future_section)
-
-        # ── Vollstaendiges EPG-Button ──────────────────────────────
-        self.detail_epg_action_btn = QPushButton(_tr("Vollständiges EPG") + "  \u25B8")
-        self.detail_epg_action_btn.setFixedHeight(38)
-        self.detail_epg_action_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #e8691a;
-                border: 1px solid #e8691a;
-                border-radius: 8px;
-                font-size: 13px;
-                font-weight: bold;
-                padding: 0 18px;
-            }
-            QPushButton:hover { background: rgba(232, 105, 26, 30); }
-            QPushButton:disabled { color: #555; border-color: #333; }
-        """)
-        self.detail_epg_action_btn.clicked.connect(self._show_full_epg)
-        self.detail_epg_action_btn.setEnabled(False)
-        lay.addWidget(self.detail_epg_action_btn)
+        self.detail_programme = QWidget()
+        self.detail_programme.setStyleSheet("background: transparent;")
+        self.detail_programme_layout = QVBoxLayout(self.detail_programme)
+        self.detail_programme_layout.setContentsMargins(0, 0, 0, 0)
+        self.detail_programme_layout.setSpacing(0)
+        lay.addWidget(self.detail_programme)
 
         lay.addStretch()
         scroll.setWidget(content)
@@ -2424,12 +2277,12 @@ class UiBuilderMixin:
         _now_row = QHBoxLayout()
         _now_row.setSpacing(10)
         _now_row.setContentsMargins(0, 0, 0, 0)
-        _now_lbl = QLabel(_tr("JETZT"))
-        _now_lbl.setStyleSheet(
+        self.overlay_now_lbl = QLabel(_tr("JETZT"))
+        self.overlay_now_lbl.setStyleSheet(
             "color: #e8691a; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
         )
-        _now_lbl.setFixedWidth(46)
-        _now_row.addWidget(_now_lbl, alignment=Qt.AlignVCenter)
+        self.overlay_now_lbl.setFixedWidth(46)
+        _now_row.addWidget(self.overlay_now_lbl, alignment=Qt.AlignVCenter)
         self.overlay_now_title = QLabel()
         self.overlay_now_title.setStyleSheet(
             "color: #fff; font-size: 17px; font-weight: bold; background: transparent;"
@@ -2441,12 +2294,12 @@ class UiBuilderMixin:
         _next_row = QHBoxLayout()
         _next_row.setSpacing(10)
         _next_row.setContentsMargins(0, 0, 0, 0)
-        _next_lbl = QLabel(_tr("DANACH"))
-        _next_lbl.setStyleSheet(
+        self.overlay_next_lbl = QLabel(_tr("DANACH"))
+        self.overlay_next_lbl.setStyleSheet(
             "color: #888; font-size: 9px; font-weight: bold; letter-spacing: 1px; background: transparent;"
         )
-        _next_lbl.setFixedWidth(46)
-        _next_row.addWidget(_next_lbl, alignment=Qt.AlignVCenter)
+        self.overlay_next_lbl.setFixedWidth(46)
+        _next_row.addWidget(self.overlay_next_lbl, alignment=Qt.AlignVCenter)
         self.overlay_next_title = QLabel()
         self.overlay_next_title.setStyleSheet(
             "color: #aaa; font-size: 14px; background: transparent;"
@@ -2984,359 +2837,15 @@ class UiBuilderMixin:
         return overlay
 
     def _create_fullscreen_controls_overlay(self, parent: QWidget) -> QWidget:
-        """Vollbild-Kontrollleiste als Auto-Hide-Overlay"""
+        """Vollbild-Overlay. Nimmt im Vollbild dieselben Bauteile wie im Fenster auf
+        (Info-Overlay, EPG-Leiste, Steuerleiste), damit beide Ansichten identisch sind."""
         overlay = QFrame(parent)
         overlay.setObjectName("fsControls")
-        overlay.setStyleSheet("""
-            #fsControls {
-                background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
-                    stop:0 rgba(0, 0, 0, 240),
-                    stop:0.7 rgba(0, 0, 0, 210),
-                    stop:1 rgba(0, 0, 0, 80));
-                border: none;
-            }
-            QPushButton {
-                background: transparent;
-                color: #ddd;
-                border: none;
-                font-size: 16px;
-                padding: 6px 10px;
-                border-radius: 6px;
-            }
-            QPushButton:hover { background-color: rgba(255, 255, 255, 25); color: white; }
-            QPushButton#fsRecordBtn { color: #ccc; }
-            QPushButton#fsRecordBtn:checked { color: #ff4444; background: rgba(255, 68, 68, 30); }
-            QPushButton#fsRecordBtn:checked:hover { background: rgba(255, 68, 68, 60); }
-            QLabel {
-                color: #ddd;
-                font-size: 12px;
-                background: transparent;
-            }
-            QSlider {
-                background: transparent;
-            }
-            QProgressBar {
-                background: rgba(255, 255, 255, 30);
-                border: none;
-                border-radius: 1px;
-            }
-            QProgressBar::chunk {
-                background: #e8691a;
-                border-radius: 1px;
-            }
-        """)
-
-        layout = QVBoxLayout(overlay)
-        layout.setContentsMargins(20, 0, 20, 16)
-        layout.setSpacing(8)
-        layout.addStretch()
-
-        # Info-Sektion: Kanallogo + Name + EPG (wird bei Mausbewegung befüllt)
-        fs_info_section = QWidget()
-        fs_info_section.setStyleSheet("background: transparent;")
-        info_layout = QHBoxLayout(fs_info_section)
-        info_layout.setContentsMargins(0, 0, 0, 4)
-        info_layout.setSpacing(12)
-
-        self.fs_channel_logo = QLabel()
-        self.fs_channel_logo.setFixedSize(120, 120)
-        self.fs_channel_logo.setStyleSheet("background: transparent;")
-        self.fs_channel_logo.setAlignment(Qt.AlignCenter)
-        self.fs_channel_logo.hide()
-        info_layout.addWidget(self.fs_channel_logo)
-
-        fs_text_col = QWidget()
-        fs_text_col.setStyleSheet("background: transparent;")
-        text_layout = QVBoxLayout(fs_text_col)
-        text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(3)
-
-        self.fs_channel_title = QLabel("")
-        self.fs_channel_title.setStyleSheet("font-size: 22px; font-weight: bold; color: white; background: transparent;")
-        text_layout.addWidget(self.fs_channel_title)
-
-        self.fs_epg_now = QLabel("")
-        self.fs_epg_now.setStyleSheet("font-size: 15px; color: #ccc; background: transparent;")
-        self.fs_epg_now.hide()
-        text_layout.addWidget(self.fs_epg_now)
-
-        # Fortschritts-Zeile: Seek-Slider (Catchup) oder visueller Balken
-        fs_prog_row = QWidget()
-        fs_prog_row.setStyleSheet("background: transparent;")
-        prog_row_layout = QHBoxLayout(fs_prog_row)
-        prog_row_layout.setContentsMargins(0, 2, 0, 2)
-        prog_row_layout.setSpacing(8)
-
-        self.fs_epg_von_anfang_btn = QPushButton(_tr(" Anfang"))
-        self.fs_epg_von_anfang_btn.setIcon(_pi("refresh.svg", 15))
-        self.fs_epg_von_anfang_btn.setIconSize(QSize(15, 15))
-        self.fs_epg_von_anfang_btn.setFixedHeight(32)
-        self.fs_epg_von_anfang_btn.setToolTip(_tr("Sendung von Anfang abspielen"))
-        self.fs_epg_von_anfang_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(0, 120, 212, 55), stop:1 rgba(80, 40, 200, 28));
-                border: none; border-left: 3px solid #0078d4;
-                border-radius: 8px; padding: 2px 16px;
-                color: white; font-size: 13px; font-weight: 600; text-align: center;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(0, 120, 212, 80), stop:1 rgba(80, 40, 200, 50));
-            }
-        """)
-        self.fs_epg_von_anfang_btn.clicked.connect(self._fs_play_von_anfang)
-        self.fs_epg_von_anfang_btn.hide()
-        prog_row_layout.addWidget(self.fs_epg_von_anfang_btn)
-
-        self.fs_epg_seek_slider = ClickSlider(Qt.Horizontal)
-        self.fs_epg_seek_slider.setRange(0, 1000)
-        self.fs_epg_seek_slider.setStyleSheet("""
-            QSlider::groove:horizontal {
-                background: rgba(255,255,255,40); height: 4px; border-radius: 2px;
-            }
-            QSlider::handle:horizontal {
-                background: white; width: 14px; height: 14px;
-                margin: -5px 0; border-radius: 7px;
-            }
-            QSlider::sub-page:horizontal { background: #e8691a; border-radius: 2px; }
-        """)
-        self.fs_epg_seek_slider.sliderPressed.connect(lambda: setattr(self, '_fs_epg_seeking', True))
-        self.fs_epg_seek_slider.sliderReleased.connect(self._on_fs_epg_seek_released)
-        self.fs_epg_seek_slider.hide()
-        prog_row_layout.addWidget(self.fs_epg_seek_slider, stretch=1)
-
-        self.fs_epg_progress = QProgressBar()
-        self.fs_epg_progress.setFixedHeight(4)
-        self.fs_epg_progress.setTextVisible(False)
-        self.fs_epg_progress.hide()
-        prog_row_layout.addWidget(self.fs_epg_progress, stretch=1)
-
-        text_layout.addWidget(fs_prog_row)
-
-        self.fs_epg_next = QLabel("")
-        self.fs_epg_next.setStyleSheet("font-size: 14px; color: #aaa; background: transparent;")
-        self.fs_epg_next.hide()
-        text_layout.addWidget(self.fs_epg_next)
-
-        info_layout.addWidget(fs_text_col, stretch=1)
-        layout.addWidget(fs_info_section)
-
-        # Zeile 1: Seek-Slider (nur bei VOD/Timeshift)
-        self.fs_seek_row = QWidget()
-        self.fs_seek_row.setStyleSheet("background: transparent;")
-        seek_layout = QHBoxLayout(self.fs_seek_row)
-        seek_layout.setContentsMargins(0, 0, 0, 0)
-        seek_layout.setSpacing(8)
-
-        self.fs_pos_label = QLabel("00:00")
-        self.fs_pos_label.setFixedWidth(55)
-        self.fs_pos_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        seek_layout.addWidget(self.fs_pos_label)
-
-        self.fs_seek_slider = ClickSlider(Qt.Horizontal)
-        self.fs_seek_slider.setRange(0, 1000)
-        self.fs_seek_slider.setValue(0)
-        self.fs_seek_slider.setStyleSheet("""
-            QSlider::groove:horizontal {
-                background: rgba(255, 255, 255, 40);
-                height: 4px;
-                border-radius: 2px;
-            }
-            QSlider::handle:horizontal {
-                background: white;
-                width: 14px;
-                height: 14px;
-                margin: -5px 0;
-                border-radius: 7px;
-            }
-            QSlider::sub-page:horizontal {
-                background: #e8691a;
-                border-radius: 2px;
-            }
-        """)
-        self.fs_seek_slider.sliderPressed.connect(lambda: setattr(self, '_fs_seeking', True))
-        self.fs_seek_slider.sliderReleased.connect(self._on_fs_seek_released)
-        seek_layout.addWidget(self.fs_seek_slider, stretch=1)
-
-        self.fs_dur_label = QLabel("00:00")
-        self.fs_dur_label.setFixedWidth(55)
-        seek_layout.addWidget(self.fs_dur_label)
-
-        self.fs_seek_row.hide()
-        layout.addWidget(self.fs_seek_row)
-
-        # Zeile 2: Steuer-Buttons
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(4)
-
-        _FS = 26   # fullscreen transport icon size
-        _FS_SM = 20  # secondary icon size
-
-        self._icon_play_fs  = _pi("play.svg",  _FS)
-        self._icon_pause_fs = _pi("pause.svg", _FS)
-
-        self.fs_btn_play_pause = QPushButton()
-        self.fs_btn_play_pause.setIcon(self._icon_play_fs)
-        self.fs_btn_play_pause.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_play_pause.setFixedSize(48, 48)
-        self.fs_btn_play_pause.setToolTip(_tr("Wiedergabe / Pause  (Leertaste)"))
-        self.fs_btn_play_pause.clicked.connect(self._toggle_play_pause)
-
-        self.fs_btn_zap_prev = QPushButton()
-        self.fs_btn_zap_prev.setIcon(_pi("chevron-left.svg", _FS))
-        self.fs_btn_zap_prev.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_zap_prev.setFixedSize(44, 44)
-        self.fs_btn_zap_prev.setToolTip(_tr("Vorheriger Sender (Bild↑ / ↑)"))
-        self.fs_btn_zap_prev.clicked.connect(self._zap_prev)
-        btn_row.addWidget(self.fs_btn_zap_prev)
-        btn_row.addWidget(self.fs_btn_play_pause)
-        self.fs_btn_zap_next = QPushButton()
-        self.fs_btn_zap_next.setIcon(_pi("chevron-right.svg", _FS))
-        self.fs_btn_zap_next.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_zap_next.setFixedSize(44, 44)
-        self.fs_btn_zap_next.setToolTip(_tr("Nächster Sender (Bild↓ / ↓)"))
-        self.fs_btn_zap_next.clicked.connect(self._zap_next)
-        btn_row.addWidget(self.fs_btn_zap_next)
-
-        self.fs_btn_skip_back = QPushButton()
-        self.fs_btn_skip_back.setIcon(_pi("rewind.svg", _FS))
-        self.fs_btn_skip_back.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_skip_back.setFixedSize(44, 44)
-        self.fs_btn_skip_back.clicked.connect(lambda: self._skip_seconds(-30))
-        self.fs_btn_skip_back.setToolTip(_tr("30 Sekunden zur\u00fcck"))
-        self.fs_btn_skip_back.hide()
-        btn_row.addWidget(self.fs_btn_skip_back)
-
-        self.fs_btn_skip_forward = QPushButton()
-        self.fs_btn_skip_forward.setIcon(_pi("fast-forward.svg", _FS))
-        self.fs_btn_skip_forward.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_skip_forward.setFixedSize(44, 44)
-        self.fs_btn_skip_forward.clicked.connect(lambda: self._skip_seconds(30))
-        self.fs_btn_skip_forward.setToolTip(_tr("30 Sekunden vor"))
-        self.fs_btn_skip_forward.hide()
-        btn_row.addWidget(self.fs_btn_skip_forward)
-
-        self.fs_btn_go_live = QPushButton("LIVE")
-        self.fs_btn_go_live.setFixedHeight(34)
-        self.fs_btn_go_live.setStyleSheet("""
-            QPushButton {
-                background: rgba(232,105,26,12); color: #e8691a;
-                border: 1px solid rgba(232,105,26,160); padding: 4px 16px;
-                border-radius: 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px;
-            }
-            QPushButton:hover { background: rgba(232,105,26,30); border-color: #e8691a; }
-        """)
-        self.fs_btn_go_live.clicked.connect(self._go_live)
-        self.fs_btn_go_live.hide()
-        btn_row.addWidget(self.fs_btn_go_live)
-
-        self.fs_btn_stop = QPushButton()
-        self.fs_btn_stop.setIcon(_pi("square.svg", _FS))
-        self.fs_btn_stop.setIconSize(QSize(_FS, _FS))
-        self.fs_btn_stop.setFixedSize(44, 44)
-        self.fs_btn_stop.setToolTip(_tr("Stopp"))
-        self.fs_btn_stop.clicked.connect(self._stop_playback)
-        btn_row.addWidget(self.fs_btn_stop)
-
-        self.fs_btn_record = QPushButton()
-        self.fs_btn_record.setObjectName("fsRecordBtn")
-        self.fs_btn_record.setCheckable(True)
-        self.fs_btn_record.setIcon(_pi_colored("record.svg", _FS - 4, "#ff4444"))
-        self.fs_btn_record.setIconSize(QSize(_FS - 4, _FS - 4))
-        self.fs_btn_record.setFixedSize(44, 44)
-        self.fs_btn_record.setToolTip(_tr("Aufnahme starten / stoppen"))
-        self.fs_btn_record.clicked.connect(self._toggle_recording)
-        btn_row.addWidget(self.fs_btn_record)
-
-        btn_row.addStretch()
-
-        # Secondary icon buttons
-        _fs_icon_btn_style = """
-            QPushButton { background: transparent; border: none; border-radius: 8px; padding: 6px; }
-            QPushButton:hover { background: rgba(255,255,255,12); }
-            QPushButton:checked { background: rgba(232,105,26,18); }
-        """
-
-        self.fs_btn_audio = QPushButton()
-        self.fs_btn_audio.setIcon(_pi("headphones.svg", _FS_SM))
-        self.fs_btn_audio.setIconSize(QSize(_FS_SM, _FS_SM))
-        self.fs_btn_audio.setFixedSize(40, 40)
-        self.fs_btn_audio.setToolTip(_tr("Tonspur w\u00e4hlen"))
-        self.fs_btn_audio.setStyleSheet(_fs_icon_btn_style)
-        self.fs_btn_audio.clicked.connect(self._show_audio_menu)
-        btn_row.addWidget(self.fs_btn_audio)
-
-        self.fs_btn_subtitle = QPushButton()
-        self.fs_btn_subtitle.setIcon(_pi("captions.svg", _FS_SM))
-        self.fs_btn_subtitle.setIconSize(QSize(_FS_SM, _FS_SM))
-        self.fs_btn_subtitle.setFixedSize(40, 40)
-        self.fs_btn_subtitle.setToolTip(_tr("Untertitel w\u00e4hlen"))
-        self.fs_btn_subtitle.setStyleSheet(_fs_icon_btn_style)
-        self.fs_btn_subtitle.clicked.connect(self._show_subtitle_menu)
-        btn_row.addWidget(self.fs_btn_subtitle)
-
-        self.fs_btn_stream_info = QPushButton()
-        self.fs_btn_stream_info.setCheckable(True)
-        self.fs_btn_stream_info.setIcon(_pi_colored("info.svg", _FS_SM, "#e8691a"))
-        self.fs_btn_stream_info.setIconSize(QSize(_FS_SM, _FS_SM))
-        self.fs_btn_stream_info.setFixedSize(40, 40)
-        self.fs_btn_stream_info.setToolTip(_tr("Stream-Info"))
-        self.fs_btn_stream_info.setStyleSheet(_fs_icon_btn_style)
-        self.fs_btn_stream_info.clicked.connect(self._toggle_stream_info)
-        btn_row.addWidget(self.fs_btn_stream_info)
-
-        self.fs_btn_zoom = QPushButton()
-        self.fs_btn_zoom.setIcon(_pi("crop.svg", _FS_SM))
-        self.fs_btn_zoom.setIconSize(QSize(_FS_SM, _FS_SM))
-        self.fs_btn_zoom.setFixedSize(40, 40)
-        self.fs_btn_zoom.setToolTip(_tr("Bildgröße: Normal \u2192 Füllen \u2192 Strecken"))
-        self.fs_btn_zoom.setStyleSheet(_fs_icon_btn_style)
-        self.fs_btn_zoom.clicked.connect(self._cycle_zoom_mode)
-        btn_row.addWidget(self.fs_btn_zoom)
-
-        btn_row.addSpacing(10)
-
-        self._px_vol_fs       = _pi("volume-2.svg", 18).pixmap(QSize(18, 18))
-        self._px_vol_muted_fs = _pi("volume-x.svg", 18).pixmap(QSize(18, 18))
-        self.fs_vol_mute_btn = QLabel()
-        self.fs_vol_mute_btn.setPixmap(self._px_vol_fs)
-        self.fs_vol_mute_btn.setFixedSize(22, 22)
-        self.fs_vol_mute_btn.setStyleSheet("background: transparent;")
-        self.fs_vol_mute_btn.setCursor(Qt.PointingHandCursor)
-        self.fs_vol_mute_btn.mousePressEvent = lambda e: self._toggle_mute()
-        btn_row.addWidget(self.fs_vol_mute_btn)
-
-        self.fs_volume_slider = QSlider(Qt.Horizontal)
-        self.fs_volume_slider.setRange(0, 100)
-        self.fs_volume_slider.setFixedWidth(110)
-        self.fs_volume_slider.setStyleSheet("""
-            QSlider::groove:horizontal { background: rgba(255,255,255,40); height: 4px; border-radius: 2px; }
-            QSlider::handle:horizontal { background: white; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }
-            QSlider::sub-page:horizontal { background: #e8691a; border-radius: 2px; }
-        """)
-        self.fs_volume_slider.blockSignals(True)
-        self.fs_volume_slider.setValue(100)
-        self.fs_volume_slider.blockSignals(False)
-        self.fs_volume_slider.valueChanged.connect(self._on_volume_changed)
-        btn_row.addWidget(self.fs_volume_slider)
-
-        btn_row.addSpacing(8)
-
-        fs_exit_btn = QPushButton()
-        fs_exit_btn.setIcon(_pi("minimize.svg", _FS))
-        fs_exit_btn.setIconSize(QSize(_FS, _FS))
-        fs_exit_btn.setFixedSize(48, 48)
-        fs_exit_btn.setToolTip(_tr("Vollbild verlassen  (Esc / F)"))
-        fs_exit_btn.clicked.connect(self._toggle_player_maximized)
-        btn_row.addWidget(fs_exit_btn)
-
-        layout.addLayout(btn_row)
-
-        self._fs_seeking = False
+        overlay.setStyleSheet("#fsControls { background: transparent; border: none; }")
+        self._fs_overlay_layout = QVBoxLayout(overlay)
+        self._fs_overlay_layout.setContentsMargins(0, 0, 0, 0)
+        self._fs_overlay_layout.setSpacing(0)
         overlay.hide()
-        overlay.installEventFilter(self)
-
         return overlay
 
     def _create_stream_info_panel(self) -> QWidget:

@@ -76,7 +76,10 @@ class PipMixin:
         self.channel_area.setFixedWidth(width)
 
     def _on_pip_expand(self):
-        """PiP verlassen und zurück zum Live-Modus mit vollem Player"""
+        """PiP vergroessern: Film -> Vollbild, Live -> Live-Modus mit vollem Player"""
+        if self._current_stream_type == "vod":
+            self._toggle_player_maximized()
+            return
         self._exit_pip_mode()
         self._switch_mode("live")
 
