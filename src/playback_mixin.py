@@ -834,10 +834,6 @@ class PlaybackMixin:
         if current_entry:
             duration = current_entry.stop_timestamp - current_entry.start_timestamp
             if duration > 0:
-                title = self.live_epg_title
-                title.setText(title.fontMetrics().elidedText(
-                    current_entry.title, Qt.ElideRight, title.maximumWidth()))
-                title.setToolTip(current_entry.title)
                 self.live_epg_start_lbl.setText(
                     datetime.fromtimestamp(current_entry.start_timestamp).strftime("%H:%M"))
                 self.live_epg_stop_lbl.setText(

@@ -2477,10 +2477,6 @@ class UiBuilderMixin:
         layout.addWidget(self.live_epg_epg_btn)
 
         layout.addSpacing(6)
-        self.live_epg_title = QLabel()
-        self.live_epg_title.setMaximumWidth(340)
-        self.live_epg_title.setStyleSheet("color: #ddd; font-size: 13px; font-weight: 600; background: transparent; border: none;")
-        layout.addWidget(self.live_epg_title)
         _time_style = "color: #a6a6b8; font-size: 11px; background: transparent; border: none;"
         self.live_epg_start_lbl = QLabel()
         self.live_epg_start_lbl.setStyleSheet(_time_style)
