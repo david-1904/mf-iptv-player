@@ -1030,34 +1030,6 @@
       <translation>Other channel</translation>
     </message>
     <message>
-      <source> Anfang</source>
-      <translation> From start</translation>
-    </message>
-    <message>
-      <source>Sendung von Anfang abspielen</source>
-      <translation>Play show from the beginning</translation>
-    </message>
-    <message>
-      <source>Vorheriger Sender (Bild↑ / ↑)</source>
-      <translation>Previous channel (PgUp / ↑)</translation>
-    </message>
-    <message>
-      <source>Nächster Sender (Bild↓ / ↓)</source>
-      <translation>Next channel (PgDn / ↓)</translation>
-    </message>
-    <message>
-      <source>30 Sekunden zurück</source>
-      <translation>Back 30 seconds</translation>
-    </message>
-    <message>
-      <source>30 Sekunden vor</source>
-      <translation>Forward 30 seconds</translation>
-    </message>
-    <message>
-      <source>Vollbild verlassen  (Esc / F)</source>
-      <translation>Exit fullscreen  (Esc / F)</translation>
-    </message>
-    <message>
       <source>Bereit</source>
       <translation>Ready</translation>
     </message>
