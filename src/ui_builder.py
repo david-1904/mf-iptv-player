@@ -2231,7 +2231,7 @@ class UiBuilderMixin:
             self.fullscreen_controls.setAttribute(Qt.WA_NativeWindow)
         self._fs_controls_timer = QTimer()
         self._fs_controls_timer.setSingleShot(True)
-        self._fs_controls_timer.timeout.connect(self._hide_fullscreen_controls)
+        self._fs_controls_timer.timeout.connect(self._auto_hide_fullscreen_controls)
         # Watchdog: prueft periodisch die echte Cursorposition, damit die Leiste
         # auch dann verschwindet, wenn Enter/Leave-Events durch das Ein-/Ausblenden
         # des Overlays unter einem stillstehenden Cursor ausbleiben (Bug: Leiste

@@ -199,7 +199,7 @@ class MainWindow(
             if obj is self.channel_list.viewport() and self.current_mode in ("vod", "series"):
                 QTimer.singleShot(0, self._update_grid_size)
         elif event.type() == QEvent.MouseMove:
-            if (obj is self.player_container or obj is self.player) and self.player.is_playing:
+            if (obj is self.player_container or obj is self.player) and self._has_active_stream():
                 if self._player_maximized:
                     self._show_fullscreen_controls()
             elif obj is self.channel_list.viewport() and self.current_mode == "live":

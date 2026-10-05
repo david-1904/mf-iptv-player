@@ -66,7 +66,8 @@ class SeriesDetailMixin:
 
         # Volle Fensterbreite fuer Serien-Detail: Zustand speichern + Player ausblenden
         self._save_detail_layout()
-        if self.player_area.isVisible():
+        # Mini-Player schwebt ueber dem Inhalt und bleibt sichtbar
+        if self.player_area.isVisible() and not self._pip_mode:
             self.player_area.hide()
         self.channel_area.show()
         self.channel_area.setMinimumWidth(0)

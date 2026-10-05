@@ -176,7 +176,15 @@ class MpvPlayerWidget(QOpenGLWidget):
             # mpv liefert reason als ctypes.c_int (integer), nicht als String
             _reason_map = {0: 'eof', 1: 'stop', 2: 'quit', 3: 'error', 4: 'redirect'}
             try:
-                raw = event['event']['reason']
+                # Neuere python-mpv: MpvEvent mit as_dict() (reason als Bytes, z.B. b'stop');
+                # aeltere: dict-artiger Zugriff. Ohne korrektes Auslesen landet jedes
+                # Ende als 'unknown' und ein Senderwechsel beendet den neuen Film.
+                if hasattr(event, 'as_dict'):
+                    raw = event.as_dict().get('reason')
+                else:
+                    raw = event['event']['reason']
+                if isinstance(raw, bytes):
+                    raw = raw.decode(errors='replace')
                 # ctypes c_int hat .value, Enums haben .name
                 if hasattr(raw, 'name'):
                     reason = raw.name.lower()

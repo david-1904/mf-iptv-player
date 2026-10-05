@@ -242,6 +242,7 @@ class PlaybackMixin:
         if self._pip_mode:
             # PiP-Modus sauber verlassen
             self._pip_mode = False
+            self.pip_bar.hide()
             self.pip_close_btn.hide()
             self.player_area.setMinimumSize(0, 0)
             self.player_area.setMaximumSize(16777215, 16777215)
@@ -330,6 +331,7 @@ class PlaybackMixin:
                 # Resume nach Pause: in Timeshift wechseln
                 self._enter_timeshift(self._timeshift_paused_at)
                 self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
+            self._show_fullscreen_controls()
             return
 
         self.player.pause()
@@ -337,6 +339,17 @@ class PlaybackMixin:
             self.btn_play_pause.setIcon(getattr(self, '_icon_pause', self.btn_play_pause.icon()))
         else:
             self.btn_play_pause.setIcon(getattr(self, '_icon_play', self.btn_play_pause.icon()))
+        # Im Vollbild Zustand sichtbar machen (no-op im Fenster)
+        self._show_fullscreen_controls()
+
+    def _is_paused(self) -> bool:
+        return bool(self.player.player and self.player.player.pause)
+
+    def _auto_hide_fullscreen_controls(self):
+        """Auto-Hide nach Inaktivitaet - waehrend Pause bleibt die Leiste stehen."""
+        if self._is_paused():
+            return
+        self._hide_fullscreen_controls()
 
     def _enter_timeshift(self, start_timestamp: float):
         """Wechselt vom Live-Stream in den Timeshift-Modus"""
@@ -707,7 +720,7 @@ class PlaybackMixin:
             self._fs_last_cursor_pos = pos
             self._fs_idle_since = time.monotonic()
             return
-        if time.monotonic() - self._fs_idle_since >= 3.0:
+        if time.monotonic() - self._fs_idle_since >= 3.0 and not self._is_paused():
             self._fs_controls_timer.stop()
             self._hide_fullscreen_controls()
 
