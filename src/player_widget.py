@@ -1,6 +1,9 @@
 """
 MPV Player Widget fuer PySide6 - OpenGL-basiert (Wayland-kompatibel)
 """
+import os
+import shutil
+import subprocess
 import time
 from ctypes import CFUNCTYPE, c_void_p, c_char_p
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -10,11 +13,7 @@ import mpv
 
 import sys
 
-try:
-    import dbus
-    _DBUS_AVAILABLE = True
-except ImportError:
-    _DBUS_AVAILABLE = False
+_SYSTEMD_INHIBIT_PATH = shutil.which('systemd-inhibit') if sys.platform != 'win32' else None
 
 if sys.platform == 'win32':
     import ctypes
@@ -58,8 +57,7 @@ class MpvPlayerWidget(QOpenGLWidget):
         self._start = 0.0
         self._player_initialized = False
         self._is_buffering = False
-        self._screensaver_inhibitions = []  # [(service, path, iface_name, cookie), ...]
-        self._logind_fd = None               # systemd-logind idle-inhibit fd
+        self._inhibit_proc = None            # systemd-inhibit Subprozess, haelt idle:sleep Inhibit
 
         # Freeze-Erkennung: Zeitstempel des letzten update_cb-Aufrufs von mpv
         self._last_update_time = time.monotonic()
@@ -339,89 +337,41 @@ class MpvPlayerWidget(QOpenGLWidget):
             self.buffering_changed.emit(buffering)
 
     def _inhibit_screensaver(self):
-        """Verhindert Bildschirmschoner/Sperrbildschirm (Windows: SetThreadExecutionState, Linux: D-Bus)"""
+        """Verhindert Bildschirmschoner/Sperrbildschirm (Windows: SetThreadExecutionState, Linux: systemd-inhibit)"""
         if sys.platform == 'win32':
             ctypes.windll.kernel32.SetThreadExecutionState(
                 _ES_CONTINUOUS | _ES_DISPLAY_REQUIRED | _ES_SYSTEM_REQUIRED
             )
             return
-        if not _DBUS_AVAILABLE:
+        if not _SYSTEMD_INHIBIT_PATH or self._inhibit_proc is not None:
             return
-        # Bereits aktiv → nicht doppelt inhibiten
-        if self._screensaver_inhibitions or self._logind_fd is not None:
-            return
-
-        # 1. ScreenSaver-Inhibit über Session-Bus (KDE, GNOME, generisch)
-        candidates = [
-            ('org.freedesktop.ScreenSaver', '/ScreenSaver', 'org.freedesktop.ScreenSaver'),
-            ('org.freedesktop.ScreenSaver', '/org/freedesktop/ScreenSaver', 'org.freedesktop.ScreenSaver'),
-            ('org.gnome.SessionManager', '/org/gnome/SessionManager', 'org.gnome.SessionManager'),
-        ]
         try:
-            bus = dbus.SessionBus()
-            for service, path, iface_name in candidates:
-                try:
-                    proxy = bus.get_object(service, path)
-                    iface = dbus.Interface(proxy, iface_name)
-                    if iface_name == 'org.gnome.SessionManager':
-                        cookie = iface.Inhibit('iptv-app', dbus.UInt32(0), 'Video playback', dbus.UInt32(8))
-                    else:
-                        cookie = iface.Inhibit('iptv-app', 'Video playback')
-                    self._screensaver_inhibitions.append((service, path, iface_name, cookie))
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        # 2. systemd-logind idle-Inhibit über System-Bus (zuverlässiger auf Wayland/KDE)
-        #    Hält den Inhibitor als offenen File-Descriptor offen – wird beim Schließen freigegeben
-        try:
-            import os
-            sysbus = dbus.SystemBus()
-            logind = dbus.Interface(
-                sysbus.get_object('org.freedesktop.login1', '/org/freedesktop/login1'),
-                'org.freedesktop.login1.Manager'
+            self._inhibit_proc = subprocess.Popen(
+                # tail --pid endet automatisch mit dem App-Prozess (auch bei Absturz/Kill),
+                # damit keine verwaiste Sperre Standby dauerhaft blockiert
+                [_SYSTEMD_INHIBIT_PATH, '--what=idle:sleep:handle-lid-switch',
+                 '--who=iptv-app', '--why=Video playback',
+                 'tail', f'--pid={os.getpid()}', '-f', '/dev/null'],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            fd_obj = logind.Inhibit('idle:sleep', 'IPTV App', 'Video playback', 'block')
-            self._logind_fd = fd_obj.take()  # rohen fd übernehmen, offen lassen = Inhibit aktiv
         except Exception:
-            self._logind_fd = None
+            self._inhibit_proc = None
 
     def _uninhibit_screensaver(self):
         """Gibt Bildschirmschoner/Sperrbildschirm wieder frei"""
         if sys.platform == 'win32':
             ctypes.windll.kernel32.SetThreadExecutionState(_ES_CONTINUOUS)
             return
-        if not _DBUS_AVAILABLE:
-            return
-
-        # ScreenSaver-Cookies aufheben
-        if self._screensaver_inhibitions:
+        if self._inhibit_proc is not None:
             try:
-                bus = dbus.SessionBus()
-                for service, path, iface_name, cookie in self._screensaver_inhibitions:
-                    try:
-                        proxy = bus.get_object(service, path)
-                        iface = dbus.Interface(proxy, iface_name)
-                        if iface_name == 'org.gnome.SessionManager':
-                            iface.Uninhibit(cookie)
-                        else:
-                            iface.UnInhibit(cookie)
-                    except Exception:
-                        pass
+                self._inhibit_proc.terminate()
+                self._inhibit_proc.wait(timeout=2)
             except Exception:
-                pass
-            finally:
-                self._screensaver_inhibitions = []
-
-        # logind-Inhibitor freigeben (fd schließen = Inhibit aufheben)
-        if self._logind_fd is not None:
-            try:
-                import os
-                os.close(self._logind_fd)
-            except Exception:
-                pass
-            self._logind_fd = None
+                try:
+                    self._inhibit_proc.kill()
+                except Exception:
+                    pass
+            self._inhibit_proc = None
 
     def _apply_stream_options(self):
         # seekable=0 verhindert bei Live-Streams haengende Range-Requests; bei Filmen
